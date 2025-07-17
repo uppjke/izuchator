@@ -25,7 +25,8 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.4 }}
         >
-          Всё, что тебе нужно — у тебя под рукой. Больше никаких лишних сервисов!
+          Всё, что тебе нужно — у тебя под рукой.<br />
+          Больше никаких лишних сервисов!
         </motion.p>
         
         <motion.div 
@@ -41,15 +42,6 @@ export default function Home() {
             Создать аккаунт
           </button>
         </motion.div>
-      </motion.div>
-      
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4, duration: 0.8 }}
-        className="absolute inset-0 -z-10 overflow-hidden"
-      >
-        <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-zinc-100 to-transparent opacity-60" />
       </motion.div>
     </div>
   );
