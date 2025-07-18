@@ -36,10 +36,10 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.6 }}
         >
-          <Button size="lg" className="bg-zinc-900 text-white hover:bg-zinc-800">
+          <Button size="lg" className="bg-zinc-900 text-white hover:bg-zinc-700">
             Войти
           </Button>
-          <Button size="lg" variant="outline" className="border-zinc-300 hover:bg-zinc-50">
+          <Button size="lg" variant="outline" className="border-zinc-500 hover:bg-zinc-100">
             Создать аккаунт
           </Button>
         </motion.div>
