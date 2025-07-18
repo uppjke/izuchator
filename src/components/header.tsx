@@ -14,8 +14,13 @@ import {
 
 export function Header() {
   return (
-    <header className="border-b border-zinc-200 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-      <div className="container mx-auto px-2 h-16 flex items-center justify-between">
+    <header className="border-b border-white/20 bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 sticky top-0 z-50 shadow-sm shadow-black/5">
+      <div className="container mx-auto px-2 h-16 flex items-center justify-between relative">
+        {/* Тонкий градиент-отражение сверху */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent pointer-events-none"></div>
+        
+        {/* Контент хедера */}
+        <div className="relative z-10 flex items-center justify-between w-full">
         {/* Логотип + название */}
         <div className="flex items-center gap-4">
           <Image
@@ -74,6 +79,7 @@ export function Header() {
             </div>
           </SheetContent>
         </Sheet>
+        </div>
       </div>
     </header>
   );
