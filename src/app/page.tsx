@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-16">
+    <div className="min-h-[calc(100vh-4rem)] bg-white flex flex-col items-center justify-center px-4 py-16">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -36,10 +36,10 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.6 }}
         >
-          <Button size="lg" className="bg-zinc-900 text-white hover:bg-zinc-700">
+          <Button size="hero" className="bg-zinc-900 text-white hover:bg-zinc-700">
             Войти
           </Button>
-          <Button size="lg" variant="outline" className="border-zinc-500 hover:bg-zinc-100">
+          <Button size="hero" variant="outline" className="border-zinc-500 hover:bg-zinc-100">
             Создать аккаунт
           </Button>
         </motion.div>
