@@ -42,7 +42,7 @@ export function Header() {
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="sm:hidden">
-              <Menu className="h-6 w-6" />
+              <Menu/>
               <span className="sr-only">Открыть меню</span>
             </Button>
           </SheetTrigger>
@@ -58,9 +58,10 @@ export function Header() {
                 />
                 Изучатор
               </SheetTitle>
-              <SheetDescription className="items-center text-center">
+              <SheetDescription className="text-center mt-8">
                 Добро пожаловать в Изучатор!<br />
-                Вы можете войти в свой аккаунт или создать новый.
+                Здесь всё готово к уроку — войдите или создайте аккаунт за пару секунд.
+
               </SheetDescription>
             </SheetHeader>
             <div className="flex flex-col gap-4 mt-8 items-center">
