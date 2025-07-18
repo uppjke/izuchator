@@ -42,10 +42,11 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --breakpoint-xs: 475px;
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 1rem; /* Увеличено для более Apple-подобного стиля */
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -119,5 +120,19 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Apple-style global button styling */
+  button {
+    @apply rounded-full transition-all duration-200 ease-out;
+  }
+  
+  /* Enhanced button states for better Apple-like feel */
+  button:active {
+    @apply scale-95;
+  }
+  
+  button:focus-visible {
+    @apply outline-2 outline-offset-2;
   }
 }
