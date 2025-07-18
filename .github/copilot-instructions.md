@@ -63,3 +63,13 @@ The authentication uses Supabase's magic link OTP method:
 - Use Framer Motion for page transitions and micro-interactions
 - Follow Next.js 15 App Router conventions
 - Implement responsive design with Tailwind CSS utilities
+
+---
+
+## Apple Human Interface Guidelines
+
+- For all UI/UX and design decisions, refer to Apple's official Human Interface Guidelines: https://developer.apple.com/design/human-interface-guidelines
+- Prioritize clarity, deference, and depth in interface design
+- Use native-like navigation, spacing, and accessibility best practices
+- Favor minimalism, legibility, and intuitive interactions
+- Ensure all components and layouts are visually consistent and easy to use
