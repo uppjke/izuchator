@@ -2,15 +2,17 @@
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { AnimatedBlobs } from '@/components/animated-blobs';
 
 export default function Home() {
   return (
-    <div className="min-h-[calc(100vh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16">
+    <div className="min-h-[calc(100vh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
+      <AnimatedBlobs />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="max-w-4xl mx-auto text-center"
+        className="max-w-4xl mx-auto text-center relative z-10"
       >
         <motion.h1 
           className="text-6xl sm:text-5xl md:text-7xl font-bold text-zinc-900 mb-6"

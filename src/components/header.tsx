@@ -15,7 +15,7 @@ import {
 export function Header() {
   return (
     <header className="border-b border-zinc-200 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="container mx-auto px-2 h-16 flex items-center justify-between">
         {/* Логотип + название */}
         <div className="flex items-center gap-4">
           <Image
