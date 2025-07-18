@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 
 export default function Home() {
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-white flex flex-col items-center justify-center px-4 py-16">
+    <div className="min-h-[calc(100vh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

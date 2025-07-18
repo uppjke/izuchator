@@ -122,6 +122,16 @@
     @apply bg-background text-foreground;
   }
   
+  /* Глобальное скрытие полосы прокрутки */
+  * {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+  }
+  
+  *::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+  
   /* Apple-style global button styling */
   button {
     @apply rounded-full transition-all duration-200 ease-out;
