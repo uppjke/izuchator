@@ -26,7 +26,7 @@ interface Props {
 export function RegisterDialog({ children, open, onOpenChange }: Props) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', email: '', role: '' }
+    defaultValues: { name: '', email: '', role: 'student' }
   })
 
   const onSubmit = async (data: FormData) => {
