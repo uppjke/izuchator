@@ -1,10 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { AnimatedBlobs } from '@/components/animated-blobs';
+import { LoginDialog } from '@/components/auth/login-dialog';
+import { RegisterDialog } from '@/components/auth/register-dialog';
 
 export default function Home() {
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
   return (
     <div className="min-h-[calc(100dvh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
       <AnimatedBlobs />
@@ -38,14 +43,27 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.6 }}
         >
-          <Button size="hero" className="bg-zinc-900 text-white hover:bg-zinc-700">
+          <Button 
+            size="hero" 
+            className="bg-zinc-900 text-white hover:bg-zinc-700"
+            onClick={() => setLoginOpen(true)}
+          >
             Войти
           </Button>
-          <Button size="hero" variant="outline" className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white">
+          <Button 
+            size="hero" 
+            variant="outline" 
+            className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
+            onClick={() => setRegisterOpen(true)}
+          >
             Создать аккаунт
           </Button>
         </motion.div>
       </motion.div>
+      
+      {/* Контролируемые диалоги */}
+      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
+      <RegisterDialog open={registerOpen} onOpenChange={setRegisterOpen} />
     </div>
   );
 }
