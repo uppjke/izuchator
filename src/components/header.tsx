@@ -38,7 +38,7 @@ export function Header() {
           <Button size="header" className="bg-zinc-900 text-white hover:bg-zinc-700">
             Войти
           </Button>
-          <Button size="header" variant="outline" className="border-zinc-500 hover:bg-zinc-100">
+          <Button size="header" variant="outline" className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white">
             Создать аккаунт
           </Button>
         </div>

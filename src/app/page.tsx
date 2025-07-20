@@ -6,7 +6,7 @@ import { AnimatedBlobs } from '@/components/animated-blobs';
 
 export default function Home() {
   return (
-    <div className="min-h-[calc(100vh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
+    <div className="min-h-[calc(100dvh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
       <AnimatedBlobs />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
