@@ -40,7 +40,7 @@ export function LoginDialog({ children, open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-semibold">Вход</DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">
-            Введите email для получения кода входа
+            Введите email для получения кода
           </DialogDescription>
         </DialogHeader>
         
