@@ -1,30 +1,30 @@
-import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Create a Supabase client for client components
-export const createSupabaseClient = () => {
-  return createClient(supabaseUrl, supabaseAnonKey)
-}
-
-// Create a Supabase client for server components
-export const createSupabaseServerClient = async () => {
+export const createSupabaseServerClient = async() => {
   const cookieStore = await cookies()
-  
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
+
+  return createServerClient(url, key, {
     cookies: {
-      get(name) {
-        return cookieStore.get(name)?.value
+      getAll: () => cookieStore.getAll().map((cookie) => ({ 
+        name: cookie.name, 
+        value: cookie.value 
+      })),
+      setAll: (cookieList) => {
+        cookieList.forEach(({ name, value, options }) => {
+          if (value) {
+            cookieStore.set({ name, value, ...options })
+          } else {
+            cookieStore.delete({ name })
+          }
+        })
       },
-      set(name, value, options) {
-        cookieStore.set({ name, value, ...options })
-      },
-      remove(name, options) {
-        cookieStore.delete({ name, ...options })
-      }
-    }
+    },
   })
 }
+
+export const createSupabaseBrowserClient = () => createClient(url, key)
