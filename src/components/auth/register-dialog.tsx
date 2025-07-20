@@ -1,11 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+const schema = z.object({
+  name: z.string().min(1, 'Имя обязательно'),
+  email: z.string().email('Неверный формат email'),
+  role: z.string().min(1, 'Выберите роль')
+})
+
+type FormData = z.infer<typeof schema>
 
 interface Props {
   children?: React.ReactNode
@@ -14,17 +24,16 @@ interface Props {
 }
 
 export function RegisterDialog({ children, open, onOpenChange }: Props) {
-  const [state, setState] = useState({ name: '', email: '', role: '', loading: false })
+  const form = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: '', email: '', role: '' }
+  })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setState(prev => ({ ...prev, loading: true }))
-    
+  const onSubmit = async (data: FormData) => {
     // TODO: Здесь будет логика регистрации и отправки OTP
-    console.log('Регистрация:', { name: state.name, email: state.email, role: state.role })
+    console.log('Регистрация:', data)
     
     await new Promise(resolve => setTimeout(resolve, 1000))
-    setState(prev => ({ ...prev, loading: false }))
   }
 
   return (
@@ -38,55 +47,80 @@ export function RegisterDialog({ children, open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Имя</Label>
-            <Input
-              id="name"
-              placeholder="Ваше имя"
-              value={state.name}
-              onChange={(e) => setState(prev => ({ ...prev, name: e.target.value }))}
-              disabled={state.loading}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Имя</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Ваше имя"
+                      disabled={form.formState.isSubmitting}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="your@email.com"
-              value={state.email}
-              onChange={(e) => setState(prev => ({ ...prev, email: e.target.value }))}
-              disabled={state.loading}
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="your@email.com"
+                      disabled={form.formState.isSubmitting}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role">Роль</Label>
-            <Select 
-              value={state.role} 
-              onValueChange={(role) => setState(prev => ({ ...prev, role }))} 
-              disabled={state.loading}
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Роль</FormLabel>
+                  <Select 
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={form.formState.isSubmitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите роль" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="student">Ученик</SelectItem>
+                      <SelectItem value="teacher">Преподаватель</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={form.formState.isSubmitting}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите роль" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="student">Ученик</SelectItem>
-                <SelectItem value="teacher">Преподаватель</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={state.loading || !state.name || !state.email || !state.role}
-          >
-            {state.loading ? 'Создаем аккаунт...' : 'Создать аккаунт'}
-          </Button>
-        </form>
+              {form.formState.isSubmitting ? 'Создаем аккаунт...' : 'Создать аккаунт'}
+            </Button>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )

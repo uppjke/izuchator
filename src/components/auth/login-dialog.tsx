@@ -1,10 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+
+const schema = z.object({
+  email: z.string().email('Неверный формат email')
+})
+
+type FormData = z.infer<typeof schema>
 
 interface Props {
   children?: React.ReactNode
@@ -13,17 +21,16 @@ interface Props {
 }
 
 export function LoginDialog({ children, open, onOpenChange }: Props) {
-  const [state, setState] = useState({ email: '', loading: false })
+  const form = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: '' }
+  })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setState(prev => ({ ...prev, loading: true }))
-    
+  const onSubmit = async (data: FormData) => {
     // TODO: Здесь будет логика отправки OTP
-    console.log('Отправка OTP на:', state.email)
+    console.log('Отправка OTP на:', data.email)
     
     await new Promise(resolve => setTimeout(resolve, 1000))
-    setState(prev => ({ ...prev, loading: false }))
   }
 
   return (
@@ -37,28 +44,36 @@ export function LoginDialog({ children, open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="your@email.com"
-              value={state.email}
-              onChange={(e) => setState(prev => ({ ...prev, email: e.target.value }))}
-              required
-              disabled={state.loading}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="your@email.com"
+                      disabled={form.formState.isSubmitting}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <Button 
-            type="submit" 
-            className="w-full bg-zinc-900 hover:bg-zinc-700" 
-            disabled={state.loading || !state.email}
-          >
-            {state.loading ? 'Отправляем...' : 'Отправить'}
-          </Button>
-        </form>
+            
+            <Button 
+              type="submit" 
+              className="w-full bg-zinc-900 hover:bg-zinc-700" 
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting ? 'Отправляем...' : 'Отправить'}
+            </Button>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )
