@@ -36,7 +36,7 @@ export function LoginDialog({ children, open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-semibold">Вход</DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">

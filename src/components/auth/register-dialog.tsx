@@ -39,7 +39,7 @@ export function RegisterDialog({ children, open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-center text-xl font-semibold">Создание аккаунта</DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">
