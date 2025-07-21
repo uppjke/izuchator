@@ -41,9 +41,9 @@ export function RegisterDialog({ children, open, onOpenChange }: Props) {
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-center text-xl font-semibold">Создание аккаунта</DialogTitle>
+          <DialogTitle className="text-center text-2xl font-semibold">Создание аккаунта</DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">
-            Заполните форму для создания нового аккаунта
+            Заполните все поля для создания аккаунта.
           </DialogDescription>
         </DialogHeader>
         
