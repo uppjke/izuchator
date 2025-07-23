@@ -1,20 +1,39 @@
-import * as React from "react"
+'use client'
 
-import { cn } from "@/lib/utils"
+import * as React from 'react'
+import { cn } from '@/lib/utils'
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+export function Input(
+  { className, type, ...props }: React.ComponentProps<'input'>
+) {
   return (
     <input
       type={type}
       data-slot="input"
       className={cn(
-        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex h-9 w-full min-w-0 rounded-full border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus:outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-        "aria-invalid:border-destructive",
+        /* ── базовые ─────────────────────────── */
+        'flex h-9 w-full min-w-0 rounded-full border border-input',
+        'bg-transparent px-3 py-1 text-base md:text-sm',
+        'placeholder:text-muted-foreground',
+        'transition-colors outline-none',
+
+        /* ── focus-ring (заменяет границу) ─ */
+        'focus-visible:border-blue-500',
+
+        /* ── error-state ─────────────────────── */
+        'aria-invalid:border-destructive',
+        'aria-invalid:focus-visible:border-destructive aria-invalid:focus-visible:border-[1.5px] aria-invalid:focus-visible:px-[11.5px]',
+
+        /* ── disabled ────────────────────────── */
+        'disabled:cursor-not-allowed disabled:opacity-50',
+
+        /* ── file-input стили (если понадобится) */
+        'file:inline-flex file:h-7 file:border-0 file:bg-transparent',
+        'file:text-sm file:font-medium file:text-foreground',
+
         className
       )}
       {...props}
     />
   )
 }
-
-export { Input }
