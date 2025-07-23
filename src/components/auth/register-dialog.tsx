@@ -21,9 +21,10 @@ interface Props {
   children?: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  onSwitchToLogin?: () => void
 }
 
-export function RegisterDialog({ children, open, onOpenChange }: Props) {
+export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }: Props) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: '', email: '', role: 'student' }
@@ -119,6 +120,19 @@ export function RegisterDialog({ children, open, onOpenChange }: Props) {
             >
               {form.formState.isSubmitting ? 'Создаем аккаунт...' : 'Создать аккаунт'}
             </Button>
+            
+            <div className="text-center text-sm text-muted-foreground">
+              Уже есть аккаунт?{' '}
+              <button
+                type="button"
+                className="text-blue-600 hover:text-blue-500 underline-offset-4 hover:underline"
+                onClick={() => {
+                  onSwitchToLogin?.()
+                }}
+              >
+                Войти
+              </button>
+            </div>
           </form>
         </Form>
       </DialogContent>

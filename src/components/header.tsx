@@ -108,8 +108,22 @@ export function Header() {
       </div>
       
       {/* Контролируемые диалоги */}
-      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
-      <RegisterDialog open={registerOpen} onOpenChange={setRegisterOpen} />
+      <LoginDialog 
+        open={loginOpen} 
+        onOpenChange={setLoginOpen}
+        onSwitchToRegister={() => {
+          setLoginOpen(false)
+          setRegisterOpen(true)
+        }}
+      />
+      <RegisterDialog 
+        open={registerOpen} 
+        onOpenChange={setRegisterOpen}
+        onSwitchToLogin={() => {
+          setRegisterOpen(false)
+          setLoginOpen(true)
+        }}
+      />
     </header>
   );
 }
