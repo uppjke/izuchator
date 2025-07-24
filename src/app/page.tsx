@@ -6,10 +6,13 @@ import { Button } from '@/components/ui/button';
 import { AnimatedBlobs } from '@/components/animated-blobs';
 import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
+import { OtpDialog } from '@/components/auth/otp-dialog';
 
 export default function Home() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [testEmail, setTestEmail] = useState('');
   return (
     <div className="min-h-[calc(100dvh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
       <AnimatedBlobs />
@@ -59,6 +62,25 @@ export default function Home() {
             Создать аккаунт
           </Button>
         </motion.div>
+        
+        {/* Тестовая кнопка для OTP */}
+        <motion.div 
+          className="mt-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7, delay: 0.8 }}
+        >
+          <Button 
+            variant="outline"
+            onClick={() => {
+              setTestEmail('test@example.com')
+              setOtpOpen(true)
+            }}
+            className="text-sm"
+          >
+            🧪 Тест OTP диалога
+          </Button>
+        </motion.div>
       </motion.div>
       
       {/* Контролируемые диалоги */}
@@ -75,6 +97,18 @@ export default function Home() {
         onOpenChange={setRegisterOpen}
         onSwitchToLogin={() => {
           setRegisterOpen(false)
+          setLoginOpen(true)
+        }}
+      />
+      <OtpDialog 
+        open={otpOpen} 
+        onOpenChange={setOtpOpen}
+        email={testEmail}
+        onResendOtp={() => {
+          console.log('Повторная отправка OTP на:', testEmail)
+        }}
+        onBack={() => {
+          setOtpOpen(false)
           setLoginOpen(true)
         }}
       />
