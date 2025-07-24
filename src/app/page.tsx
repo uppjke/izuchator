@@ -104,13 +104,6 @@ export default function Home() {
         open={otpOpen} 
         onOpenChange={setOtpOpen}
         email={testEmail}
-        onResendOtp={() => {
-          console.log('Повторная отправка OTP на:', testEmail)
-        }}
-        onBack={() => {
-          setOtpOpen(false)
-          setLoginOpen(true)
-        }}
       />
     </div>
   );
