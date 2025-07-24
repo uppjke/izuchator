@@ -19,40 +19,38 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   const handleSubmit = async (otpString: string) => {
     if (otpString.length === 6 && !isSubmitting) {
       setIsSubmitting(true)
-      // TODO: Здесь будет логика проверки OTP
       console.log('Проверка OTP:', otpString, 'для email:', email)
-      
       await new Promise(resolve => setTimeout(resolve, 1000))
       setIsSubmitting(false)
     }
   }
 
-  const handleOtpChange = (index: number, value: string) => {
-    // Разрешаем только цифры
-    const digit = value.replace(/\D/g, '').slice(0, 1)
-    
-    const newOtp = [...otp]
-    newOtp[index] = digit
+  const updateOtp = (newOtp: string[], focusIndex?: number) => {
     setOtp(newOtp)
+    const otpString = newOtp.join('')
     
-    // Автоматически переходим к следующему полю
-    if (digit && index < 5) {
-      inputRefs.current[index + 1]?.focus()
+    if (focusIndex !== undefined) {
+      inputRefs.current[focusIndex]?.focus()
     }
     
-    // Автоматически отправляем форму когда все 6 цифр введены
-    const otpString = newOtp.join('')
     if (otpString.length === 6) {
       handleSubmit(otpString)
     }
   }
 
+  const handleOtpChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(0, 1)
+    const newOtp = [...otp]
+    newOtp[index] = digit
+    
+    const nextIndex = digit && index < 5 ? index + 1 : undefined
+    updateOtp(newOtp, nextIndex)
+  }
+
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    // Backspace - переходим к предыдущему полю если текущее пустое
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus()
     }
-    // ArrowLeft/ArrowRight для навигации
     if (e.key === 'ArrowLeft' && index > 0) {
       inputRefs.current[index - 1]?.focus()
     }
@@ -70,17 +68,9 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
       newOtp[i] = pastedData[i]
     }
     
-    setOtp(newOtp)
-    
-    // Фокусируемся на следующем пустом поле или последнем заполненном
     const nextEmptyIndex = newOtp.findIndex(digit => !digit)
     const focusIndex = nextEmptyIndex === -1 ? 5 : Math.min(nextEmptyIndex, pastedData.length)
-    inputRefs.current[focusIndex]?.focus()
-    
-    // Автоотправка если код полный
-    if (newOtp.join('').length === 6) {
-      handleSubmit(newOtp.join(''))
-    }
+    updateOtp(newOtp, focusIndex)
   }
 
   return (
