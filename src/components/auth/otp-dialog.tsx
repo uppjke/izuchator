@@ -141,6 +141,7 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
                   success ? 'border-green-500 focus:border-green-500' : ''
                 }`}
                 disabled={isSubmitting}
+                autoFocus={index === 0}
               />
             ))}
           </div>
