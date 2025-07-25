@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,12 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   const [success, setSuccess] = useState(false)
   const [shake, setShake] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => inputRefs.current[0]?.focus(), 100)
+    }
+  }, [open])
 
   const handleSubmit = async (otpString: string) => {
     if (otpString.length === 6 && !isSubmitting) {
@@ -60,27 +66,42 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
     }
   }
 
-  const handleOtpChange = (index: number, value: string) => {
-    const digit = value.replace(/\D/g, '').slice(0, 1)
-    const newOtp = [...otp]
-    newOtp[index] = digit
-    
-    // Очищаем ошибку при изменении
-    if (error) setError('')
-    
-    const nextIndex = digit && index < 5 ? index + 1 : undefined
-    updateOtp(newOtp, nextIndex)
-  }
-
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus()
+    if (e.key === 'Enter' && otp.join('').length === 6) {
+      handleSubmit(otp.join(''))
+      return
     }
-    if (e.key === 'ArrowLeft' && index > 0) {
-      inputRefs.current[index - 1]?.focus()
+    if (e.key === 'Tab' && index === 5) {
+      e.preventDefault()
+      inputRefs.current[0]?.focus()
+      return
     }
-    if (e.key === 'ArrowRight' && index < 5) {
-      inputRefs.current[index + 1]?.focus()
+    if (e.key === 'Backspace') {
+      if (otp[index]) {
+        // если в текущей ячейке есть значение, очищаем её
+        const newOtp = [...otp]
+        newOtp[index] = ''
+        updateOtp(newOtp)
+      } else if (index > 0) {
+        // если текущая ячейка пуста, переходим к предыдущей
+        inputRefs.current[index - 1]?.focus()
+      }
+      return
+    }
+    
+    // обрабатываем ввод цифр напрямую
+    if (e.key >= '0' && e.key <= '9') {
+      e.preventDefault()
+      const newOtp = [...otp]
+      newOtp[index] = e.key
+      
+      if (error) setError('')
+      
+      if (index < 5) {
+        updateOtp(newOtp, index + 1)
+      } else {
+        updateOtp(newOtp)
+      }
     }
   }
 
@@ -119,10 +140,12 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
                 inputMode="numeric"
                 maxLength={1}
                 value={digit}
-                onChange={(e) => handleOtpChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={handlePaste}
-                className={`w-12 h-12 text-center text-lg font-mono rounded-md ${
+                onFocus={(e) => {
+                  setTimeout(() => e.target.setSelectionRange(1, 1), 0)
+                }}
+                className={`w-12 h-12 text-center text-lg font-mono rounded-md caret-transparent ${
                   error ? 'border-red-500 focus:border-red-500' : 
                   success ? 'border-green-500 focus:border-green-500' : ''
                 }`}
