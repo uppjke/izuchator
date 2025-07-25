@@ -58,14 +58,6 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
     }
   }
 
-  const updateOtp = (newOtp: string[], focusIndex?: number) => {
-    setOtp(newOtp)
-    
-    if (focusIndex !== undefined) {
-      inputRefs.current[focusIndex]?.focus()
-    }
-  }
-
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && otp.join('').length === 6) {
       handleSubmit(otp.join(''))
@@ -77,13 +69,11 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
       return
     }
     if (e.key === 'Backspace') {
+      const newOtp = [...otp]
       if (otp[index]) {
-        // если в текущей ячейке есть значение, очищаем её
-        const newOtp = [...otp]
         newOtp[index] = ''
-        updateOtp(newOtp)
+        setOtp(newOtp)
       } else if (index > 0) {
-        // если текущая ячейка пуста, переходим к предыдущей
         inputRefs.current[index - 1]?.focus()
       }
       return
@@ -96,11 +86,10 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
       newOtp[index] = e.key
       
       if (error) setError('')
+      setOtp(newOtp)
       
       if (index < 5) {
-        updateOtp(newOtp, index + 1)
-      } else {
-        updateOtp(newOtp)
+        inputRefs.current[index + 1]?.focus()
       }
     }
   }
@@ -114,9 +103,10 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
       newOtp[i] = pastedData[i]
     }
     
+    setOtp(newOtp)
     const nextEmptyIndex = newOtp.findIndex(digit => !digit)
     const focusIndex = nextEmptyIndex === -1 ? 5 : Math.min(nextEmptyIndex, pastedData.length)
-    updateOtp(newOtp, focusIndex)
+    inputRefs.current[focusIndex]?.focus()
   }
 
   return (
