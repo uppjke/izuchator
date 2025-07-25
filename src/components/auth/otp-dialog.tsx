@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   children?: React.ReactNode
@@ -27,14 +28,9 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
 
   const updateOtp = (newOtp: string[], focusIndex?: number) => {
     setOtp(newOtp)
-    const otpString = newOtp.join('')
     
     if (focusIndex !== undefined) {
       inputRefs.current[focusIndex]?.focus()
-    }
-    
-    if (otpString.length === 6) {
-      handleSubmit(otpString)
     }
   }
 
@@ -102,6 +98,14 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
               />
             ))}
           </div>
+          
+          <Button 
+            onClick={() => handleSubmit(otp.join(''))}
+            className="w-full bg-zinc-900 hover:bg-zinc-700" 
+            disabled={isSubmitting || otp.join('').length !== 6}
+          >
+            {isSubmitting ? 'Проверяем...' : 'Проверить'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
