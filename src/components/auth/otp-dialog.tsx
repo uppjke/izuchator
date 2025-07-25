@@ -140,6 +140,7 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
                 inputMode="numeric"
                 maxLength={1}
                 value={digit}
+                onChange={() => {}} 
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={handlePaste}
                 onFocus={(e) => {
