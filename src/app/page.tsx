@@ -2,17 +2,20 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedBlobs } from '@/components/animated-blobs';
 import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
 import { OtpDialog } from '@/components/auth/otp-dialog';
+import { useAuth } from '@/lib/auth-context';
 
 export default function Home() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
   const [testEmail, setTestEmail] = useState('');
+  const { user, isAuthenticated } = useAuth();
   return (
     <div className="min-h-[calc(100dvh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
       <AnimatedBlobs />
@@ -46,41 +49,55 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.6 }}
         >
-          <Button 
-            size="hero" 
-            className="bg-zinc-900 text-white hover:bg-zinc-700"
-            onClick={() => setLoginOpen(true)}
-          >
-            Войти
-          </Button>
-          <Button 
-            size="hero" 
-            variant="outline" 
-            className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
-            onClick={() => setRegisterOpen(true)}
-          >
-            Создать аккаунт
-          </Button>
+          {isAuthenticated ? (
+            <Button 
+              size="hero" 
+              className="bg-zinc-900 text-white hover:bg-zinc-700"
+            >
+              <LayoutDashboard className="mr-2 h-5 w-5" />
+              Открыть дашборд
+            </Button>
+          ) : (
+            <>
+              <Button 
+                size="hero" 
+                className="bg-zinc-900 text-white hover:bg-zinc-700"
+                onClick={() => setLoginOpen(true)}
+              >
+                Войти
+              </Button>
+              <Button 
+                size="hero" 
+                variant="outline" 
+                className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
+                onClick={() => setRegisterOpen(true)}
+              >
+                Создать аккаунт
+              </Button>
+            </>
+          )}
         </motion.div>
         
-        {/* Тестовая кнопка для OTP */}
-        <motion.div 
-          className="mt-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, delay: 0.8 }}
-        >
-          <Button 
-            variant="outline"
-            onClick={() => {
-              setTestEmail('test@example.com')
-              setOtpOpen(true)
-            }}
-            className="text-sm"
+        {/* Тестовая кнопка для OTP - только для неавторизованных */}
+        {!isAuthenticated && (
+          <motion.div 
+            className="mt-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.7, delay: 0.8 }}
           >
-            🧪 Тест OTP диалога
-          </Button>
-        </motion.div>
+            <Button 
+              variant="outline"
+              onClick={() => {
+                setTestEmail('test@example.com')
+                setOtpOpen(true)
+              }}
+              className="text-sm"
+            >
+              🧪 Тест OTP диалога
+            </Button>
+          </motion.div>
+        )}
       </motion.div>
       
       {/* Контролируемые диалоги */}

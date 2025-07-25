@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Menu } from 'lucide-react';
+import { Menu, LogOut, LayoutDashboard, ChevronDown, AtSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -12,13 +12,23 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
+import { useAuth } from '@/lib/auth-context';
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
+  const { user, logout, isAuthenticated } = useAuth();
   return (
     <header className="border-b border-white/20 bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 sticky top-0 z-50 shadow-sm shadow-black/5">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
@@ -37,21 +47,67 @@ export function Header() {
 
         {/* Десктопные кнопки */}
         <div className="hidden sm:flex items-center gap-4">
-          <Button 
-            size="header" 
-            className="bg-zinc-900 text-white hover:bg-zinc-700"
-            onClick={() => setLoginOpen(true)}
-          >
-            Войти
-          </Button>
-          <Button 
-            size="header" 
-            variant="outline" 
-            className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
-            onClick={() => setRegisterOpen(true)}
-          >
-            Создать аккаунт
-          </Button>
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 h-10 px-3">
+                  <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-white text-sm font-medium">
+                    {user?.name?.[0]?.toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium">Привет, {user?.name}!</span>
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 border-white/20">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground font-mono">ID: {user?.id}</p>
+                    <div className="flex items-center gap-1">
+                      <AtSign className="w-3 h-3 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    </div>
+                    <div className="mt-1">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        user?.role === 'Teacher' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {user?.role === 'Teacher' ? 'Преподаватель' : 'Ученик'}
+                      </span>
+                    </div>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Дашборд
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Выйти
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <>
+              <Button 
+                size="header" 
+                className="bg-zinc-900 text-white hover:bg-zinc-700"
+                onClick={() => setLoginOpen(true)}
+              >
+                Войти
+              </Button>
+              <Button 
+                size="header" 
+                variant="outline" 
+                className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
+                onClick={() => setRegisterOpen(true)}
+              >
+                Создать аккаунт
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Мобильное бургер-меню */}
@@ -76,33 +132,90 @@ export function Header() {
                 />
                 Изучатор
               </SheetTitle>
-              <SheetDescription className="text-center mt-8">
-                Добро пожаловать в Изучатор!<br />
-                Здесь всё готово к уроку — войдите или создайте аккаунт за пару секунд.
-              </SheetDescription>
+              {isAuthenticated ? (
+                <div className="mt-6 p-4 bg-white/50 rounded-lg border border-white/20">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center text-white text-lg font-medium">
+                      {user?.name?.[0]?.toUpperCase()}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-sm">{user?.name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">ID: {user?.id}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-xs text-muted-foreground mb-4">
+                    <p className="font-mono">ID: {user?.id}</p>
+                    <div className="flex items-center gap-1">
+                      <AtSign className="w-3 h-3" />
+                      <p>{user?.email}</p>
+                    </div>
+                    <div>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        user?.role === 'Teacher' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {user?.role === 'Teacher' ? 'Преподаватель' : 'Ученик'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <SheetDescription className="text-center mt-8">
+                  Добро пожаловать в Изучатор!<br />
+                  Здесь всё готово к уроку — войдите или создайте аккаунт за пару секунд.
+                </SheetDescription>
+              )}
             </SheetHeader>
             <div className="flex flex-col gap-4 mt-8 items-center">
-              <Button 
-                size="mobileMenu" 
-                className="bg-zinc-900 text-white hover:bg-zinc-700"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setLoginOpen(true);
-                }}
-              >
-                Войти
-              </Button>
-              <Button 
-                size="mobileMenu" 
-                variant="outline" 
-                className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setRegisterOpen(true);
-                }}
-              >
-                Создать аккаунт
-              </Button>
+              {isAuthenticated ? (
+                <>
+                  <Button 
+                    size="mobileMenu" 
+                    className="bg-zinc-900 text-white hover:bg-zinc-700"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Дашборд
+                  </Button>
+                  <Button 
+                    size="mobileMenu" 
+                    variant="outline" 
+                    className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      logout();
+                    }}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Выйти
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    size="mobileMenu" 
+                    className="bg-zinc-900 text-white hover:bg-zinc-700"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setLoginOpen(true);
+                    }}
+                  >
+                    Войти
+                  </Button>
+                  <Button 
+                    size="mobileMenu" 
+                    variant="outline" 
+                    className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setRegisterOpen(true);
+                    }}
+                  >
+                    Создать аккаунт
+                  </Button>
+                </>
+              )}
             </div>
             </div>
           </SheetContent>

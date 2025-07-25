@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/lib/auth-context'
 
 interface Props {
   children?: React.ReactNode
@@ -19,6 +20,7 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   const [success, setSuccess] = useState(false)
   const [shake, setShake] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const { login } = useAuth()
 
   useEffect(() => {
     if (open) {
@@ -39,6 +41,7 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
       
       if (otpString === '123456') {
         setSuccess(true)
+        if (email) login(email)
         setTimeout(() => {
           onOpenChange?.(false)
           setSuccess(false)
