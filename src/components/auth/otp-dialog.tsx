@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Clock } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 
 interface Props {
@@ -19,14 +20,34 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [shake, setShake] = useState(false)
+  const [resendTimer, setResendTimer] = useState(60)
+  const [canResend, setCanResend] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const { login } = useAuth()
 
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRefs.current[0]?.focus(), 100)
+      setResendTimer(30)
+      setCanResend(false)
     }
   }, [open])
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (open && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => {
+          if (prev <= 1) {
+            setCanResend(true)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [open, resendTimer])
 
   const handleSubmit = async (otpString: string) => {
     if (otpString.length === 6 && !isSubmitting) {
@@ -112,6 +133,17 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
     inputRefs.current[focusIndex]?.focus()
   }
 
+  const handleResend = async () => {
+    if (!canResend) return
+    
+    setCanResend(false)
+    setResendTimer(30)
+    setError('')
+    
+    console.log('Повторная отправка кода на:', email)
+    // Здесь будет логика повторной отправки кода
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -167,6 +199,17 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
             disabled={isSubmitting || otp.join('').length !== 6}
           >
             {isSubmitting ? 'Проверяем...' : 'Проверить'}
+          </Button>
+          
+          <Button 
+            onClick={handleResend}
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs text-muted-foreground hover:text-foreground"
+            disabled={!canResend}
+          >
+            <Clock className="!w-4 !h-4 mr-1" />
+            {canResend ? 'Отправить код повторно' : `Отправить код повторно через ${resendTimer}с`}
           </Button>
         </div>
       </DialogContent>
