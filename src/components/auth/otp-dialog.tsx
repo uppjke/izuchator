@@ -15,13 +15,39 @@ interface Props {
 export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  const [shake, setShake] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   const handleSubmit = async (otpString: string) => {
     if (otpString.length === 6 && !isSubmitting) {
       setIsSubmitting(true)
+      setError('')
+      setSuccess(false)
+      
       console.log('Проверка OTP:', otpString, 'для email:', email)
+      
+      // Тестовая логика
       await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      if (otpString === '123456') {
+        setSuccess(true)
+        setTimeout(() => {
+          onOpenChange?.(false)
+          setSuccess(false)
+          setOtp(['', '', '', '', '', ''])
+        }, 2000)
+      } else {
+        setError('Неверный код. Попробуйте еще раз.')
+        setShake(true)
+        setOtp(['', '', '', '', '', ''])
+        setTimeout(() => {
+          setShake(false)
+          inputRefs.current[0]?.focus()
+        }, 500)
+      }
+      
       setIsSubmitting(false)
     }
   }
@@ -38,6 +64,9 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
     const digit = value.replace(/\D/g, '').slice(0, 1)
     const newOtp = [...otp]
     newOtp[index] = digit
+    
+    // Очищаем ошибку при изменении
+    if (error) setError('')
     
     const nextIndex = digit && index < 5 ? index + 1 : undefined
     updateOtp(newOtp, nextIndex)
@@ -81,7 +110,7 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className="flex gap-2 justify-center">
+          <div className={`flex gap-2 justify-center ${shake ? 'animate-shake' : ''}`}>
             {otp.map((digit, index) => (
               <Input
                 key={index}
@@ -93,11 +122,26 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
                 onChange={(e) => handleOtpChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={handlePaste}
-                className="w-12 h-12 text-center text-lg font-mono rounded-md"
+                className={`w-12 h-12 text-center text-lg font-mono rounded-md ${
+                  error ? 'border-red-500 focus:border-red-500' : 
+                  success ? 'border-green-500 focus:border-green-500' : ''
+                }`}
                 disabled={isSubmitting}
               />
             ))}
           </div>
+          
+          {error && (
+            <div className="text-center text-sm text-red-600 bg-red-50 p-2 rounded-full">
+              {error}
+            </div>
+          )}
+          
+          {success && (
+            <div className="text-center text-sm text-green-600 bg-green-50 p-2 rounded-full">
+              ✓ Код подтвержден успешно!
+            </div>
+          )}
           
           <Button 
             onClick={() => handleSubmit(otp.join(''))}
