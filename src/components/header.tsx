@@ -29,7 +29,7 @@ export function Header() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, loading } = useAuth();
   return (
     <header className="border-b border-white/20 bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 sticky top-0 z-50 shadow-sm shadow-black/5">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
@@ -48,7 +48,9 @@ export function Header() {
 
         {/* Десктопные кнопки */}
         <div className="hidden sm:flex items-center gap-4">
-          {isAuthenticated ? (
+          {loading ? (
+            <div className="w-24 h-9 bg-gray-200 animate-pulse rounded"></div>
+          ) : isAuthenticated ? (
             <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -77,11 +79,11 @@ export function Header() {
                     </div>
                     <div className="mt-1">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        user?.role === 'Teacher' 
+                        user?.role === 'teacher' 
                           ? 'bg-blue-100 text-blue-800' 
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {user?.role === 'Teacher' ? 'Преподаватель' : 'Ученик'}
+                        {user?.role === 'teacher' ? 'Преподаватель' : 'Ученик'}
                       </span>
                     </div>
                   </div>
@@ -140,7 +142,15 @@ export function Header() {
                 />
                 Изучатор
               </SheetTitle>
-              {isAuthenticated ? (
+              {loading ? (
+                <div className="mt-6 p-4 bg-white/50 rounded-lg border border-white/20">
+                  <div className="animate-pulse">
+                    <div className="w-12 h-12 bg-gray-300 rounded-full mb-3"></div>
+                    <div className="w-24 h-4 bg-gray-300 rounded mb-2"></div>
+                    <div className="w-32 h-3 bg-gray-300 rounded"></div>
+                  </div>
+                </div>
+              ) : isAuthenticated ? (
                 <div className="mt-6 p-4 bg-white/50 rounded-lg border border-white/20">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center text-white text-lg font-medium">
@@ -159,11 +169,11 @@ export function Header() {
                     </div>
                     <div>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        user?.role === 'Teacher' 
+                        user?.role === 'teacher' 
                           ? 'bg-blue-100 text-blue-800' 
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {user?.role === 'Teacher' ? 'Преподаватель' : 'Ученик'}
+                        {user?.role === 'teacher' ? 'Преподаватель' : 'Ученик'}
                       </span>
                     </div>
                   </div>
@@ -176,7 +186,12 @@ export function Header() {
               )}
             </SheetHeader>
             <div className="flex flex-col gap-4 mt-8 items-center">
-              {isAuthenticated ? (
+              {loading ? (
+                <div className="space-y-3">
+                  <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
+                  <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
+                </div>
+              ) : isAuthenticated ? (
                 <>
                   <Button 
                     size="mobileMenu" 

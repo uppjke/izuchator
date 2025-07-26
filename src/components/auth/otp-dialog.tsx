@@ -23,12 +23,12 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   const [resendTimer, setResendTimer] = useState(60)
   const [canResend, setCanResend] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
-  const { login } = useAuth()
+  const { verifyOtp, resendOtp } = useAuth()
 
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRefs.current[0]?.focus(), 100)
-      setResendTimer(30)
+      setResendTimer(60)
       setCanResend(false)
     }
   }, [open])
@@ -55,21 +55,17 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
       setError('')
       setSuccess(false)
       
-      console.log('Проверка OTP:', otpString, 'для email:', email)
-      
-      // Тестовая логика
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      if (otpString === '123456') {
+      try {
+        await verifyOtp(email || '', otpString)
         setSuccess(true)
-        if (email) login(email)
         setTimeout(() => {
           onOpenChange?.(false)
           setSuccess(false)
           setOtp(['', '', '', '', '', ''])
         }, 2000)
-      } else {
-        setError('Неверный код. Попробуйте еще раз.')
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Неверный код. Попробуйте еще раз.'
+        setError(errorMessage)
         setShake(true)
         setOtp(['', '', '', '', '', ''])
         setTimeout(() => {
@@ -134,14 +130,18 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   }
 
   const handleResend = async () => {
-    if (!canResend) return
+    if (!canResend || !email) return
     
-    setCanResend(false)
-    setResendTimer(30)
-    setError('')
-    
-    console.log('Повторная отправка кода на:', email)
-    // Здесь будет логика повторной отправки кода
+    try {
+      setCanResend(false)
+      setResendTimer(60)
+      setError('')
+      
+      await resendOtp(email)
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при повторной отправке'
+      setError(errorMessage)
+    }
   }
 
   return (
