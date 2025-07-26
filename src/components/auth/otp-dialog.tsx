@@ -247,8 +247,8 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
             className="w-full text-xs text-muted-foreground hover:text-foreground"
             disabled={!canResend}
           >
-            <Clock className="!w-4 !h-4 mr-1" />
             {canResend ? 'Отправить код повторно' : `Отправить код повторно через ${resendTimer}с`}
+            <Clock className="!w-4 !h-4 mr-1" />
           </Button>
         </div>
       </DialogContent>

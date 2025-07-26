@@ -5,7 +5,6 @@ import { createSupabaseBrowserClient } from './supabase'
 import type { User as SupabaseUser, AuthError } from '@supabase/supabase-js'
 
 interface User {
-  id: string
   email: string
   name: string
   role: string
@@ -74,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Создание профиля пользователя из данных Supabase
   const createUserProfile = (supabaseUser: SupabaseUser): User => ({
-    id: supabaseUser.id.slice(0, 6),
     email: supabaseUser.email || '',
     name: supabaseUser.user_metadata?.display_name || 
           supabaseUser.user_metadata?.name || 

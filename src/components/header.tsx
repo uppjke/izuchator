@@ -91,13 +91,12 @@ export function Header() {
               <DropdownMenuContent align="end" className="w-56 bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 border-white/20">
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{user?.name}</p>
-                    <p className="text-xs text-muted-foreground font-mono">ID: {user?.id}</p>
-                    <div className="flex items-center gap-1">
-                      <AtSign className="w-3 h-3 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    <p className="text-sm font-medium leading-none">{user?.name}</p>
+                    <div className="flex items-center gap-1 mt-2">
+                      <AtSign className="!w-4 !h-4 text-muted-foreground" />
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                     </div>
-                    <div className="mt-1">
+                    <div className="mt-2">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         user?.role === 'teacher' 
                           ? 'bg-blue-100 text-blue-800' 
@@ -178,11 +177,9 @@ export function Header() {
                     </div>
                     <div className="flex-1 text-left">
                       <p className="font-medium text-sm">{user?.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">ID: {user?.id}</p>
                     </div>
                   </div>
                   <div className="space-y-1 text-xs text-muted-foreground mb-4">
-                    <p className="font-mono">ID: {user?.id}</p>
                     <div className="flex items-center gap-1">
                       <AtSign className="w-3 h-3" />
                       <p>{user?.email}</p>
