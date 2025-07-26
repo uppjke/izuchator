@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { createSupabaseBrowserClient } from './supabase'
-import type { User as SupabaseUser } from '@supabase/supabase-js'
+import type { User as SupabaseUser, AuthError } from '@supabase/supabase-js'
 
 interface User {
   id: string
@@ -22,6 +22,19 @@ interface AuthContextType {
   loading: boolean
 }
 
+// Карта ошибок для централизованной обработки
+const ERROR_MESSAGES = {
+  user_not_found: 'Пользователь был удален из системы',
+  user_already_exists: 'Пользователь с таким email уже зарегистрирован',
+  email_address_invalid: 'Неверный формат email адреса',
+  signup_disabled: 'Регистрация временно отключена',
+  otp_expired: 'Код подтверждения истек. Запросите новый',
+  invalid_credentials: 'Неверный код подтверждения',
+  too_many_requests: 'Слишком много попыток. Попробуйте позже',
+  over_email_send_rate_limit: 'Слишком много писем отправлено.',
+  over_request_rate_limit: 'Слишком много запросов.',
+} as const
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -29,38 +42,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const supabase = createSupabaseBrowserClient()
 
+  // Утилита для обработки ошибок аутентификации
+  const handleAuthError = (error: AuthError, isSignUp: boolean = false) => {
+    console.log('Auth error:', { code: error.code, message: error.message, status: error.status })
+    
+    // Обработка стандартных ошибок
+    if (error.code && ERROR_MESSAGES[error.code as keyof typeof ERROR_MESSAGES]) {
+      throw new Error(ERROR_MESSAGES[error.code as keyof typeof ERROR_MESSAGES])
+    }
+
+    // Специальная обработка otp_disabled
+    if (error.code === 'otp_disabled') {
+      if (!isSignUp && error.message?.includes('Signups not allowed')) {
+        throw new Error('Пользователь с таким email не найден')
+      }
+      throw new Error('Вход по email временно отключен')
+    }
+
+    // Обработка сообщений без кода
+    if (error.message?.includes('Signups not allowed')) {
+      throw new Error(isSignUp ? 'Регистрация через email временно отключена' : 'Пользователь с таким email не найден')
+    }
+
+    // Статус 422 обычно означает "пользователь не найден"
+    if (error.status === 422) {
+      throw new Error('Пользователь с таким email не найден')
+    }
+
+    throw error
+  }
+
+  // Создание профиля пользователя из данных Supabase
+  const createUserProfile = (supabaseUser: SupabaseUser): User => ({
+    id: supabaseUser.id.slice(0, 6),
+    email: supabaseUser.email || '',
+    name: supabaseUser.user_metadata?.display_name || 
+          supabaseUser.user_metadata?.name || 
+          supabaseUser.email?.split('@')[0] || 'User',
+    role: supabaseUser.user_metadata?.role || 'student',
+    avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${supabaseUser.email}&backgroundColor=1f2937`
+  })
+
   useEffect(() => {
     const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) loadUserProfile(session.user)
+      if (session?.user) setUser(createUserProfile(session.user))
       setLoading(false)
     }
 
     initAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        loadUserProfile(session.user)
-      } else {
-        setUser(null)
-      }
+      setUser(session?.user ? createUserProfile(session.user) : null)
       setLoading(false)
     })
 
     return () => subscription.unsubscribe()
   }, [supabase.auth])
-
-  const loadUserProfile = (supabaseUser: SupabaseUser) => {
-    setUser({
-      id: supabaseUser.id.slice(0, 6),
-      email: supabaseUser.email || '',
-      name: supabaseUser.user_metadata?.display_name || 
-            supabaseUser.user_metadata?.name || 
-            supabaseUser.email?.split('@')[0] || 'User',
-      role: supabaseUser.user_metadata?.role || 'student',
-      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${supabaseUser.email}&backgroundColor=1f2937`
-    })
-  }
 
   const sendOtp = async (email: string, isSignUp = false, userData?: { name: string; role: string }) => {
     const { error } = isSignUp
@@ -79,42 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           options: { shouldCreateUser: false }
         })
 
-    if (error) {
-      // Логируем для отладки
-      console.log('Auth error:', { code: error.code, message: error.message, status: error.status })
-      
-      switch (error.code) {
-        case 'user_not_found':
-          throw new Error('Пользователь был удален из системы')
-        case 'user_already_exists':
-          throw new Error('Пользователь с таким email уже зарегистрирован')
-        case 'email_address_invalid':
-          throw new Error('Неверный формат email адреса')
-        case 'signup_disabled':
-          throw new Error('Регистрация временно отключена')
-        case 'otp_disabled':
-          // Для входа: если OTP disabled + shouldCreateUser: false, значит пользователь не найден
-          if (!isSignUp && error.message?.includes('Signups not allowed')) {
-            throw new Error('Пользователь с таким email не найден')
-          }
-          // Для регистрации: действительно OTP отключен
-          throw new Error('Вход по email временно отключен')
-        case 'over_email_send_rate_limit':
-          throw new Error('Слишком много писем отправлено.')
-        case 'over_request_rate_limit':
-          throw new Error('Слишком много запросов.')
-        default:
-          // Обрабатываем сообщения, которые могут приходить без кода
-          if (error.message?.includes('Signups not allowed')) {
-            throw new Error('Регистрация через email временно отключена')
-          }
-          // Проверяем статус 422 для случая когда пользователь не найден
-          if (error.status === 422) {
-            throw new Error('Пользователь с таким email не найден')
-          }
-          throw error
-      }
-    }
+    if (error) handleAuthError(error, isSignUp)
   }
 
   const verifyOtp = async (email: string, otp: string) => {
@@ -124,18 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       type: 'email'
     })
     
-    if (error) {
-      switch (error.code) {
-        case 'otp_expired':
-          throw new Error('Код подтверждения истек. Запросите новый')
-        case 'invalid_credentials':
-          throw new Error('Неверный код подтверждения')
-        case 'too_many_requests':
-          throw new Error('Слишком много попыток. Попробуйте позже')
-        default:
-          throw error
-      }
-    }
+    if (error) handleAuthError(error)
   }
 
   const resendOtp = async (email: string) => {
@@ -144,31 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: { shouldCreateUser: false }
     })
     
-    if (error) {
-      // Логируем для отладки
-      console.log('Resend OTP error:', { code: error.code, message: error.message, status: error.status })
-      
-      switch (error.code) {
-        case 'user_not_found':
-          throw new Error('Пользователь был удален из системы')
-        case 'otp_disabled':
-          // В resend всегда означает что пользователь не найден (используем shouldCreateUser: false)
-          if (error.message?.includes('Signups not allowed')) {
-            throw new Error('Пользователь с таким email не найден')
-          }
-          throw new Error('Вход по email временно отключен')
-        case 'over_email_send_rate_limit':
-          throw new Error('Слишком много писем отправлено. Попробуйте позже')
-        case 'over_request_rate_limit':
-          throw new Error('Слишком много запросов. Попробуйте через несколько минут')
-        default:
-          // Проверяем статус 422 для случая когда пользователь не найден
-          if (error.status === 422) {
-            throw new Error('Пользователь с таким email не найден')
-          }
-          throw error
-      }
-    }
+    if (error) handleAuthError(error, false)
   }
 
   const logout = () => supabase.auth.signOut()

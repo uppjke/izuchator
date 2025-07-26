@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Menu, LogOut, LayoutDashboard, ChevronDown, AtSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,12 +24,32 @@ import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
 import { useAuth } from '@/lib/auth-context';
 
+const LOGO_CONFIG = {
+  src: "/logo.svg",
+  alt: "Изучатор",
+  size: 24
+} as const
+
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, logout, isAuthenticated, loading } = useAuth();
+
+  // Мемоизированные колбеки для оптимизации
+  const handleSwitchToRegister = useCallback(() => {
+    setLoginOpen(false)
+    setRegisterOpen(true)
+  }, [])
+
+  const handleSwitchToLogin = useCallback(() => {
+    setRegisterOpen(false)
+    setLoginOpen(true)
+  }, [])
+
+  const openLogin = useCallback(() => setLoginOpen(true), [])
+  const openRegister = useCallback(() => setRegisterOpen(true), [])
   return (
     <header className="border-b border-white/20 bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 sticky top-0 z-50 shadow-sm shadow-black/5">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
@@ -37,13 +57,13 @@ export function Header() {
         <div className="relative z-10 flex items-center justify-between w-full">
         <div className="flex items-center gap-4">
           <Image
-            src="/logo.svg"
-            alt="Изучатор"
-            width={32}
-            height={32}
+            src={LOGO_CONFIG.src}
+            alt={LOGO_CONFIG.alt}
+            width={LOGO_CONFIG.size}
+            height={LOGO_CONFIG.size}
             className="w-6 h-6"
           />
-          <span className="font-bold text-xl text-zinc-900">Изучатор</span>
+          <span className="font-bold text-xl text-zinc-900">{LOGO_CONFIG.alt}</span>
         </div>
 
         {/* Десктопные кнопки */}
@@ -104,7 +124,7 @@ export function Header() {
               <Button 
                 size="header" 
                 className="bg-zinc-900 text-white hover:bg-zinc-700"
-                onClick={() => setLoginOpen(true)}
+                onClick={openLogin}
               >
                 Войти
               </Button>
@@ -112,7 +132,7 @@ export function Header() {
                 size="header" 
                 variant="outline" 
                 className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
-                onClick={() => setRegisterOpen(true)}
+                onClick={openRegister}
               >
                 Создать аккаунт
               </Button>
@@ -250,18 +270,12 @@ export function Header() {
       <LoginDialog 
         open={loginOpen} 
         onOpenChange={setLoginOpen}
-        onSwitchToRegister={() => {
-          setLoginOpen(false)
-          setRegisterOpen(true)
-        }}
+        onSwitchToRegister={handleSwitchToRegister}
       />
       <RegisterDialog 
         open={registerOpen} 
         onOpenChange={setRegisterOpen}
-        onSwitchToLogin={() => {
-          setRegisterOpen(false)
-          setLoginOpen(true)
-        }}
+        onSwitchToLogin={handleSwitchToLogin}
       />
     </header>
   );

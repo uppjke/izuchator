@@ -12,13 +12,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/lib/auth-context'
 import { OtpDialog } from './otp-dialog'
 
-const schema = z.object({
+const registerSchema = z.object({
   name: z.string().min(1, 'Имя обязательно'),
   email: z.string().email('Неверный формат email'),
   role: z.string().min(1, 'Выберите роль')
 })
 
-type FormData = z.infer<typeof schema>
+type FormData = z.infer<typeof registerSchema>
+
+const ROLE_OPTIONS = [
+  { value: 'student', label: 'Ученик' },
+  { value: 'teacher', label: 'Преподаватель' }
+] as const
 
 interface Props {
   children?: React.ReactNode
@@ -34,13 +39,15 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
   const { sendOtp } = useAuth()
   
   const form = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(registerSchema),
     defaultValues: { name: '', email: '', role: 'student' }
   })
 
+  const { formState: { isSubmitting } } = form
+
   const onSubmit = async (data: FormData) => {
     try {
-      setServerError('') // Очищаем предыдущие серверные ошибки
+      setServerError('')
       await sendOtp(data.email, true, { name: data.name, role: data.role })
       setPendingEmail(data.email)
       onOpenChange?.(false)
@@ -74,7 +81,7 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
                     <FormControl>
                       <Input
                         placeholder="Ваше имя"
-                        disabled={form.formState.isSubmitting}
+                        disabled={isSubmitting}
                         {...field}
                       />
                     </FormControl>
@@ -93,7 +100,7 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
                       <Input
                         type="email"
                         placeholder="your@email.com"
-                        disabled={form.formState.isSubmitting}
+                        disabled={isSubmitting}
                         className={serverError ? 'border-red-500 focus:border-red-500' : ''}
                         {...field}
                       />
@@ -118,7 +125,7 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
                     <Select 
                       value={field.value}
                       onValueChange={field.onChange}
-                      disabled={form.formState.isSubmitting}
+                      disabled={isSubmitting}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -126,8 +133,11 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="student">Ученик</SelectItem>
-                        <SelectItem value="teacher">Преподаватель</SelectItem>
+                        {ROLE_OPTIONS.map(({ value, label }) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -138,9 +148,9 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={form.formState.isSubmitting}
+                disabled={isSubmitting}
               >
-                {form.formState.isSubmitting ? 'Создаем аккаунт...' : 'Создать аккаунт'}
+                {isSubmitting ? 'Создаем аккаунт...' : 'Создать аккаунт'}
               </Button>
               
               <div className="text-center text-sm text-muted-foreground">
@@ -148,9 +158,7 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
                 <button
                   type="button"
                   className="text-blue-600 hover:text-blue-500 underline-offset-4 hover:underline"
-                  onClick={() => {
-                    onSwitchToLogin?.()
-                  }}
+                  onClick={onSwitchToLogin}
                 >
                   Войти
                 </button>

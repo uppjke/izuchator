@@ -11,11 +11,11 @@ import { Input } from '@/components/ui/input'
 import { useAuth } from '@/lib/auth-context'
 import { OtpDialog } from './otp-dialog'
 
-const schema = z.object({
+const emailSchema = z.object({
   email: z.string().email('Неверный формат email')
 })
 
-type FormData = z.infer<typeof schema>
+type FormData = z.infer<typeof emailSchema>
 
 interface Props {
   children?: React.ReactNode
@@ -31,13 +31,15 @@ export function LoginDialog({ children, open, onOpenChange, onSwitchToRegister }
   const { sendOtp } = useAuth()
   
   const form = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(emailSchema),
     defaultValues: { email: '' }
   })
 
+  const { formState: { isSubmitting } } = form
+
   const onSubmit = async (data: FormData) => {
     try {
-      setServerError('') // Очищаем предыдущие серверные ошибки
+      setServerError('')
       await sendOtp(data.email, false)
       setPendingEmail(data.email)
       onOpenChange?.(false)
@@ -72,7 +74,7 @@ export function LoginDialog({ children, open, onOpenChange, onSwitchToRegister }
                       <Input
                         type="email"
                         placeholder="your@email.com"
-                        disabled={form.formState.isSubmitting}
+                        disabled={isSubmitting}
                         className={serverError ? 'border-red-500 focus:border-red-500' : ''}
                         {...field}
                       />
@@ -91,9 +93,9 @@ export function LoginDialog({ children, open, onOpenChange, onSwitchToRegister }
               <Button 
                 type="submit" 
                 className="w-full bg-zinc-900 hover:bg-zinc-700" 
-                disabled={form.formState.isSubmitting}
+                disabled={isSubmitting}
               >
-                {form.formState.isSubmitting ? 'Отправляем...' : 'Отправить'}
+                {isSubmitting ? 'Отправляем...' : 'Отправить'}
               </Button>
               
               <div className="text-center text-sm text-muted-foreground">
@@ -101,9 +103,7 @@ export function LoginDialog({ children, open, onOpenChange, onSwitchToRegister }
                 <button
                   type="button"
                   className="text-blue-600 hover:text-blue-500 underline-offset-4 hover:underline"
-                  onClick={() => {
-                    onSwitchToRegister?.()
-                  }}
+                  onClick={onSwitchToRegister}
                 >
                   Зарегистрироваться
                 </button>
