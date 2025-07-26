@@ -28,6 +28,7 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, logout, isAuthenticated } = useAuth();
   return (
     <header className="border-b border-white/20 bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 sticky top-0 z-50 shadow-sm shadow-black/5">
@@ -48,14 +49,21 @@ export function Header() {
         {/* Десктопные кнопки */}
         <div className="hidden sm:flex items-center gap-4">
           {isAuthenticated ? (
-            <DropdownMenu>
+            <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 h-10 px-3">
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 h-10 px-3 active:scale-100"
+                >
                   <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-white text-sm font-medium">
                     {user?.name?.[0]?.toUpperCase()}
                   </div>
                   <span className="text-sm font-medium">Привет, {user?.name}!</span>
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${
+                      dropdownOpen ? 'rotate-180' : ''
+                    }`}
+                  />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 border-white/20">
