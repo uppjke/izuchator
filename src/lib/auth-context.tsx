@@ -67,7 +67,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ? await supabase.auth.signUp({
           email,
           password: Math.random().toString(36),
-          options: { data: userData }
+          options: { 
+            data: {
+              display_name: userData?.name,
+              role: userData?.role
+            }
+          }
         })
       : await supabase.auth.signInWithOtp({
           email,
@@ -75,9 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })
 
     if (error) {
+      // Логируем для отладки
+      console.log('Auth error:', { code: error.code, message: error.message, status: error.status })
+      
       switch (error.code) {
         case 'user_not_found':
-          throw new Error('Пользователь с таким email не найден')
+          throw new Error('Пользователь был удален из системы')
         case 'user_already_exists':
           throw new Error('Пользователь с таким email уже зарегистрирован')
         case 'email_address_invalid':
@@ -85,6 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         case 'signup_disabled':
           throw new Error('Регистрация временно отключена')
         case 'otp_disabled':
+          // Для входа: если OTP disabled + shouldCreateUser: false, значит пользователь не найден
+          if (!isSignUp && error.message?.includes('Signups not allowed')) {
+            throw new Error('Пользователь с таким email не найден')
+          }
+          // Для регистрации: действительно OTP отключен
           throw new Error('Вход по email временно отключен')
         case 'over_email_send_rate_limit':
           throw new Error('Слишком много писем отправлено. Попробуйте позже')
@@ -94,6 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Обрабатываем сообщения, которые могут приходить без кода
           if (error.message?.includes('Signups not allowed')) {
             throw new Error('Регистрация через email временно отключена')
+          }
+          // Проверяем статус 422 для случая когда пользователь не найден
+          if (error.status === 422) {
+            throw new Error('Пользователь с таким email не найден')
           }
           throw error
       }
@@ -128,14 +145,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     
     if (error) {
+      // Логируем для отладки
+      console.log('Resend OTP error:', { code: error.code, message: error.message, status: error.status })
+      
       switch (error.code) {
         case 'user_not_found':
-          throw new Error('Пользователь с таким email не найден')
+          throw new Error('Пользователь был удален из системы')
+        case 'otp_disabled':
+          // В resend всегда означает что пользователь не найден (используем shouldCreateUser: false)
+          if (error.message?.includes('Signups not allowed')) {
+            throw new Error('Пользователь с таким email не найден')
+          }
+          throw new Error('Вход по email временно отключен')
         case 'over_email_send_rate_limit':
           throw new Error('Слишком много писем отправлено. Попробуйте позже')
         case 'over_request_rate_limit':
           throw new Error('Слишком много запросов. Попробуйте через несколько минут')
         default:
+          // Проверяем статус 422 для случая когда пользователь не найден
+          if (error.status === 422) {
+            throw new Error('Пользователь с таким email не найден')
+          }
           throw error
       }
     }
