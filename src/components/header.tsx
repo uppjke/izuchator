@@ -149,7 +149,7 @@ export function Header() {
               <span className="sr-only">Открыть меню</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 border-l border-white/20">
+          <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 border-l border-white/20 [&>button]:hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent pointer-events-none"></div>
             <div className="relative z-10">
             <SheetHeader>

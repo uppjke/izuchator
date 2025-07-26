@@ -8,7 +8,7 @@ import {
   Calendar, 
   Users, 
   FolderOpen,
-  X 
+  Home
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -78,7 +78,7 @@ export function Sidebar({ isOpen = true, onClose, userRole = 'student', user }: 
         isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         <div className="flex flex-col h-full p-3 lg:p-4">
-          {/* Header with logo and close button */}
+          {/* Header with logo and home button */}
           <div className="flex items-center justify-between mb-4 lg:mb-6">
             <Link href="/" className="flex items-center space-x-2 lg:space-x-3">
               <Image
@@ -91,16 +91,17 @@ export function Sidebar({ isOpen = true, onClose, userRole = 'student', user }: 
               <span className="text-base lg:text-lg font-semibold text-zinc-900">Изучатор</span>
             </Link>
             
-            {onClose && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="lg:hidden rounded-full h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="rounded-full h-8 w-8 p-0 hover:bg-zinc-100"
+            >
+              <Link href="/">
+                <Home className="!h-5 !w-5" />
+                <span className="sr-only">На главную</span>
+              </Link>
+            </Button>
           </div>
 
           {/* Profile card */}
