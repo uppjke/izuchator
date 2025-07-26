@@ -1,8 +1,8 @@
 <!-- Use this file to provide workspace-specific custom instructions to Copilot. For more details, visit https://code.visualstudio.com/docs/copilot/copilot-customization#_use-a-githubcopilotinstructionsmd-file -->
 
-# Izuchator Landing Page Project
+# Izuchator Dashboard Project
 
-This is a Next.js 15 project with App Router using TypeScript. The project uses:
+This is a Next.js 15 project with App Router using TypeScript. The project is designed as a comprehensive educational platform with dashboard functionality including statistics, calendar planning, user management, file sharing, and real-time communication.
 
 ## Core Stack
 - **Next.js 15** with App Router and Turbopack for development
@@ -10,7 +10,39 @@ This is a Next.js 15 project with App Router using TypeScript. The project uses:
 - **TypeScript 5** for type safety
 - **Tailwind CSS 4** for styling with PostCSS
 - **Framer Motion** for smooth animations
-- **Supabase** for authentication (OTP email verification)
+- **Supabase** for authentication, database, storage, and real-time features
+
+## Data Management & State
+- **@tanstack/react-query** (v5) for client-side caching and server state synchronization
+- **@tanstack/react-query-devtools** for development debugging
+- Compatible with React 19 RSC Hydration
+
+## Dashboard Components
+
+### Calendar & Planning
+- **@fullcalendar/react** with core plugins for calendar interface
+- **@fullcalendar/daygrid** for month view
+- **@fullcalendar/timegrid** for week/day views  
+- **@fullcalendar/interaction** for drag-and-drop scheduling
+- **date-fns** (v4) for date manipulation and localization
+
+### Data Visualization & Analytics
+- **recharts** for charts, graphs, and statistical dashboards
+- Supports line charts, bar charts, pie charts, and area charts
+
+### Tables & Data Display
+- **@tanstack/react-table** (v8) for advanced data tables
+- **@tanstack/react-virtual** for performance with large datasets
+- Sorting, filtering, pagination, and virtualization support
+
+### File Management
+- **react-dropzone** for drag-and-drop file uploads
+- Integration with Supabase Storage for file handling
+- Support for signed URLs and file previews
+
+### Notifications & Feedback  
+- **sonner** for toast notifications (Radix-compatible)
+- Clean API for success, error, and info messages
 
 ## UI & Components
 - **shadcn/ui** for reusable UI components
@@ -21,6 +53,11 @@ This is a Next.js 15 project with App Router using TypeScript. The project uses:
 - **Lucide React** for icons
 - **class-variance-authority** for component variants
 - **clsx** and **tailwind-merge** for conditional styling
+
+## Utilities & Helpers
+- **nanoid** for generating short invitation codes and unique IDs
+- **clsx** and **tailwind-merge** for conditional styling
+- **date-fns** for date formatting and localization (Russian locale support)
 
 ## Form Handling & Validation
 - **Zod** for schema validation
@@ -35,6 +72,8 @@ This is a Next.js 15 project with App Router using TypeScript. The project uses:
 ## Styling Extensions
 - **@tailwindcss/typography** for markdown content styling
 - **@tailwindcss/forms** for enhanced form styling
+- **@tailwindcss/line-clamp** for text truncation with ellipsis
+- **@tailwindcss/aspect-ratio** for responsive aspect ratios
 - **tw-animate-css** for additional animations
 
 ## Project Structure
@@ -43,6 +82,7 @@ This is a Next.js 15 project with App Router using TypeScript. The project uses:
 - `src/components/` - React components including shadcn/ui components
   - `src/components/ui/` - shadcn/ui base components
   - `src/components/auth/` - Authentication components
+  - `src/components/dashboard/` - Dashboard-specific components
 - `src/lib/` - Utility functions and configurations
   - Supabase client setup (browser, server, SSR)
   - Utility functions (`utils.ts`)
