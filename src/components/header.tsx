@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Menu, LogOut, LayoutDashboard, ChevronDown, AtSign } from 'lucide-react';
+import Link from 'next/link';
+import { Menu, LogOut, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -93,7 +94,6 @@ export function Header() {
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user?.name}</p>
                     <div className="flex items-center gap-1 mt-2">
-                      <AtSign className="!w-4 !h-4 text-muted-foreground" />
                       <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                     </div>
                     <div className="mt-2">
@@ -108,9 +108,11 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Дашборд
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Дашборд
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={logout}>
                   <LogOut className="mr-2 h-4 w-4" />
@@ -170,25 +172,18 @@ export function Header() {
                   </div>
                 </div>
               ) : isAuthenticated ? (
-                <div className="mt-6 p-4 bg-white/50 rounded-lg border border-white/20">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center text-white text-lg font-medium">
+                <div className="mt-6 p-4 bg-white/50 rounded-xl border border-white/20">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center text-white text-base font-medium">
                       {user?.name?.[0]?.toUpperCase()}
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="font-medium text-sm">{user?.name}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-1 text-xs text-muted-foreground mb-4">
-                    <div className="flex items-center gap-1">
-                      <AtSign className="w-3 h-3" />
-                      <p>{user?.email}</p>
-                    </div>
-                    <div>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      <p className="font-medium text-sm text-zinc-900">{user?.name}</p>
+                      <p className="text-xs text-zinc-500">{user?.email}</p>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
                         user?.role === 'teacher' 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-green-100 text-green-800'
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-green-100 text-green-700'
                       }`}>
                         {user?.role === 'teacher' ? 'Преподаватель' : 'Ученик'}
                       </span>
@@ -209,19 +204,21 @@ export function Header() {
                   <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
                 </div>
               ) : isAuthenticated ? (
-                <>
-                  <Button 
-                    size="mobileMenu" 
-                    className="bg-zinc-900 text-white hover:bg-zinc-700"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    Дашборд
-                  </Button>
+                <div className="space-y-3">
+                  <Link href="/dashboard">
+                    <Button 
+                      size="mobileMenu" 
+                      className="bg-zinc-900 text-white hover:bg-zinc-700 w-full"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Дашборд
+                    </Button>
+                  </Link>
                   <Button 
                     size="mobileMenu" 
                     variant="outline" 
-                    className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
+                    className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white w-full"
                     onClick={() => {
                       setMenuOpen(false);
                       logout();
@@ -230,7 +227,7 @@ export function Header() {
                     <LogOut className="mr-2 h-4 w-4" />
                     Выйти
                   </Button>
-                </>
+                </div>
               ) : (
                 <>
                   <Button 

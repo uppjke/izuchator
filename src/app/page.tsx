@@ -8,6 +8,7 @@ import { AnimatedBlobs } from '@/components/animated-blobs';
 import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
 import { useAuth } from '@/lib/auth-context';
+import Link from 'next/link';
 
 const ANIMATION_CONFIG = {
   initial: { opacity: 0, y: 20 },
@@ -72,13 +73,15 @@ export default function Home() {
           transition={ANIMATION_CONFIG.hero.buttons}
         >
           {isAuthenticated ? (
-            <Button 
-              size="hero" 
-              className="bg-zinc-900 text-white hover:bg-zinc-700"
-            >
-              <LayoutDashboard className="mr-2 h-5 w-5" />
-              Открыть дашборд
-            </Button>
+            <Link href="/dashboard">
+              <Button 
+                size="hero" 
+                className="bg-zinc-900 text-white hover:bg-zinc-700"
+              >
+                <LayoutDashboard className="mr-2 h-5 w-5" />
+                Открыть дашборд
+              </Button>
+            </Link>
           ) : (
             <>
               <Button 
