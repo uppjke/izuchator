@@ -204,30 +204,33 @@ export function Header() {
                   <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
                 </div>
               ) : isAuthenticated ? (
-                <div className="space-y-3">
-                  <Link href="/dashboard">
-                    <Button 
-                      size="mobileMenu" 
-                      className="bg-zinc-900 text-white hover:bg-zinc-700 w-full"
+                <>
+                  <Button 
+                    size="mobileMenu" 
+                    className="bg-zinc-900 text-white hover:bg-zinc-700"
+                    asChild
+                  >
+                    <Link 
+                      href="/dashboard"
                       onClick={() => setMenuOpen(false)}
                     >
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <LayoutDashboard className="mr-2 !h-5 !w-5" />
                       Дашборд
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                   <Button 
                     size="mobileMenu" 
                     variant="outline" 
-                    className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white w-full"
+                    className="bg-transparent border-zinc-500 hover:bg-zinc-700 hover:text-white"
                     onClick={() => {
                       setMenuOpen(false);
                       logout();
                     }}
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
+                    <LogOut className="mr-2 !h-5 !w-5" />
                     Выйти
                   </Button>
-                </div>
+                </>
               ) : (
                 <>
                   <Button 

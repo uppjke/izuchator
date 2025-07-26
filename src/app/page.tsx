@@ -78,7 +78,7 @@ export default function Home() {
                 size="hero" 
                 className="bg-zinc-900 text-white hover:bg-zinc-700"
               >
-                <LayoutDashboard className="mr-2 h-5 w-5" />
+                <LayoutDashboard className="mr-2 !h-5 !w-5" />
                 Открыть дашборд
               </Button>
             </Link>

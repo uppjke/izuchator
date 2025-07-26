@@ -25,9 +25,10 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const currentPageName = pageNames[pathname] || 'Дашборд'
 
   return (
-    <header className="bg-white/95 backdrop-blur-xl border-b border-zinc-200/50 px-4 lg:px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+    <header className="bg-white/95 backdrop-blur-xl border-b border-zinc-200/50 px-4 lg:px-6 py-4 w-full">
+      <div className="flex items-center justify-between max-w-full">
+        {/* Left side - Page title and mobile menu */}
+        <div className="flex items-center space-x-2 lg:space-x-4 flex-shrink-0">
           {/* Mobile menu button */}
           <Button
             variant="ghost"
@@ -35,24 +36,23 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
             onClick={onMenuClick}
             className="lg:hidden rounded-full h-9 w-9 p-0"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="!h-5 !w-5" />
           </Button>
 
-          {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative rounded-full h-9 w-9 p-0">
-            <Bell className="h-5 w-5" />
-            {/* Notification badge */}
-            <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs flex items-center justify-center">
-              <span className="sr-only">Новые уведомления</span>
-            </span>
-          </Button>
+          {/* Page title */}
+          <h1 className="text-lg lg:text-xl font-semibold text-zinc-900">
+            {currentPageName}
+          </h1>
+        </div>
 
+        {/* Right side - Search and notifications */}
+        <div className="flex items-center space-x-2 lg:space-x-4 flex-shrink-0">
           {/* Search - Desktop */}
           <div className="hidden md:flex items-center relative">
             <Search className="absolute left-3 h-4 w-4 text-zinc-400" />
             <Input
               placeholder="Поиск..."
-              className="pl-10 w-80 bg-zinc-50/80 border-zinc-200/50"
+              className="pl-10 w-60 lg:w-80 bg-zinc-50/80 border-zinc-200/50"
             />
           </div>
 
@@ -63,20 +63,17 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
             onClick={() => setIsSearchOpen(!isSearchOpen)}
             className="md:hidden rounded-full h-9 w-9 p-0"
           >
-            <Search className="h-5 w-5" />
+            <Search className="!h-5 !w-5" />
           </Button>
-        </div>
 
-        {/* Page title */}
-        <div className="flex-1 text-center lg:text-left lg:ml-8">
-          <h1 className="text-xl font-semibold text-zinc-900">
-            {currentPageName}
-          </h1>
-        </div>
-
-        {/* Right side - can be extended with user menu, etc. */}
-        <div className="w-10 lg:w-auto">
-          {/* Placeholder for future user menu or other actions */}
+          {/* Notifications */}
+          <Button variant="ghost" size="sm" className="relative rounded-full h-9 w-9 p-0">
+            <Bell className="!h-5 !w-5" />
+            {/* Notification badge */}
+            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 bg-red-500 rounded-full border border-white">
+              <span className="sr-only">Новые уведомления</span>
+            </span>
+          </Button>
         </div>
       </div>
 
