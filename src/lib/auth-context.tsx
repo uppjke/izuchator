@@ -8,7 +8,6 @@ interface User {
   email: string
   name: string
   role: string
-  avatar?: string
 }
 
 interface AuthContextType {
@@ -77,8 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: supabaseUser.user_metadata?.display_name || 
           supabaseUser.user_metadata?.name || 
           supabaseUser.email?.split('@')[0] || 'User',
-    role: supabaseUser.user_metadata?.role || 'student',
-    avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${supabaseUser.email}&backgroundColor=1f2937`
+    role: supabaseUser.user_metadata?.role || 'student'
   })
 
   useEffect(() => {
