@@ -100,9 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Для регистрации: действительно OTP отключен
           throw new Error('Вход по email временно отключен')
         case 'over_email_send_rate_limit':
-          throw new Error('Слишком много писем отправлено. Попробуйте позже')
+          throw new Error('Слишком много писем отправлено.')
         case 'over_request_rate_limit':
-          throw new Error('Слишком много запросов. Попробуйте через несколько минут')
+          throw new Error('Слишком много запросов.')
         default:
           // Обрабатываем сообщения, которые могут приходить без кода
           if (error.message?.includes('Signups not allowed')) {
