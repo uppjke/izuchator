@@ -3,15 +3,17 @@
 import { motion } from 'framer-motion';
 
 export function AnimatedBlobs() {
-  // Общий радиус кольца для всех blob'ов (размер экрана)
-  const radius = 350;
+  const radius = 360;
   
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      {/* Blob 1 - стартует с позиции 0° (право) */}
       <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[32rem] h-[32rem] bg-gradient-to-br from-blue-500/15 to-purple-500/15 blur-3xl will-change-transform"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[32rem] h-[32rem] bg-gradient-to-br from-blue-500/35 to-purple-500/35 blur-3xl will-change-transform"
         style={{ transform: 'translate3d(0, 0, 0)' }}
+        initial={{
+          x: radius,
+          y: 0,
+        }}
         animate={{
           borderRadius: [
             '60% 40% 30% 70%',
@@ -31,8 +33,12 @@ export function AnimatedBlobs() {
 
       {/* Blob 2 - стартует с позиции 120° (лево-верх) */}
       <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[28rem] h-[28rem] bg-gradient-to-bl from-emerald-500/12 to-teal-500/12 blur-3xl will-change-transform"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[28rem] h-[28rem] bg-gradient-to-bl from-emerald-500/33 to-teal-500/33 blur-3xl will-change-transform"
         style={{ transform: 'translate3d(0, 0, 0)' }}
+        initial={{
+          x: -radius*0.5,
+          y: -radius*0.866,
+        }}
         animate={{
           borderRadius: [
             '40% 60% 50% 30%',
@@ -53,8 +59,12 @@ export function AnimatedBlobs() {
 
       {/* Blob 3 - стартует с позиции 240° (лево-низ) */}
       <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[36rem] h-[36rem] bg-gradient-to-t from-orange-500/8 to-pink-500/8 blur-3xl will-change-transform"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[36rem] h-[36rem] bg-gradient-to-t from-orange-500/31 to-pink-500/31 blur-3xl will-change-transform"
         style={{ transform: 'translate3d(0, 0, 0)' }}
+        initial={{
+          x: -radius*0.5,
+          y: radius*0.866,
+        }}
         animate={{
           borderRadius: [
             '50% 50% 30% 70%',
