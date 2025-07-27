@@ -22,12 +22,26 @@ export default function DashboardLayout() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Восстановление активного таба из localStorage при монтировании
+  useEffect(() => {
+    const savedTab = localStorage.getItem('dashboardActiveTab') as TabType
+    if (savedTab && ['dashboard', 'planner', 'students', 'teachers', 'materials'].includes(savedTab)) {
+      // Проверяем права доступа к табу
+      if ((savedTab === 'students' && userRole !== 'teacher') || 
+          (savedTab === 'teachers' && userRole !== 'student')) {
+        return // Не восстанавливаем таб, если нет доступа
+      }
+      setActiveTab(savedTab)
+    }
+  }, [userRole])
+
   const changeTab = useCallback((newTab: TabType) => {
     // Валидация доступа к табам по роли
     if ((newTab === 'students' && userRole !== 'teacher') || 
         (newTab === 'teachers' && userRole !== 'student')) return
     
     setActiveTab(newTab)
+    localStorage.setItem('dashboardActiveTab', newTab) // Сохраняем в localStorage
     setSidebarOpen(false) // Закрываем мобильное меню при смене таба
   }, [userRole])
 
