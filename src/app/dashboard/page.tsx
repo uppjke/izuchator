@@ -1,4 +1,4 @@
-import { PageHeader } from './_components/common'
+import { useMemo } from 'react'
 import { DashboardTab } from './_components/tabs/dashboard-tab'
 import { PlannerTab } from './_components/tabs/planner-tab'
 import { StudentsTab } from './_components/tabs/students-tab'
@@ -10,27 +10,28 @@ interface DashboardProps {
   userRole: 'student' | 'teacher'
 }
 
+const tabComponents = {
+  dashboard: DashboardTab,
+  planner: PlannerTab,
+  students: StudentsTab,
+  teachers: TeachersTab,
+  materials: MaterialsTab,
+} as const
+
 export default function Dashboard({ activeTab, userRole }: DashboardProps) {
-  const renderActiveTab = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardTab />
-      case 'planner':
-        return <PlannerTab />
-      case 'students':
-        return userRole === 'teacher' ? <StudentsTab /> : <DashboardTab />
-      case 'teachers':
-        return userRole === 'student' ? <TeachersTab /> : <DashboardTab />
-      case 'materials':
-        return <MaterialsTab />
-      default:
-        return <DashboardTab />
+  const ActiveComponent = useMemo(() => {
+    // Валидация доступа к табам по роли
+    if ((activeTab === 'students' && userRole !== 'teacher') ||
+        (activeTab === 'teachers' && userRole !== 'student')) {
+      return tabComponents.dashboard
     }
-  }
+    
+    return tabComponents[activeTab as keyof typeof tabComponents] || tabComponents.dashboard
+  }, [activeTab, userRole])
 
   return (
     <div className="h-full">
-      {renderActiveTab()}
+      <ActiveComponent />
     </div>
   )
 }

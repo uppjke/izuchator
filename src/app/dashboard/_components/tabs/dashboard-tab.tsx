@@ -1,4 +1,4 @@
-import { PageHeader } from '../common'
+import { PageHeader, PlaceholderCard } from '../common'
 
 export function DashboardTab() {
   return (
@@ -10,28 +10,19 @@ export function DashboardTab() {
 
       {/* Dashboard cards */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 content-start">
-        <DashboardCard 
+        <PlaceholderCard 
           title="Статистика"
           description="Здесь будут графики и метрики"
         />
-        <DashboardCard 
+        <PlaceholderCard 
           title="Последние занятия"
           description="История недавних уроков"
         />
-        <DashboardCard 
+        <PlaceholderCard 
           title="Быстрые действия"
           description="Часто используемые функции"
         />
       </div>
-    </div>
-  )
-}
-
-function DashboardCard({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm border border-zinc-200/50 hover:shadow-md transition-all duration-200">
-      <h3 className="text-lg font-semibold text-zinc-900 mb-2">{title}</h3>
-      <p className="text-zinc-600">{description}</p>
     </div>
   )
 }

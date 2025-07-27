@@ -1,17 +1,43 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Sidebar } from './_components/sidebar'
 import { DashboardHeader } from './_components/header'
 import Dashboard from './page'
 
+type TabType = 'dashboard' | 'planner' | 'students' | 'teachers' | 'materials'
+type UserRole = 'student' | 'teacher'
+
+// Константы стилей
+const CONTAINER_CLASSES = "bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-zinc-200/50 h-full overflow-auto"
+const MAIN_PADDING = "p-4 lg:p-6"
+
 export default function DashboardLayout() {
   const { user, isAuthenticated, loading } = useAuth()
   const router = useRouter()
+  const userRole = (user?.role as UserRole) || 'student'
+  
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState('dashboard')
+
+  const changeTab = useCallback((newTab: TabType) => {
+    // Валидация доступа к табам по роли
+    if ((newTab === 'students' && userRole !== 'teacher') || 
+        (newTab === 'teachers' && userRole !== 'student')) return
+    
+    setActiveTab(newTab)
+    setSidebarOpen(false) // Закрываем мобильное меню при смене таба
+  }, [userRole])
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen(prev => !prev)
+  }, [])
+
+  const closeSidebar = useCallback(() => {
+    setSidebarOpen(false)
+  }, [])
 
   // iOS Safari viewport height fix
   useEffect(() => {
@@ -42,7 +68,7 @@ export default function DashboardLayout() {
     }
   }, [isAuthenticated, loading, router])
 
-  // Показываем загрузку пока проверяем авторизацию
+  // Early returns для состояний загрузки и авторизации
   if (loading) {
     return (
       <div className="flex dashboard-container items-center justify-center bg-gray-50">
@@ -54,37 +80,34 @@ export default function DashboardLayout() {
     )
   }
 
-  // Если не авторизован, ничего не показываем (идет редирект)
   if (!isAuthenticated) {
     return null
   }
-
-  const userRole = (user?.role as 'student' | 'teacher') || 'student'
 
   return (
     <div className="flex dashboard-container bg-zinc-50/50">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        onClose={closeSidebar}
         userRole={userRole}
         user={user}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={changeTab}
       />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <DashboardHeader 
-          onMenuClick={() => setSidebarOpen(true)} 
+          onMenuClick={toggleSidebar} 
           activeTab={activeTab}
         />
 
         {/* Page content */}
-        <main className="flex-1 overflow-hidden p-4 lg:p-6">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-zinc-200/50 h-full overflow-auto">
-            <div className="p-4 lg:p-6 h-full">
+        <main className={`flex-1 overflow-hidden ${MAIN_PADDING}`}>
+          <div className={CONTAINER_CLASSES}>
+            <div className={`${MAIN_PADDING} h-full`}>
               <Dashboard activeTab={activeTab} userRole={userRole} />
             </div>
           </div>

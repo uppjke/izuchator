@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Bell, Search, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +25,14 @@ export function DashboardHeader({ onMenuClick, activeTab }: DashboardHeaderProps
   
   const currentPageName = tabNames[activeTab] || 'Дашборд'
 
+  // Общие настройки
+  const fadeTransition = { duration: 0.2, ease: "easeInOut" as const }
+  const buttonClasses = "rounded-full h-9 w-9 p-0 flex-shrink-0"
+  const searchInputClasses = "pl-10 bg-zinc-50/80 border-zinc-200/50"
+  
+  const toggleSearch = useCallback(() => setIsSearchOpen(prev => !prev), [])
+  const closeSearch = useCallback(() => setIsSearchOpen(false), [])
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-zinc-200/50 px-4 lg:px-6 py-4 w-full">
       <div className="flex items-center justify-between max-w-full">
@@ -35,7 +43,7 @@ export function DashboardHeader({ onMenuClick, activeTab }: DashboardHeaderProps
             variant="ghost"
             size="sm"
             onClick={onMenuClick}
-            className="lg:hidden rounded-full h-9 w-9 p-0 flex-shrink-0"
+            className={`lg:hidden ${buttonClasses}`}
           >
             <Icon icon={Menu} size="lg" />
           </Button>
@@ -48,7 +56,7 @@ export function DashboardHeader({ onMenuClick, activeTab }: DashboardHeaderProps
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2, ease: "easeInOut" }}
+                transition={fadeTransition}
                 className="text-xl lg:text-2xl font-semibold text-zinc-900"
                 style={{ marginLeft: '1.5rem' }}
               >
@@ -63,15 +71,15 @@ export function DashboardHeader({ onMenuClick, activeTab }: DashboardHeaderProps
                 initial={{ opacity: 0, x: 20, scale: 0.95 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: 20, scale: 0.95 }}
-                transition={{ duration: 0.2, ease: "easeInOut" }}
+                transition={fadeTransition}
                 className="flex-1 md:hidden relative min-w-0"
               >
                 <Icon icon={Search} size="xs" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" />
                 <Input
                   placeholder="Поиск..."
-                  className="pl-10 w-full bg-zinc-50/80 border-zinc-200/50"
+                  className={`w-full ${searchInputClasses}`}
                   autoFocus
-                  onBlur={() => setIsSearchOpen(false)}
+                  onBlur={closeSearch}
                 />
               </motion.div>
             )}
@@ -85,7 +93,7 @@ export function DashboardHeader({ onMenuClick, activeTab }: DashboardHeaderProps
             <Icon icon={Search} size="sm" className="absolute left-3 text-zinc-400" />
             <Input
               placeholder="Поиск..."
-              className="pl-10 bg-zinc-50/80 border-zinc-200/50"
+              className={searchInputClasses}
               style={{ width: '384px' }}
             />
           </div>
@@ -98,17 +106,14 @@ export function DashboardHeader({ onMenuClick, activeTab }: DashboardHeaderProps
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ 
-                  duration: 0.2, 
-                  ease: "easeInOut"
-                }}
+                transition={fadeTransition}
                 className="md:hidden absolute right-12 z-10"
               >
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className="rounded-full h-9 w-9 p-0"
+                  onClick={toggleSearch}
+                  className={buttonClasses}
                 >
                   <Icon icon={Search} size="lg" />
                 </Button>
@@ -117,7 +122,7 @@ export function DashboardHeader({ onMenuClick, activeTab }: DashboardHeaderProps
           </AnimatePresence>
 
           {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative rounded-full h-9 w-9 p-0 flex-shrink-0">
+          <Button variant="ghost" size="sm" className={`relative ${buttonClasses}`}>
             <Icon icon={Bell} size="lg" />
             {/* Notification badge */}
             <span className="absolute -top-0.5 -right-0.5 h-3 w-3 bg-red-500 rounded-full border border-white">

@@ -14,6 +14,11 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
 import { iconVariants } from '@/lib/icon-variants'
 
+// Константы стилей
+const SIDEBAR_CLASSES = "w-64 bg-white/95 backdrop-blur-xl border-r border-zinc-200/50 transform transition-all duration-300 ease-out flex-shrink-0"
+const OVERLAY_CLASSES = "fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
+const MOBILE_CLASSES = "lg:translate-x-0 lg:relative lg:z-auto fixed top-0 left-0 z-50 h-full"
+
 interface SidebarProps {
   isOpen?: boolean
   onClose?: () => void
@@ -24,58 +29,52 @@ interface SidebarProps {
     role: string
   } | null
   activeTab: string
-  onTabChange: (tab: string) => void
+  onTabChange: (tab: 'dashboard' | 'planner' | 'students' | 'teachers' | 'materials') => void
 }
 
 const navigationItems = [
   {
-    id: 'dashboard',
+    id: 'dashboard' as const,
     title: 'Дашборд',
     icon: LayoutDashboard,
   },
   {
-    id: 'planner',
+    id: 'planner' as const,
     title: 'Планер',
     icon: Calendar,
   },
   {
-    id: 'students',
+    id: 'students' as const,
     title: 'Мои ученики',
     icon: Users,
-    role: 'teacher'
+    role: 'teacher' as const
   },
   {
-    id: 'teachers',
+    id: 'teachers' as const,
     title: 'Мои преподаватели',
     icon: Users,
-    role: 'student'
+    role: 'student' as const
   },
   {
-    id: 'materials',
+    id: 'materials' as const,
     title: 'Мои материалы',
     icon: FolderOpen,
   },
 ]
 
 export function Sidebar({ isOpen = true, onClose, userRole = 'student', user, activeTab, onTabChange }: SidebarProps) {
-  const filteredItems = navigationItems.filter(item => 
-    !item.role || item.role === userRole
-  )
+  const filteredItems = navigationItems.filter(item => !item.role || item.role === userRole)
 
   return (
     <>
       {/* Mobile overlay */}
       {isOpen && onClose && (
-        <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
-          onClick={onClose}
-        />
+        <div className={OVERLAY_CLASSES} onClick={onClose} />
       )}
       
       <aside className={cn(
-        "w-64 bg-white/95 backdrop-blur-xl border-r border-zinc-200/50 transform transition-all duration-300 ease-out flex-shrink-0",
-        "lg:translate-x-0 lg:relative lg:z-auto",
-        "fixed top-0 left-0 z-50 h-full",
+        SIDEBAR_CLASSES,
+        MOBILE_CLASSES,
         isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         <div className="flex flex-col h-full">
