@@ -56,9 +56,11 @@ export default function DashboardLayout() {
         <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto">
-          <div className="p-4 lg:p-6">
-            <Dashboard activeTab={activeTab} userRole={userRole} />
+        <main className="flex-1 overflow-hidden p-4 lg:p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-zinc-200/50 h-full overflow-auto">
+            <div className="p-4 lg:p-6 h-full">
+              <Dashboard activeTab={activeTab} userRole={userRole} />
+            </div>
           </div>
         </main>
       </div>

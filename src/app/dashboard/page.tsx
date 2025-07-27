@@ -29,7 +29,7 @@ export default function Dashboard({ activeTab, userRole }: DashboardProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="h-full">
       {renderActiveTab()}
     </div>
   )

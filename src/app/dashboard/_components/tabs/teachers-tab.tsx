@@ -2,15 +2,17 @@ import { PageHeader, PlaceholderCard } from '../common'
 
 export function TeachersTab() {
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col space-y-6">
       <PageHeader 
         title="Мои преподаватели"
-        description="Ваши преподаватели и расписание занятий."
+        description="Связь с преподавателями и расписание занятий."
       />
-      <PlaceholderCard 
-        title="Список преподавателей" 
-        description="Функционал в разработке..."
-      />
+      <div className="flex-1">
+        <PlaceholderCard 
+          title="Список преподавателей" 
+          description="Функционал в разработке..."
+        />
+      </div>
     </div>
   )
 }
