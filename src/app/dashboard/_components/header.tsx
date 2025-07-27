@@ -50,7 +50,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2, ease: "easeInOut" }}
-                className="text-lg lg:text-xl font-semibold text-zinc-900"
+                className="text-xl lg:text-2xl font-semibold text-zinc-900"
               >
                 {currentPageName}
               </motion.h1>
