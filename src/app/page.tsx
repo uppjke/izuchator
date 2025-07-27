@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { AnimatedBlobs } from '@/components/animated-blobs';
 import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
@@ -78,7 +79,7 @@ export default function Home() {
                 size="hero" 
                 className="bg-zinc-900 text-white hover:bg-zinc-700"
               >
-                <LayoutDashboard className="mr-2 !h-5 !w-5" />
+                <Icon icon={LayoutDashboard} size="md" className="mr-2" />
                 Открыть дашборд
               </Button>
             </Link>

@@ -24,6 +24,8 @@ import {
 import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
 import { useAuth } from '@/lib/auth-context';
+import { Icon } from '@/components/ui/icon'
+import { iconVariants } from '@/lib/icon-variants';
 
 const LOGO_CONFIG = {
   src: "/logo.svg",
@@ -82,8 +84,10 @@ export function Header() {
                     {user?.name?.[0]?.toUpperCase()}
                   </div>
                   <span className="text-sm font-medium">Привет, {user?.name}!</span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
+                  <Icon 
+                    icon={ChevronDown}
+                    size="sm"
+                    className={`transition-transform duration-200 ${
                       dropdownOpen ? 'rotate-180' : ''
                     }`}
                   />
@@ -110,12 +114,12 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard">
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <Icon icon={LayoutDashboard} size="sm" className="mr-2" />
                     Дашборд
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <Icon icon={LogOut} size="sm" className="mr-2" />
                   Выйти
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -145,7 +149,7 @@ export function Header() {
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="sm:hidden">
-              <Menu/>
+              <Icon icon={Menu} size="lg" />
               <span className="sr-only">Открыть меню</span>
             </Button>
           </SheetTrigger>
@@ -159,7 +163,7 @@ export function Header() {
                   alt="Изучатор"
                   width={24}
                   height={24}
-                  className="w-6 h-6"
+                  className={iconVariants({ size: "lg" })}
                 />
                 Изучатор
               </SheetTitle>
@@ -214,7 +218,7 @@ export function Header() {
                       href="/dashboard"
                       onClick={() => setMenuOpen(false)}
                     >
-                      <LayoutDashboard className="mr-2 !h-5 !w-5" />
+                      <Icon icon={LayoutDashboard} size="md" className="mr-2" />
                       Дашборд
                     </Link>
                   </Button>
@@ -227,7 +231,7 @@ export function Header() {
                       logout();
                     }}
                   >
-                    <LogOut className="mr-2 !h-5 !w-5" />
+                    <Icon icon={LogOut} size="md" className="mr-2" />
                     Выйти
                   </Button>
                 </>

@@ -12,6 +12,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Icon } from '@/components/ui/icon'
+import { iconVariants } from '@/lib/icon-variants'
 
 interface SidebarProps {
   isOpen?: boolean
@@ -77,19 +79,19 @@ export function Sidebar({ isOpen = true, onClose, userRole = 'student', user }: 
         "fixed top-0 left-0 z-50 h-full",
         isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="flex flex-col h-full p-3 lg:p-4">
+        <div className="flex flex-col h-full">
           {/* Header with logo and home button */}
-          <div className="flex items-center justify-between mb-4 lg:mb-6">
-            <Link href="/" className="flex items-center space-x-2 lg:space-x-3">
+          <div className="flex items-center justify-between mb-4 lg:mb-6 px-3 lg:px-4 pt-3 lg:pt-4">
+            <div className="flex items-center space-x-2 lg:space-x-3">
               <Image
                 src="/logo.svg"
                 alt="Изучатор"
-                width={20}
-                height={20}
-                className="w-5 h-5 lg:w-6 lg:h-6"
+                width={24}
+                height={24}
+                className={iconVariants({ size: "responsiveLg" })}
               />
               <span className="text-base lg:text-lg font-semibold text-zinc-900">Изучатор</span>
-            </Link>
+            </div>
             
             <Button
               variant="ghost"
@@ -98,14 +100,14 @@ export function Sidebar({ isOpen = true, onClose, userRole = 'student', user }: 
               className="rounded-full h-8 w-8 p-0 hover:bg-zinc-100"
             >
               <Link href="/">
-                <Home className="!h-5 !w-5" />
+                <Icon icon={Home} size="responsiveLg" />
                 <span className="sr-only">На главную</span>
               </Link>
             </Button>
           </div>
 
           {/* Profile card */}
-          <div className="bg-zinc-50/80 rounded-xl border border-zinc-200/50 p-3 lg:p-4 mb-4 lg:mb-6">
+          <div className="bg-zinc-50/80 rounded-xl border border-zinc-200/50 p-3 lg:p-4 mb-4 lg:mb-6 mx-3 lg:mx-4">
             <div className="flex items-center gap-2 lg:gap-3">
               <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-zinc-900 flex items-center justify-center text-white text-sm lg:text-base font-medium flex-shrink-0">
                 {user?.name?.[0]?.toUpperCase() || 'У'}
@@ -125,9 +127,9 @@ export function Sidebar({ isOpen = true, onClose, userRole = 'student', user }: 
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 lg:space-y-2">
+          <nav className="flex-1 space-y-1 lg:space-y-2 px-3 lg:px-4 pb-3 lg:pb-4">
             {filteredItems.map((item) => {
-              const Icon = item.icon
+              const IconComponent = item.icon
               const isActive = pathname === item.href
               
               return (
@@ -142,10 +144,15 @@ export function Sidebar({ isOpen = true, onClose, userRole = 'student', user }: 
                       : "text-zinc-700 hover:bg-zinc-100/80 hover:text-zinc-900"
                   )}
                 >
-                  <Icon className={cn(
-                    "mr-2 lg:mr-3 h-4 w-4 lg:h-5 lg:w-5 transition-transform duration-200 group-hover:scale-110 flex-shrink-0",
-                    isActive ? "text-white" : "text-zinc-500"
-                  )} />
+                  <Icon 
+                    icon={IconComponent} 
+                    size="responsive" 
+                    interactive={true}
+                    className={cn(
+                      "mr-2 lg:mr-3",
+                      isActive ? "text-white" : "text-zinc-500"
+                    )}
+                  />
                   <span className="truncate">{item.title}</span>
                 </Link>
               )

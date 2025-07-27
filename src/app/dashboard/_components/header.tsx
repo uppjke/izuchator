@@ -6,6 +6,7 @@ import { Bell, Search, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Icon } from '@/components/ui/icon'
 
 interface DashboardHeaderProps {
   onMenuClick: () => void
@@ -37,7 +38,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
             onClick={onMenuClick}
             className="lg:hidden rounded-full h-9 w-9 p-0 flex-shrink-0"
           >
-            <Menu className="!h-5 !w-5" />
+            <Icon icon={Menu} size="lg" />
           </Button>
 
           <AnimatePresence mode="wait">
@@ -65,7 +66,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                 transition={{ duration: 0.2, ease: "easeInOut" }}
                 className="flex-1 md:hidden relative min-w-0"
               >
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                <Icon icon={Search} size="xs" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" />
                 <Input
                   placeholder="Поиск..."
                   className="pl-10 w-full bg-zinc-50/80 border-zinc-200/50"
@@ -81,7 +82,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         <div className="flex items-center space-x-2 lg:space-x-4 flex-shrink-0 relative">
           {/* Search - Desktop */}
           <div className="hidden md:flex items-center relative">
-            <Search className="absolute left-3 h-4 w-4 text-zinc-400" />
+            <Icon icon={Search} size="xs" className="absolute left-3 text-zinc-400" />
             <Input
               placeholder="Поиск..."
               className="pl-10 w-60 lg:w-80 bg-zinc-50/80 border-zinc-200/50"
@@ -108,7 +109,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                   onClick={() => setIsSearchOpen(!isSearchOpen)}
                   className="rounded-full h-9 w-9 p-0"
                 >
-                  <Search className="!h-5 !w-5" />
+                  <Icon icon={Search} size="lg" />
                 </Button>
               </motion.div>
             )}
@@ -116,7 +117,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
 
           {/* Notifications */}
           <Button variant="ghost" size="sm" className="relative rounded-full h-9 w-9 p-0 flex-shrink-0">
-            <Bell className="!h-5 !w-5" />
+            <Icon icon={Bell} size="lg" />
             {/* Notification badge */}
             <span className="absolute -top-0.5 -right-0.5 h-3 w-3 bg-red-500 rounded-full border border-white">
               <span className="sr-only">Новые уведомления</span>
