@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
+import { Header } from "@/components/header";
 import "./globals.css";
-
-// Клиентский компонент для условного рендера Header
-import { ConditionalHeaderWrapper } from "./header-wrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,7 +51,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white`}
       >
         <AuthProvider>
-          <ConditionalHeaderWrapper />
+          <Header />
           {children}
         </AuthProvider>
       </body>

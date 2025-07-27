@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Menu, LogOut, LayoutDashboard, ChevronDown } from 'lucide-react';
@@ -34,6 +35,13 @@ const LOGO_CONFIG = {
 } as const
 
 export function Header() {
+  const pathname = usePathname();
+  
+  // Не показываем Header на страницах дашборда
+  if (pathname.startsWith('/dashboard')) {
+    return null;
+  }
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
