@@ -7,11 +7,7 @@ import { Sidebar } from './_components/sidebar'
 import { DashboardHeader } from './_components/header'
 import Dashboard from './page'
 
-interface DashboardLayoutProps {
-  // Больше не нужен children
-}
-
-export default function DashboardLayout({}: DashboardLayoutProps) {
+export default function DashboardLayout() {
   const { user, isAuthenticated, loading } = useAuth()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -40,7 +36,6 @@ export default function DashboardLayout({}: DashboardLayoutProps) {
     return null
   }
 
-  // TODO: Получать роль из user.role вместо hardcode
   const userRole = (user?.role as 'student' | 'teacher') || 'student'
 
   return (
