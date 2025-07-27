@@ -13,6 +13,29 @@ export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('dashboard')
 
+  // iOS Safari viewport height fix
+  useEffect(() => {
+    function setVH() {
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty('--vh', `${vh}px`)
+    }
+
+    // Set initial value
+    setVH()
+
+    // Update on resize and orientation change
+    window.addEventListener('resize', setVH)
+    window.addEventListener('orientationchange', () => {
+      // Delay to ensure the viewport has updated
+      setTimeout(setVH, 100)
+    })
+
+    return () => {
+      window.removeEventListener('resize', setVH)
+      window.removeEventListener('orientationchange', setVH)
+    }
+  }, [])
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/')
@@ -22,7 +45,7 @@ export default function DashboardLayout() {
   // Показываем загрузку пока проверяем авторизацию
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
+      <div className="flex dashboard-container items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Загрузка...</p>
@@ -39,7 +62,7 @@ export default function DashboardLayout() {
   const userRole = (user?.role as 'student' | 'teacher') || 'student'
 
   return (
-    <div className="flex h-screen bg-zinc-50/50">
+    <div className="flex dashboard-container bg-zinc-50/50">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}

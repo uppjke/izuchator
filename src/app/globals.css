@@ -2,6 +2,26 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Support for iOS Safari viewport heights */
+:root {
+  --vh: 1vh;
+  --dvh: 1dvh;
+}
+
+/* Fix for iOS Safari dynamic viewport height */
+@supports (height: 100dvh) {
+  :root {
+    --vh: 1dvh;
+  }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  :root {
+    --vh: calc(var(--vh, 1vh));
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -155,5 +175,27 @@
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-4px); }
     75% { transform: translateX(4px); }
+  }
+
+  /* iOS Safari safe area and viewport height fixes */
+  .h-screen-safe {
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
+    height: 100dvh;
+  }
+
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: calc(var(--vh, 1vh) * 100);
+    min-height: 100dvh;
+  }
+
+  /* Full height container for dashboard */
+  .dashboard-container {
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
+    height: 100dvh;
+    /* Add support for safe areas */
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
