@@ -1,6 +1,6 @@
-import { PageHeader, PlaceholderCard } from '../_components/common'
+import { PageHeader, PlaceholderCard } from '../common'
 
-export default function StudentsPage() {
+export function StudentsTab() {
   return (
     <div className="space-y-6">
       <PageHeader 
@@ -9,7 +9,7 @@ export default function StudentsPage() {
       />
       <PlaceholderCard 
         title="Список учеников" 
-        description="Список учеников в разработке..."
+        description="Функционал в разработке..."
       />
     </div>
   )

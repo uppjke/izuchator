@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -24,41 +23,41 @@ interface SidebarProps {
     name: string
     role: string
   } | null
+  activeTab: string
+  onTabChange: (tab: string) => void
 }
 
 const navigationItems = [
   {
+    id: 'dashboard',
     title: 'Дашборд',
-    href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
+    id: 'planner',
     title: 'Планер',
-    href: '/dashboard/planner',
     icon: Calendar,
   },
   {
+    id: 'students',
     title: 'Мои ученики',
-    href: '/dashboard/students',
     icon: Users,
     role: 'teacher'
   },
   {
+    id: 'teachers',
     title: 'Мои преподаватели',
-    href: '/dashboard/teachers',
     icon: Users,
     role: 'student'
   },
   {
+    id: 'materials',
     title: 'Мои материалы',
-    href: '/dashboard/materials',
     icon: FolderOpen,
   },
 ]
 
-export function Sidebar({ isOpen = true, onClose, userRole = 'student', user }: SidebarProps) {
-  const pathname = usePathname()
-
+export function Sidebar({ isOpen = true, onClose, userRole = 'student', user, activeTab, onTabChange }: SidebarProps) {
   const filteredItems = navigationItems.filter(item => 
     !item.role || item.role === userRole
   )
@@ -130,17 +129,20 @@ export function Sidebar({ isOpen = true, onClose, userRole = 'student', user }: 
           <nav className="flex-1 space-y-1 lg:space-y-2 px-3 lg:px-4 pb-3 lg:pb-4">
             {filteredItems.map((item) => {
               const IconComponent = item.icon
-              const isActive = pathname === item.href
+              const isActive = activeTab === item.id
               
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onClose}
+                <Button
+                  key={item.id}
+                  variant="ghost"
+                  onClick={() => {
+                    onTabChange(item.id)
+                    onClose?.()
+                  }}
                   className={cn(
-                    "flex items-center px-3 lg:px-4 py-2.5 lg:py-3 text-sm font-medium rounded-xl transition-all duration-200 ease-out group",
+                    "w-full justify-start px-3 lg:px-4 py-2.5 lg:py-3 text-sm font-medium rounded-xl transition-all duration-200 ease-out group h-auto",
                     isActive
-                      ? "bg-zinc-900 text-white shadow-lg"
+                      ? "bg-zinc-900 text-white shadow-lg hover:bg-zinc-700 hover:text-white"
                       : "text-zinc-700 hover:bg-zinc-100/80 hover:text-zinc-900"
                   )}
                 >
@@ -154,7 +156,7 @@ export function Sidebar({ isOpen = true, onClose, userRole = 'student', user }: 
                     )}
                   />
                   <span className="truncate">{item.title}</span>
-                </Link>
+                </Button>
               )
             })}
           </nav>

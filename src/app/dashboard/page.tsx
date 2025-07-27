@@ -1,37 +1,36 @@
 import { PageHeader } from './_components/common'
+import { DashboardTab } from './_components/tabs/dashboard-tab'
+import { PlannerTab } from './_components/tabs/planner-tab'
+import { StudentsTab } from './_components/tabs/students-tab'
+import { TeachersTab } from './_components/tabs/teachers-tab'
+import { MaterialsTab } from './_components/tabs/materials-tab'
 
-export default function Dashboard() {
-  return (
-    <div className="space-y-6">
-      <PageHeader 
-        title="Добро пожаловать в дашборд!"
-        description="Здесь будет основная информация о вашем обучении."
-      />
-
-      {/* Dashboard cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <DashboardCard 
-          title="Статистика"
-          description="Здесь будут графики и метрики"
-        />
-        <DashboardCard 
-          title="Последние занятия"
-          description="История недавних уроков"
-        />
-        <DashboardCard 
-          title="Быстрые действия"
-          description="Часто используемые функции"
-        />
-      </div>
-    </div>
-  )
+interface DashboardProps {
+  activeTab: string
+  userRole: 'student' | 'teacher'
 }
 
-function DashboardCard({ title, description }: { title: string; description: string }) {
+export default function Dashboard({ activeTab, userRole }: DashboardProps) {
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <DashboardTab />
+      case 'planner':
+        return <PlannerTab />
+      case 'students':
+        return userRole === 'teacher' ? <StudentsTab /> : <DashboardTab />
+      case 'teachers':
+        return userRole === 'student' ? <TeachersTab /> : <DashboardTab />
+      case 'materials':
+        return <MaterialsTab />
+      default:
+        return <DashboardTab />
+    }
+  }
+
   return (
-    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm border border-zinc-200/50 hover:shadow-md transition-all duration-200">
-      <h3 className="text-lg font-semibold text-zinc-900 mb-2">{title}</h3>
-      <p className="text-zinc-600">{description}</p>
+    <div className="space-y-6">
+      {renderActiveTab()}
     </div>
   )
 }

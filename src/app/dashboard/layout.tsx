@@ -5,15 +5,17 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Sidebar } from './_components/sidebar'
 import { DashboardHeader } from './_components/header'
+import Dashboard from './page'
 
 interface DashboardLayoutProps {
-  children: React.ReactNode
+  // Больше не нужен children
 }
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+export default function DashboardLayout({}: DashboardLayoutProps) {
   const { user, isAuthenticated, loading } = useAuth()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -49,6 +51,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         onClose={() => setSidebarOpen(false)}
         userRole={userRole}
         user={user}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
 
       {/* Main content */}
@@ -59,7 +63,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Page content */}
         <main className="flex-1 overflow-auto">
           <div className="p-4 lg:p-6">
-            {children}
+            <Dashboard activeTab={activeTab} userRole={userRole} />
           </div>
         </main>
       </div>

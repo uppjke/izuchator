@@ -1,6 +1,6 @@
-import { PageHeader, PlaceholderCard } from '../_components/common'
+import { PageHeader, PlaceholderCard } from '../common'
 
-export default function PlannerPage() {
+export function PlannerTab() {
   return (
     <div className="space-y-6">
       <PageHeader 
