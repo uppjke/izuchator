@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { usePathname } from 'next/navigation'
 import { Bell, Search, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,27 +9,27 @@ import { Icon } from '@/components/ui/icon'
 
 interface DashboardHeaderProps {
   onMenuClick: () => void
+  activeTab: string
 }
 
-const pageNames: Record<string, string> = {
-  '/dashboard': 'Дашборд',
-  '/dashboard/planner': 'Планер',
-  '/dashboard/students': 'Мои ученики',
-  '/dashboard/teachers': 'Мои преподаватели',
-  '/dashboard/materials': 'Мои материалы',
+const tabNames: Record<string, string> = {
+  dashboard: 'Дашборд',
+  planner: 'Планер',
+  students: 'Мои ученики',
+  teachers: 'Мои преподаватели',
+  materials: 'Мои материалы',
 }
 
-export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+export function DashboardHeader({ onMenuClick, activeTab }: DashboardHeaderProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const pathname = usePathname()
   
-  const currentPageName = pageNames[pathname] || 'Дашборд'
+  const currentPageName = tabNames[activeTab] || 'Дашборд'
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-zinc-200/50 px-4 lg:px-6 py-4 w-full">
       <div className="flex items-center justify-between max-w-full">
         {/* Left side - Page title and mobile menu */}
-        <div className="flex items-center space-x-2 lg:space-x-4 flex-1 min-w-0">
+        <div className="flex items-center flex-1 min-w-0">
           {/* Mobile menu button */}
           <Button
             variant="ghost"
@@ -82,10 +81,10 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         <div className="flex items-center space-x-2 lg:space-x-4 flex-shrink-0 relative">
           {/* Search - Desktop */}
           <div className="hidden md:flex items-center relative">
-            <Icon icon={Search} size="xs" className="absolute left-3 text-zinc-400" />
+            <Icon icon={Search} size="sm" className="absolute left-3 text-zinc-400" />
             <Input
               placeholder="Поиск..."
-              className="pl-10 w-60 lg:w-80 bg-zinc-50/80 border-zinc-200/50"
+              className="pl-10 w-[320px] md:w-[384px] bg-zinc-50/80 border-zinc-200/50"
             />
           </div>
 
