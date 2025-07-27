@@ -50,6 +50,7 @@ export function DashboardHeader({ onMenuClick, activeTab }: DashboardHeaderProps
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2, ease: "easeInOut" }}
                 className="text-xl lg:text-2xl font-semibold text-zinc-900"
+                style={{ marginLeft: '1.5rem' }}
               >
                 {currentPageName}
               </motion.h1>
@@ -84,7 +85,8 @@ export function DashboardHeader({ onMenuClick, activeTab }: DashboardHeaderProps
             <Icon icon={Search} size="sm" className="absolute left-3 text-zinc-400" />
             <Input
               placeholder="Поиск..."
-              className="pl-10 w-[320px] md:w-[384px] bg-zinc-50/80 border-zinc-200/50"
+              className="pl-10 bg-zinc-50/80 border-zinc-200/50"
+              style={{ width: '384px' }}
             />
           </div>
 
