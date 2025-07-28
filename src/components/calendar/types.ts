@@ -1,8 +1,8 @@
 // Базовые типы для календаря
-import type { Lesson as LessonFromDB } from '@/lib/types/database.generated'
+import type { Database } from '@/lib/types/database.generated'
 
 // Экспортируем тип урока из БД
-export type Lesson = LessonFromDB
+export type Lesson = Database['public']['Tables']['lessons']['Row']
 
 export interface CalendarDay {
   date: Date

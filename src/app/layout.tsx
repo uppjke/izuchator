@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
+import { ToastProvider } from "@/lib/toast-provider";
 import { Header } from "@/components/header";
 import "./globals.css";
 
@@ -54,6 +55,7 @@ export default function RootLayout({
           <Header />
           {children}
         </AuthProvider>
+        <ToastProvider />
       </body>
     </html>
   );

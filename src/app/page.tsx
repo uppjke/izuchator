@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui/icon';
 import { AnimatedBlobs } from '@/components/animated-blobs';
 import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
+import { InviteHandler } from '@/components/invite-handler';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 
@@ -40,9 +41,19 @@ export default function Home() {
 
   const openLogin = useCallback(() => setLoginOpen(true), [])
   const openRegister = useCallback(() => setRegisterOpen(true), [])
+  
+  const handleInviteFound = useCallback(() => {
+    setLoginOpen(true)
+  }, [])
   return (
     <div className="min-h-[calc(100dvh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
       <AnimatedBlobs />
+      
+      {/* Обработчик параметров приглашения */}
+      <Suspense fallback={null}>
+        <InviteHandler onInviteFound={handleInviteFound} />
+      </Suspense>
+      
       <motion.div
         initial={ANIMATION_CONFIG.initial}
         animate={ANIMATION_CONFIG.animate}

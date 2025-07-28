@@ -198,3 +198,23 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* Toast positioning and z-index fixes */
+[data-sonner-toaster] {
+  z-index: 2147483647 !important;
+  position: fixed !important;
+  top: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: auto !important;
+}
+
+[data-sonner-toast] {
+  z-index: 2147483647 !important;
+  position: relative !important;
+  margin: 0 auto !important;
+}
+
+[data-sonner-toaster][data-theme] [data-sonner-toast] {
+  margin: 0 auto !important;
+}

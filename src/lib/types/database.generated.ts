@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          operationName?: string
+          query?: string
+          variables?: Json
+          extensions?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       invite_links: {
@@ -341,9 +366,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_invite_link: {
+        Args: {
+          p_invite_type: string
+          p_message?: string
+          p_expires_in_hours?: number
+        }
+        Returns: string
+      }
       generate_invite_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_invite_info: {
+        Args: { p_invite_code: string }
+        Returns: Json
+      }
+      use_invite_link: {
+        Args: { p_invite_code: string }
+        Returns: Json
       }
     }
     Enums: {
@@ -473,22 +514,10 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
 } as const
-
-// Простые типы для работы с данными
-export type UserProfile = Database['public']['Tables']['user_profiles']['Row']
-export type TeacherStudentRelation = Database['public']['Tables']['teacher_student_relations']['Row']
-export type InviteLink = Database['public']['Tables']['invite_links']['Row']
-export type Lesson = Database['public']['Tables']['lessons']['Row']
-
-// Типы для создания/обновления
-export type CreateUserProfile = Database['public']['Tables']['user_profiles']['Insert']
-export type UpdateUserProfile = Database['public']['Tables']['user_profiles']['Update']
-export type CreateRelation = Database['public']['Tables']['teacher_student_relations']['Insert']
-export type UpdateRelation = Database['public']['Tables']['teacher_student_relations']['Update']
-export type CreateInviteLink = Database['public']['Tables']['invite_links']['Insert']
-export type CreateLesson = Database['public']['Tables']['lessons']['Insert']
-export type UpdateLesson = Database['public']['Tables']['lessons']['Update']
