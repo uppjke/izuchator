@@ -115,6 +115,28 @@ export async function getTeacherStudents(teacherId: string): Promise<TeacherStud
   return data || []
 }
 
+// Получить связи студента с преподавателями
+export async function getStudentTeachers(studentId: string): Promise<TeacherStudentRelation[]> {
+  const supabase = createSupabaseBrowserClient()
+  
+  const { data, error } = await supabase
+    .from('teacher_student_relations')
+    .select(`
+      *,
+      teacher:user_profiles!teacher_id(*)
+    `)
+    .eq('student_id', studentId)
+    .eq('status', 'active')
+    .is('deleted_at', null)
+  
+  if (error) {
+    console.error('Error fetching student teachers:', error)
+    return []
+  }
+  
+  return data || []
+}
+
 // Создать ссылку-приглашение через RPC
 export async function createInviteLink(data: {
   createdBy: string
@@ -160,17 +182,22 @@ export async function getInviteByCode(code: string) {
     return { success: false, message: 'Ошибка при проверке приглашения' }
   }
   
-  const result = data as unknown as InviteInfoResponse
+  // data - это массив строк из RPC функции
+  if (!data || data.length === 0) {
+    return { success: false, message: 'Приглашение не найдено или недействительно' }
+  }
   
-  if (!result?.success) {
-    return { success: false, message: result?.message || 'Приглашение недействительно' }
+  const inviteInfo = data[0]
+  
+  if (inviteInfo.is_expired) {
+    return { success: false, message: 'Приглашение истекло' }
   }
   
   return { 
     success: true, 
     invite: {
-      ...result.invite,
-      creatorName: result.invite?.creator_name || 'Неизвестный пользователь'
+      invite_type: inviteInfo.invite_type,
+      creator_name: inviteInfo.creator_name || 'Неизвестный пользователь'
     }
   }
 }
@@ -184,7 +211,7 @@ export async function acceptInviteLink(inviteCode: string): Promise<{
   const supabase = createSupabaseBrowserClient()
   
   const { data, error } = await supabase
-    .rpc('use_invite_link', {
+    .rpc('accept_invite_link', {
       p_invite_code: inviteCode
     })
   
@@ -196,11 +223,18 @@ export async function acceptInviteLink(inviteCode: string): Promise<{
     }
   }
   
-  const result = data as unknown as UseInviteLinkResponse
+  // data - это массив строк из RPC функции
+  if (!data || data.length === 0) {
+    return { 
+      success: false, 
+      message: 'Ошибка при принятии приглашения' 
+    }
+  }
+  
+  const result = data[0]
   
   return {
-    success: result?.success || false,
-    message: result?.message || 'Неизвестная ошибка',
-    relation: result?.relation_id ? { id: result.relation_id } : undefined
+    success: result.success || false,
+    message: result.message || 'Неизвестная ошибка'
   }
 }

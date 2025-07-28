@@ -46,4 +46,5 @@ next-env.d.ts
 /supabase/postgres_data/
 /supabase/storage/
 /supabase/docker/
+/supabase/migrations/
 .supabase/

@@ -366,6 +366,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invite_link: {
+        Args: { p_invite_code: string }
+        Returns: {
+          success: boolean
+          message: string
+        }[]
+      }
       create_invite_link: {
         Args: {
           p_invite_type: string
@@ -380,7 +387,11 @@ export type Database = {
       }
       get_invite_info: {
         Args: { p_invite_code: string }
-        Returns: Json
+        Returns: {
+          invite_type: string
+          creator_name: string
+          is_expired: boolean
+        }[]
       }
       use_invite_link: {
         Args: { p_invite_code: string }

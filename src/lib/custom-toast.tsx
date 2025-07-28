@@ -1,6 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import { useEffect, useState } from 'react'
 
 interface CustomToastProps {
@@ -66,7 +67,6 @@ export function showCustomToast(message: string, icon?: string, duration?: numbe
 
   activeToasts.set(id, removeToast)
 
-  const { createRoot } = require('react-dom/client')
   const root = createRoot(container)
   
   root.render(
