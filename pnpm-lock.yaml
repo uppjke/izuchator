@@ -17,9 +17,15 @@ importers:
       '@fullcalendar/interaction':
         specifier: 7.0.0-rc.0
         version: 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)
+      '@fullcalendar/list':
+        specifier: 7.0.0-rc.0
+        version: 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)
       '@fullcalendar/react':
         specifier: 7.0.0-rc.0
         version: 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@fullcalendar/timegrid':
+        specifier: 7.0.0-rc.0
+        version: 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)
       '@hookform/resolvers':
         specifier: ^5.1.1
         version: 5.1.1(react-hook-form@7.60.0(react@19.1.0))
@@ -230,12 +236,22 @@ packages:
     peerDependencies:
       '@fullcalendar/core': 7.0.0-rc.0
 
+  '@fullcalendar/list@7.0.0-rc.0':
+    resolution: {integrity: sha512-UGWA3kLNktDlmbgc7Wf6PFCGUX26bADGp4OoZUAKHqltrtsvm2dPLtzbIDg5z3IgI3jsyVvljd21EoEEgfr8Yw==}
+    peerDependencies:
+      '@fullcalendar/core': 7.0.0-rc.0
+
   '@fullcalendar/react@7.0.0-rc.0':
     resolution: {integrity: sha512-vce0pHbRt0v2X8D3EmOhcIE/RJytBfrUz4U698CBX5ucnoMZNqqYG+gKL3/IrCO2fpWg3P4YfH1FgiSpTp/Mrw==}
     peerDependencies:
       '@fullcalendar/core': 7.0.0-rc.0
       react: ^16.7.0 || ^17 || ^18 || ^19
       react-dom: ^16.7.0 || ^17 || ^18 || ^19
+
+  '@fullcalendar/timegrid@7.0.0-rc.0':
+    resolution: {integrity: sha512-O7FKvs2bxY3FjWZqV6M2n3LiqO82+86gYMgGEAipNMIgApJEeiTEP0HfW6fgRjGmTyCnHFf+ZPuu0XFDpgBRhg==}
+    peerDependencies:
+      '@fullcalendar/core': 7.0.0-rc.0
 
   '@hookform/resolvers@5.1.1':
     resolution: {integrity: sha512-J/NVING3LMAEvexJkyTLjruSm7aOFx7QX21pzkiJfMoNG0wl5aFEjLTl7ay7IQb9EWY6AkrBy7tHL2Alijpdcg==}
@@ -2824,11 +2840,20 @@ snapshots:
     dependencies:
       '@fullcalendar/core': 7.0.0-rc.0
 
+  '@fullcalendar/list@7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)':
+    dependencies:
+      '@fullcalendar/core': 7.0.0-rc.0
+
   '@fullcalendar/react@7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@fullcalendar/core': 7.0.0-rc.0
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
+
+  '@fullcalendar/timegrid@7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)':
+    dependencies:
+      '@fullcalendar/core': 7.0.0-rc.0
+      '@fullcalendar/daygrid': 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)
 
   '@hookform/resolvers@5.1.1(react-hook-form@7.60.0(react@19.1.0))':
     dependencies:
