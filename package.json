@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "types:generate": "supabase gen types typescript --project-id kurxrmzawghhxhwqyqbm > src/lib/types/database.generated.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

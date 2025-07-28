@@ -1,7 +1,7 @@
 // Утилиты для работы с календарем
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday } from 'date-fns'
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isToday } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import type { CalendarDay, CalendarWeek, Lesson } from './types'
+import type { CalendarDay, Lesson } from './types'
 
 // Получить дни недели для календаря
 export function getWeekDays(date: Date): CalendarDay[] {

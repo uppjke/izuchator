@@ -5,18 +5,16 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getWeekDays, formatDate, formatTime, getLessonStatusClasses } from './utils'
-import type { Lesson, CalendarView } from './types'
+import type { Lesson } from './types'
 
 interface CalendarProps {
   lessons?: Lesson[]
-  view?: CalendarView
   onCreateLesson?: (date: Date, hour: number) => void
   onEditLesson?: (lesson: Lesson) => void
 }
 
 export function Calendar({ 
   lessons = [], 
-  view = 'week',
   onCreateLesson,
   onEditLesson 
 }: CalendarProps) {
