@@ -13,12 +13,7 @@ export function PlannerTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Планировщик</h1>
-        <p className="text-gray-600">Управляйте расписанием уроков</p>
-      </div>
-      
+    <div>
       <Calendar
         onCreateLesson={handleCreateLesson}
         onEditLesson={handleEditLesson}
