@@ -218,3 +218,61 @@
 [data-sonner-toaster][data-theme] [data-sonner-toast] {
   margin: 0 auto !important;
 }
+
+/* Dialog animations for smooth experience */
+@keyframes dialog-in {
+  0% {
+    opacity: 0;
+    scale: 0.96;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes dialog-out {
+  0% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+@keyframes overlay-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Apply smooth animations to dialog elements */
+[data-state="open"][data-slot="dialog-content"] {
+  animation: dialog-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-state="closed"][data-slot="dialog-content"] {
+  animation: dialog-out 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-state="open"][data-slot="dialog-overlay"] {
+  animation: overlay-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-state="closed"][data-slot="dialog-overlay"] {
+  animation: overlay-out 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
