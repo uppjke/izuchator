@@ -8,24 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@fullcalendar/core':
-        specifier: 7.0.0-rc.0
-        version: 7.0.0-rc.0
-      '@fullcalendar/daygrid':
-        specifier: 7.0.0-rc.0
-        version: 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)
-      '@fullcalendar/interaction':
-        specifier: 7.0.0-rc.0
-        version: 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)
-      '@fullcalendar/list':
-        specifier: 7.0.0-rc.0
-        version: 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)
-      '@fullcalendar/react':
-        specifier: 7.0.0-rc.0
-        version: 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      '@fullcalendar/timegrid':
-        specifier: 7.0.0-rc.0
-        version: 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)
       '@hookform/resolvers':
         specifier: ^5.1.1
         version: 5.1.1(react-hook-form@7.60.0(react@19.1.0))
@@ -44,6 +26,9 @@ importers:
       '@radix-ui/react-select':
         specifier: ^2.2.5
         version: 2.2.5(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@radix-ui/react-slot':
+        specifier: ^1.2.3
+        version: 1.2.3(@types/react@19.1.8)(react@19.1.0)
       '@supabase/ssr':
         specifier: ^0.6.1
         version: 0.6.1(@supabase/supabase-js@2.52.0)
@@ -222,36 +207,6 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
-
-  '@fullcalendar/core@7.0.0-rc.0':
-    resolution: {integrity: sha512-sYdQ+Pb7xMyVrWBVarynSEEssPjbdKBRhAgnIuDVK8QhetS/VY4d/PfkGH3341eYoJ2AyZirQ8hWE8s64cLmmg==}
-
-  '@fullcalendar/daygrid@7.0.0-rc.0':
-    resolution: {integrity: sha512-Nccd2AxCiMuE+G6eqzniehBGZy0LQqzf8KgfXSgfDrg6v4PDV13sqSo1db7rxVeyLVnb0KQX8pv2zcZ1Cwugag==}
-    peerDependencies:
-      '@fullcalendar/core': 7.0.0-rc.0
-
-  '@fullcalendar/interaction@7.0.0-rc.0':
-    resolution: {integrity: sha512-LmzG0NGGqEgkcpqVh+IH7Axolsj9rdchQaI1EI7SWNMgYUiq3JTkAnR6wTIAg2+ngjklWIZOddf7E3+8eKIU4Q==}
-    peerDependencies:
-      '@fullcalendar/core': 7.0.0-rc.0
-
-  '@fullcalendar/list@7.0.0-rc.0':
-    resolution: {integrity: sha512-UGWA3kLNktDlmbgc7Wf6PFCGUX26bADGp4OoZUAKHqltrtsvm2dPLtzbIDg5z3IgI3jsyVvljd21EoEEgfr8Yw==}
-    peerDependencies:
-      '@fullcalendar/core': 7.0.0-rc.0
-
-  '@fullcalendar/react@7.0.0-rc.0':
-    resolution: {integrity: sha512-vce0pHbRt0v2X8D3EmOhcIE/RJytBfrUz4U698CBX5ucnoMZNqqYG+gKL3/IrCO2fpWg3P4YfH1FgiSpTp/Mrw==}
-    peerDependencies:
-      '@fullcalendar/core': 7.0.0-rc.0
-      react: ^16.7.0 || ^17 || ^18 || ^19
-      react-dom: ^16.7.0 || ^17 || ^18 || ^19
-
-  '@fullcalendar/timegrid@7.0.0-rc.0':
-    resolution: {integrity: sha512-O7FKvs2bxY3FjWZqV6M2n3LiqO82+86gYMgGEAipNMIgApJEeiTEP0HfW6fgRjGmTyCnHFf+ZPuu0XFDpgBRhg==}
-    peerDependencies:
-      '@fullcalendar/core': 7.0.0-rc.0
 
   '@hookform/resolvers@5.1.1':
     resolution: {integrity: sha512-J/NVING3LMAEvexJkyTLjruSm7aOFx7QX21pzkiJfMoNG0wl5aFEjLTl7ay7IQb9EWY6AkrBy7tHL2Alijpdcg==}
@@ -2310,9 +2265,6 @@ packages:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
 
-  preact@10.23.2:
-    resolution: {integrity: sha512-kKYfePf9rzKnxOAKDpsWhg/ysrHPqT+yQ7UW4JjdnqjFIeNUnNcEJvhuA8fDenxAGWzUqtd51DfVg7xp/8T9NA==}
-
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
@@ -2827,33 +2779,6 @@ snapshots:
       react-dom: 19.1.0(react@19.1.0)
 
   '@floating-ui/utils@0.2.10': {}
-
-  '@fullcalendar/core@7.0.0-rc.0':
-    dependencies:
-      preact: 10.23.2
-
-  '@fullcalendar/daygrid@7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)':
-    dependencies:
-      '@fullcalendar/core': 7.0.0-rc.0
-
-  '@fullcalendar/interaction@7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)':
-    dependencies:
-      '@fullcalendar/core': 7.0.0-rc.0
-
-  '@fullcalendar/list@7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)':
-    dependencies:
-      '@fullcalendar/core': 7.0.0-rc.0
-
-  '@fullcalendar/react@7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
-    dependencies:
-      '@fullcalendar/core': 7.0.0-rc.0
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
-
-  '@fullcalendar/timegrid@7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)':
-    dependencies:
-      '@fullcalendar/core': 7.0.0-rc.0
-      '@fullcalendar/daygrid': 7.0.0-rc.0(@fullcalendar/core@7.0.0-rc.0)
 
   '@hookform/resolvers@5.1.1(react-hook-form@7.60.0(react@19.1.0))':
     dependencies:
@@ -4964,8 +4889,6 @@ snapshots:
       nanoid: 3.3.11
       picocolors: 1.1.1
       source-map-js: 1.2.1
-
-  preact@10.23.2: {}
 
   prelude-ls@1.2.1: {}
 

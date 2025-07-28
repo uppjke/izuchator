@@ -19,11 +19,10 @@ This is a Next.js 15 project with App Router using TypeScript. The project is de
 ## Dashboard Components
 
 ### Calendar & Planning
-- **FullCalendar 7 RC** with core plugins for calendar interface
-- **@fullcalendar/daygrid** for month view
-- **@fullcalendar/timegrid** for week/day views  
-- **@fullcalendar/list** for agenda/list view
-- **@fullcalendar/interaction** for drag-and-drop scheduling
+- **Custom Calendar Component** built with React and Tailwind CSS - no external calendar libraries
+- Simple week/day views for lesson scheduling
+- Native drag-and-drop with HTML5 API
+- Minimal, fast calendar implementation focused on lesson planning
 
 ### Data Visualization & Analytics
 - **Recharts 3** for charts, graphs, and statistical dashboards
