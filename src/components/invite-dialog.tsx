@@ -95,6 +95,7 @@ export function InviteDialog({ open, onOpenChange, type }: InviteDialogProps) {
             <div className="space-y-2">
               <Input 
                 value={inviteLink || ''} 
+                placeholder={inviteLink ? '' : 'Генерация ссылки...'}
                 className="text-xs"
                 onFocus={(e) => e.target.select()}
                 onChange={() => {}} // Предотвращаем изменения, но разрешаем навигацию курсором
