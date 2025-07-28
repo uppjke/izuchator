@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Sidebar } from './_components/sidebar'
 import { DashboardHeader } from './_components/header'
-import Dashboard from './page'
+import { DashboardTab } from './_components/tabs/dashboard-tab'
+import { PlannerTab } from './_components/tabs/planner-tab'
+import { StudentsTab } from './_components/tabs/students-tab'
+import { TeachersTab } from './_components/tabs/teachers-tab'
+import { MaterialsTab } from './_components/tabs/materials-tab'
 
 type TabType = 'dashboard' | 'planner' | 'students' | 'teachers' | 'materials'
 type UserRole = 'student' | 'teacher'
@@ -13,6 +17,15 @@ type UserRole = 'student' | 'teacher'
 // Константы стилей
 const CONTAINER_CLASSES = "bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-zinc-200/50 h-full overflow-auto"
 const MAIN_PADDING = "p-4 lg:p-6"
+
+// Компоненты табов
+const tabComponents = {
+  dashboard: DashboardTab,
+  planner: PlannerTab,
+  students: StudentsTab,
+  teachers: TeachersTab,
+  materials: MaterialsTab,
+} as const
 
 export default function DashboardLayout() {
   const { user, isAuthenticated, loading } = useAuth()
@@ -52,6 +65,17 @@ export default function DashboardLayout() {
   const closeSidebar = useCallback(() => {
     setSidebarOpen(false)
   }, [])
+
+  // Логика выбора активного компонента таба
+  const ActiveTabComponent = useMemo(() => {
+    // Валидация доступа к табам по роли
+    if ((activeTab === 'students' && userRole !== 'teacher') ||
+        (activeTab === 'teachers' && userRole !== 'student')) {
+      return tabComponents.dashboard
+    }
+    
+    return tabComponents[activeTab as keyof typeof tabComponents] || tabComponents.dashboard
+  }, [activeTab, userRole])
 
   // iOS Safari viewport height fix
   useEffect(() => {
@@ -122,7 +146,7 @@ export default function DashboardLayout() {
         <main className={`flex-1 overflow-hidden ${MAIN_PADDING}`}>
           <div className={CONTAINER_CLASSES}>
             <div className={`${MAIN_PADDING} h-full`}>
-              <Dashboard activeTab={activeTab} userRole={userRole} />
+              <ActiveTabComponent />
             </div>
           </div>
         </main>

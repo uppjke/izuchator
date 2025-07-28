@@ -36,12 +36,6 @@ const LOGO_CONFIG = {
 
 export function Header() {
   const pathname = usePathname();
-  
-  // Не показываем Header на страницах дашборда
-  if (pathname.startsWith('/dashboard')) {
-    return null;
-  }
-
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -61,6 +55,11 @@ export function Header() {
 
   const openLogin = useCallback(() => setLoginOpen(true), [])
   const openRegister = useCallback(() => setRegisterOpen(true), [])
+  
+  // Не показываем Header на страницах дашборда
+  if (pathname.startsWith('/dashboard')) {
+    return null;
+  }
   return (
     <header className="border-b border-white/20 bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 sticky top-0 z-50 shadow-sm shadow-black/5">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
