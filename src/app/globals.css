@@ -276,3 +276,67 @@
 [data-state="closed"][data-slot="dialog-overlay"] {
   animation: overlay-out 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* Sheet animations for smooth mobile menu experience */
+@keyframes sheet-in-from-right {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes sheet-out-to-right {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes sheet-in-from-left {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes sheet-out-to-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* Apply smooth animations to sheet elements */
+[data-state="open"][data-slot="sheet-content"] {
+  animation: sheet-in-from-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-state="closed"][data-slot="sheet-content"] {
+  animation: sheet-out-to-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-state="open"][data-slot="sheet-overlay"] {
+  animation: overlay-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-state="closed"][data-slot="sheet-overlay"] {
+  animation: overlay-out 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Custom sheet close button styling */
+[data-slot="sheet-content"] > button[data-state="open"] {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+[data-slot="sheet-content"] > button[data-state="open"]:hover {
+  opacity: 1;
+}
