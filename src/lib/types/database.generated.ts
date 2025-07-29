@@ -280,6 +280,42 @@ export type Database = {
           is_expired: boolean
         }[]
       }
+      get_student_teachers: {
+        Args: { student_user_id: string }
+        Returns: {
+          id: string
+          created_at: string
+          updated_at: string
+          teacher_id: string
+          student_id: string
+          status: string
+          invited_by: string
+          invite_message: string
+          rejected_reason: string
+          deleted_at: string
+          teacher_email: string
+          teacher_name: string
+          teacher_role: string
+        }[]
+      }
+      get_teacher_students: {
+        Args: { teacher_user_id: string }
+        Returns: {
+          id: string
+          created_at: string
+          updated_at: string
+          teacher_id: string
+          student_id: string
+          status: string
+          invited_by: string
+          invite_message: string
+          rejected_reason: string
+          deleted_at: string
+          student_email: string
+          student_name: string
+          student_role: string
+        }[]
+      }
       use_invite_link: {
         Args: { p_invite_code: string }
         Returns: Json

@@ -26,6 +26,7 @@ import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
 import { useAuth } from '@/lib/auth-context';
 import { Icon } from '@/components/ui/icon'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { iconVariants } from '@/lib/icon-variants';
 
 const LOGO_CONFIG = {
@@ -87,9 +88,14 @@ export function Header() {
                   variant="ghost"
                   className="flex items-center gap-2 h-10 px-3 active:scale-100"
                 >
-                  <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-white text-sm font-medium">
-                    {user?.name?.[0]?.toUpperCase()}
-                  </div>
+                  <UserAvatar 
+                    user={{
+                      name: user?.name,
+                      email: user?.email,
+                      avatar_url: null // Пока null, потом добавим логику
+                    }}
+                    size="sm"
+                  />
                   <span className="text-sm font-medium">Привет, {user?.name}!</span>
                   <Icon 
                     icon={ChevronDown}
@@ -185,9 +191,14 @@ export function Header() {
               ) : isAuthenticated ? (
                 <div className="mt-6 p-4 bg-white/50 rounded-xl border border-white/20">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center text-white text-base font-medium">
-                      {user?.name?.[0]?.toUpperCase()}
-                    </div>
+                    <UserAvatar 
+                      user={{
+                        name: user?.name,
+                        email: user?.email,
+                        avatar_url: null // Пока null, потом добавим логику
+                      }}
+                      size="md"
+                    />
                     <div className="flex-1 text-left">
                       <p className="font-medium text-sm text-zinc-900">{user?.name}</p>
                       <p className="text-xs text-zinc-500">{user?.email}</p>

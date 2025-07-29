@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { iconVariants } from '@/lib/icon-variants'
 
 // Константы стилей
@@ -107,9 +108,14 @@ export function Sidebar({ isOpen = true, onClose, userRole = 'student', user, ac
           {/* Profile card */}
           <div className="bg-zinc-50/80 rounded-xl border border-zinc-200/50 p-3 lg:p-4 mb-4 lg:mb-6 mx-3 lg:mx-4">
             <div className="flex items-center gap-2 lg:gap-3">
-              <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-zinc-900 flex items-center justify-center text-white text-sm lg:text-base font-medium flex-shrink-0">
-                {user?.name?.[0]?.toUpperCase() || 'У'}
-              </div>
+              <UserAvatar 
+                user={{
+                  name: user?.name,
+                  email: user?.email,
+                  avatar_url: null // Пока null, потом добавим логику
+                }}
+                size="md"
+              />
               <div className="flex-1 text-left min-w-0">
                 <p className="font-medium text-xs lg:text-sm text-zinc-900 truncate">{user?.name || 'Пользователь'}</p>
                 <p className="text-xs text-zinc-500 truncate">{user?.email || 'email@example.com'}</p>

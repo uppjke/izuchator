@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Trash2 } from 'lucide-react'
 import { Icon } from '@/components/ui/icon'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { InviteDialog } from '@/components/invite-dialog'
 import { getTeacherStudents, removeTeacherStudentRelation } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
@@ -58,15 +59,6 @@ export function StudentsTab() {
   const getDisplayName = (student: StudentRelation['student']) => {
     if (!student) return 'Неизвестный ученик'
     return student.full_name || 'Ученик'
-  }
-
-  const getInitials = (student: StudentRelation['student']) => {
-    if (!student) return '?'
-    const name = student.full_name
-    if (name && name !== student.email?.split('@')[0]) {
-      return name.charAt(0).toUpperCase()
-    }
-    return student.email?.charAt(0).toUpperCase() || 'У'
   }
 
   useEffect(() => {
@@ -137,10 +129,15 @@ export function StudentsTab() {
               key={relation.id}
               className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200"
             >
-              {/* Аватар с инициалами */}
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-500 rounded-full text-white font-medium text-lg">
-                {getInitials(relation.student)}
-              </div>
+              {/* Аватар */}
+              <UserAvatar 
+                user={{
+                  name: relation.student?.full_name,
+                  email: relation.student?.email,
+                  avatar_url: null // Пока null, потом добавим логику
+                }}
+                size="md"
+              />
               
               {/* Информация о пользователе */}
               <div className="flex-1">

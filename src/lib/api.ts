@@ -19,42 +19,40 @@ type TeacherStudentRelation = Database['public']['Tables']['teacher_student_rela
 export async function getTeacherStudents(teacherId: string): Promise<TeacherStudentRelation[]> {
   const supabase = createSupabaseBrowserClient()
   
-  // Получаем связи без JOIN
-  const { data: relations, error } = await supabase
-    .from('teacher_student_relations')
-    .select('*')
-    .eq('teacher_id', teacherId)
-    .eq('status', 'active')
-    .is('deleted_at', null)
+  // Используем RPC функцию для получения данных с именами
+  const { data, error } = await supabase
+    .rpc('get_teacher_students', {
+      teacher_user_id: teacherId
+    })
   
   if (error) {
     console.error('Error fetching teacher students:', error)
     return []
   }
 
-  if (!relations || relations.length === 0) {
+  if (!data || data.length === 0) {
     return []
   }
 
-  // Получаем данные пользователей из auth.users
-  const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers()
-  
-  if (usersError) {
-    console.error('Error fetching users:', usersError)
-    return relations.map(rel => ({ ...rel, student: null })) as TeacherStudentRelation[]
-  }
-
-  // Объединяем данные
-  const result = relations.map(relation => {
-    const student = users?.find(u => u.id === relation.student_id)
+  // Преобразуем данные в нужный формат
+  const result = data.map(row => {
     return {
-      ...relation,
-      student: student ? {
-        id: student.id,
-        email: student.email || '',
-        full_name: student.user_metadata?.display_name || student.email?.split('@')[0] || 'Ученик',
-        role: student.user_metadata?.role || 'student'
-      } : null
+      id: row.id,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      teacher_id: row.teacher_id,
+      student_id: row.student_id,
+      status: row.status,
+      invited_by: row.invited_by,
+      invite_message: row.invite_message,
+      rejected_reason: row.rejected_reason,
+      deleted_at: row.deleted_at,
+      student: {
+        id: row.student_id,
+        email: row.student_email || '',
+        full_name: row.student_name || 'Студент',
+        role: row.student_role || 'student'
+      }
     }
   })
 
@@ -65,42 +63,40 @@ export async function getTeacherStudents(teacherId: string): Promise<TeacherStud
 export async function getStudentTeachers(studentId: string): Promise<TeacherStudentRelation[]> {
   const supabase = createSupabaseBrowserClient()
   
-  // Получаем связи без JOIN
-  const { data: relations, error } = await supabase
-    .from('teacher_student_relations')
-    .select('*')
-    .eq('student_id', studentId)
-    .eq('status', 'active')
-    .is('deleted_at', null)
+  // Используем RPC функцию для получения данных с именами
+  const { data, error } = await supabase
+    .rpc('get_student_teachers', {
+      student_user_id: studentId
+    })
   
   if (error) {
     console.error('Error fetching student teachers:', error)
     return []
   }
 
-  if (!relations || relations.length === 0) {
+  if (!data || data.length === 0) {
     return []
   }
 
-  // Получаем данные пользователей из auth.users
-  const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers()
-  
-  if (usersError) {
-    console.error('Error fetching users:', usersError)
-    return relations.map(rel => ({ ...rel, teacher: null })) as TeacherStudentRelation[]
-  }
-
-  // Объединяем данные
-  const result = relations.map(relation => {
-    const teacher = users?.find(u => u.id === relation.teacher_id)
+  // Преобразуем данные в нужный формат
+  const result = data.map(row => {
     return {
-      ...relation,
-      teacher: teacher ? {
-        id: teacher.id,
-        email: teacher.email || '',
-        full_name: teacher.user_metadata?.display_name || teacher.email?.split('@')[0] || 'Преподаватель',
-        role: teacher.user_metadata?.role || 'teacher'
-      } : null
+      id: row.id,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      teacher_id: row.teacher_id,
+      student_id: row.student_id,
+      status: row.status,
+      invited_by: row.invited_by,
+      invite_message: row.invite_message,
+      rejected_reason: row.rejected_reason,
+      deleted_at: row.deleted_at,
+      teacher: {
+        id: row.teacher_id,
+        email: row.teacher_email || '',
+        full_name: row.teacher_name || 'Преподаватель',
+        role: row.teacher_role || 'teacher'
+      }
     }
   })
 
