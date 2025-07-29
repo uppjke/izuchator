@@ -5,24 +5,6 @@ import type { Database } from './types/database.generated'
 type UserProfile = Database['public']['Tables']['user_profiles']['Row']
 type TeacherStudentRelation = Database['public']['Tables']['teacher_student_relations']['Row']
 
-// Типы для RPC ответов
-interface InviteInfoResponse {
-  success: boolean
-  message?: string
-  invite?: {
-    invite_type: string
-    message?: string
-    creator_name: string
-    expires_at?: string
-  }
-}
-
-interface UseInviteLinkResponse {
-  success: boolean
-  message: string
-  relation_id?: string
-}
-
 // Получить профиль пользователя
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   const supabase = createSupabaseBrowserClient()
@@ -236,5 +218,34 @@ export async function acceptInviteLink(inviteCode: string): Promise<{
   return {
     success: result.success || false,
     message: result.message || 'Неизвестная ошибка'
+  }
+}
+
+// Удалить связь между преподавателем и студентом
+export async function removeTeacherStudentRelation(relationId: string): Promise<{
+  success: boolean
+  message: string
+}> {
+  const supabase = createSupabaseBrowserClient()
+  
+  const { error } = await supabase
+    .from('teacher_student_relations')
+    .update({ 
+      status: 'inactive',
+      deleted_at: new Date().toISOString()
+    })
+    .eq('id', relationId)
+  
+  if (error) {
+    console.error('Error removing relation:', error)
+    return { 
+      success: false, 
+      message: 'Ошибка при удалении связи' 
+    }
+  }
+  
+  return {
+    success: true,
+    message: 'Связь успешно удалена'
   }
 }

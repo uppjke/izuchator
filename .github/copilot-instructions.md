@@ -102,6 +102,29 @@ The authentication uses Supabase's magic link OTP method:
 - Leverage React 19 features including Server Components
 - Use TanStack Query 5 for efficient data fetching and caching
 
+### Icon Usage Guidelines
+
+**ALWAYS use the unified Icon component instead of direct Lucide icons:**
+
+```tsx
+// ✅ CORRECT - Use unified Icon component
+import { Icon } from '@/components/ui/icon'
+import { Plus, Mail, Trash2 } from 'lucide-react'
+
+<Icon icon={Plus} size="sm" />
+<Icon icon={Mail} size="md" />
+<Icon icon={Trash2} size="lg" />
+```
+
+```tsx
+// ❌ INCORRECT - Don't use direct Lucide icons with className
+<Plus className="w-4 h-4" />
+<Mail className="!w-4 !h-4" />
+<Trash2 className="w-6 h-6" />
+```
+
+**Icon sizes available:** `xs`, `sm`, `md`, `lg`, `xl` - use these instead of manual className sizing.
+
 ---
 
 ## Apple Human Interface Guidelines

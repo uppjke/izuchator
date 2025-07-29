@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, User, Mail } from 'lucide-react'
+import { Plus, Mail, Trash2 } from 'lucide-react'
+import { Icon } from '@/components/ui/icon'
 import { InviteDialog } from '@/components/invite-dialog'
-import { getTeacherStudents } from '@/lib/api'
+import { getTeacherStudents, removeTeacherStudentRelation } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
+import { showCustomToast } from '@/lib/custom-toast'
 
 type StudentRelation = {
   id: string
@@ -13,6 +15,7 @@ type StudentRelation = {
     id: string
     email: string
     display_name?: string
+    name?: string
   } | null
   status: string
   created_at: string
@@ -22,10 +25,48 @@ export function StudentsTab() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [students, setStudents] = useState<StudentRelation[]>([])
   const [loading, setLoading] = useState(true)
+  const [removingIds, setRemovingIds] = useState<Set<string>>(new Set())
   const { user } = useAuth()
 
   const handleInvite = () => {
     setInviteDialogOpen(true)
+  }
+
+  const handleRemoveStudent = async (relationId: string) => {
+    setRemovingIds(prev => new Set(prev).add(relationId))
+    
+    try {
+      const result = await removeTeacherStudentRelation(relationId)
+      
+      if (result.success) {
+        setStudents(prev => prev.filter(s => s.id !== relationId))
+        showCustomToast('Ученик успешно удален', '✅')
+      } else {
+        showCustomToast(result.message, '❌')
+      }
+    } catch {
+      showCustomToast('Ошибка при удалении ученика', '❌')
+    } finally {
+      setRemovingIds(prev => {
+        const next = new Set(prev)
+        next.delete(relationId)
+        return next
+      })
+    }
+  }
+
+  const getDisplayName = (student: StudentRelation['student']) => {
+    if (!student) return 'Неизвестный ученик'
+    return student.display_name || student.name || 'Ученик'
+  }
+
+  const getInitials = (student: StudentRelation['student']) => {
+    if (!student) return '?'
+    const name = student.display_name || student.name
+    if (name) {
+      return name.charAt(0).toUpperCase()
+    }
+    return student.email.charAt(0).toUpperCase()
   }
 
   useEffect(() => {
@@ -34,7 +75,7 @@ export function StudentsTab() {
       
       try {
         const data = await getTeacherStudents(user.id)
-        setStudents(data as any[]) // API возвращает данные с JOIN
+        setStudents(data as unknown as StudentRelation[]) // API возвращает данные с JOIN
       } catch (error) {
         console.error('Error loading students:', error)
       } finally {
@@ -50,7 +91,7 @@ export function StudentsTab() {
       <div className="relative">
         <div className="absolute top-0 right-0">
           <Button onClick={handleInvite} className="flex items-center gap-2">
-            <Plus className="!w-4 !h-4" />
+            <Icon icon={Plus} size="sm" />
             Пригласить
           </Button>
         </div>
@@ -65,10 +106,17 @@ export function StudentsTab() {
 
   return (
     <div className="relative">
+      {/* Счетчик в левом верхнем углу */}
+      <div className="absolute top-0 left-0">
+        <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+          Учеников: {students.length}
+        </div>
+      </div>
+
       {/* Кнопка пригласить в правом углу */}
       <div className="absolute top-0 right-0">
         <Button onClick={handleInvite} className="flex items-center gap-2">
-          <Plus className="!w-4 !h-4" />
+          <Icon icon={Plus} size="sm" />
           Пригласить
         </Button>
       </div>
@@ -87,23 +135,41 @@ export function StudentsTab() {
           {students.map((relation) => (
             <div
               key={relation.id}
-              className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border"
+              className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200 hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
-                <User className="w-5 h-5 text-blue-600" />
+              {/* Аватар с инициалами */}
+              <div className="flex items-center justify-center w-12 h-12 bg-blue-500 rounded-full text-white font-medium text-lg">
+                {getInitials(relation.student)}
               </div>
+              
+              {/* Информация о пользователе */}
               <div className="flex-1">
-                <h3 className="font-medium text-gray-900">
-                  {relation.student?.display_name || 'Студент'}
+                <h3 className="font-medium text-gray-900 text-lg">
+                  {getDisplayName(relation.student)}
                 </h3>
-                <div className="flex items-center gap-1 text-sm text-gray-500">
-                  <Mail className="w-3 h-3" />
+                <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
+                  <Icon icon={Mail} size="sm" />
                   {relation.student?.email}
                 </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  Добавлен {new Date(relation.created_at).toLocaleDateString('ru-RU')}
+                </div>
               </div>
-              <div className="text-xs text-gray-400">
-                Добавлен {new Date(relation.created_at).toLocaleDateString('ru-RU')}
-              </div>
+              
+              {/* Кнопка удаления */}
+              <Button
+                variant="outline"
+                size="icon"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={() => handleRemoveStudent(relation.id)}
+                disabled={removingIds.has(relation.id)}
+              >
+                {removingIds.has(relation.id) ? (
+                  <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Icon icon={Trash2} size="sm" />
+                )}
+              </Button>
             </div>
           ))}
         </div>
