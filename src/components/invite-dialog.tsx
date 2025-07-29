@@ -66,15 +66,41 @@ export function InviteDialog({ open, onOpenChange, type }: InviteDialogProps) {
     }
   }, [open])
 
-  const handleCopyLink = () => {
-    if (inviteLink) {
-      navigator.clipboard.writeText(inviteLink)
-      setCopied(true)
+  const handleCopyLink = async () => {
+    if (!inviteLink) return
+    
+    // Если мы в безопасном контексте, используем современный API
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(inviteLink)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+        return
+      } catch (err) {
+        console.error('Modern clipboard failed:', err)
+      }
+    }
+    
+    // В небезопасном контексте просто выделим текст в input'е
+    const inputElement = document.querySelector('input[value*="/invite/"]') as HTMLInputElement
+    if (inputElement) {
+      inputElement.focus()
+      inputElement.select()
       
-      // Возвращаем текст кнопки обратно через 2 секунды
-      setTimeout(() => {
-        setCopied(false)
-      }, 2000)
+      // Попробуем execCommand как последнюю попытку
+      try {
+        const successful = document.execCommand('copy')
+        if (successful) {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        }
+      } catch (err) {
+        console.error('execCommand failed:', err)
+      }
+      
+      // В любом случае показываем что текст выделен
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     }
   }
 
@@ -106,7 +132,7 @@ export function InviteDialog({ open, onOpenChange, type }: InviteDialogProps) {
                 className="w-full"
               >
                 <Icon icon={copied ? Check : Copy} size="sm" className="mr-2" />
-                {copied ? 'Скопировано' : 'Скопировать ссылку'}
+                {copied ? 'Скопировано' : (!window.isSecureContext ? 'Выделить ссылку' : 'Скопировать ссылку')}
               </Button>
             </div>
           </div>
