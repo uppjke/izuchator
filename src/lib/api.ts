@@ -1,90 +1,28 @@
-// Простые API функции для работы с профилями и связями
+// Простые API функции для работы с связями
 import { createSupabaseBrowserClient } from './supabase'
 import type { Database } from './types/database.generated'
 
-type UserProfile = Database['public']['Tables']['user_profiles']['Row']
-type TeacherStudentRelation = Database['public']['Tables']['teacher_student_relations']['Row']
-
-// Получить профиль пользователя
-export async function getUserProfile(userId: string): Promise<UserProfile | null> {
-  const supabase = createSupabaseBrowserClient()
-  
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', userId)
-    .is('deleted_at', null)
-    .maybeSingle() // Используем maybeSingle вместо single для обработки случая отсутствия записи
-  
-  if (error) {
-    console.error('Error fetching user profile:', error)
-    return null
-  }
-  
-  return data
-}
-
-// Убедиться, что профиль пользователя существует
-export async function ensureUserProfile(userId: string): Promise<UserProfile | null> {
-  const supabase = createSupabaseBrowserClient()
-  
-  // Сначала пытаемся получить существующий профиль
-  const existingProfile = await getUserProfile(userId)
-  if (existingProfile) {
-    return existingProfile
-  }
-
-  // Если профиль не существует, получаем данные пользователя из auth
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user || user.id !== userId) {
-    console.error('User not authenticated or ID mismatch')
-    return null
-  }
-
-  // Создаем новый профиль
-  const userName = user.user_metadata?.full_name || 
-                  user.email?.split('@')[0] || 
-                  'Пользователь'
-  
-  return await createUserProfile({
-    id: userId,
-    full_name: userName,
-    role: 'teacher' // По умолчанию роль преподавателя
-  })
-}
-
-// Создать профиль пользователя (при первом входе)
-export async function createUserProfile(profile: {
+// Тип для пользователя из auth.users
+type AuthUser = {
   id: string
+  email: string
   full_name: string
-  role: 'teacher' | 'student'
-}): Promise<UserProfile | null> {
-  const supabase = createSupabaseBrowserClient()
-  
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .insert(profile)
-    .select()
-    .single()
-  
-  if (error) {
-    console.error('Error creating user profile:', error)
-    return null
-  }
-  
-  return data
+  role: string
+}
+
+type TeacherStudentRelation = Database['public']['Tables']['teacher_student_relations']['Row'] & {
+  student?: AuthUser | null
+  teacher?: AuthUser | null
 }
 
 // Получить связи преподавателя со студентами
 export async function getTeacherStudents(teacherId: string): Promise<TeacherStudentRelation[]> {
   const supabase = createSupabaseBrowserClient()
   
-  const { data, error } = await supabase
+  // Получаем связи без JOIN
+  const { data: relations, error } = await supabase
     .from('teacher_student_relations')
-    .select(`
-      *,
-      student:user_profiles!student_id(*)
-    `)
+    .select('*')
     .eq('teacher_id', teacherId)
     .eq('status', 'active')
     .is('deleted_at', null)
@@ -93,20 +31,44 @@ export async function getTeacherStudents(teacherId: string): Promise<TeacherStud
     console.error('Error fetching teacher students:', error)
     return []
   }
+
+  if (!relations || relations.length === 0) {
+    return []
+  }
+
+  // Получаем данные пользователей из auth.users
+  const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers()
   
-  return data || []
+  if (usersError) {
+    console.error('Error fetching users:', usersError)
+    return relations.map(rel => ({ ...rel, student: null })) as TeacherStudentRelation[]
+  }
+
+  // Объединяем данные
+  const result = relations.map(relation => {
+    const student = users?.find(u => u.id === relation.student_id)
+    return {
+      ...relation,
+      student: student ? {
+        id: student.id,
+        email: student.email || '',
+        full_name: student.user_metadata?.display_name || student.email?.split('@')[0] || 'Ученик',
+        role: student.user_metadata?.role || 'student'
+      } : null
+    }
+  })
+
+  return result as TeacherStudentRelation[]
 }
 
 // Получить связи студента с преподавателями
 export async function getStudentTeachers(studentId: string): Promise<TeacherStudentRelation[]> {
   const supabase = createSupabaseBrowserClient()
   
-  const { data, error } = await supabase
+  // Получаем связи без JOIN
+  const { data: relations, error } = await supabase
     .from('teacher_student_relations')
-    .select(`
-      *,
-      teacher:user_profiles!teacher_id(*)
-    `)
+    .select('*')
     .eq('student_id', studentId)
     .eq('status', 'active')
     .is('deleted_at', null)
@@ -115,8 +77,34 @@ export async function getStudentTeachers(studentId: string): Promise<TeacherStud
     console.error('Error fetching student teachers:', error)
     return []
   }
+
+  if (!relations || relations.length === 0) {
+    return []
+  }
+
+  // Получаем данные пользователей из auth.users
+  const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers()
   
-  return data || []
+  if (usersError) {
+    console.error('Error fetching users:', usersError)
+    return relations.map(rel => ({ ...rel, teacher: null })) as TeacherStudentRelation[]
+  }
+
+  // Объединяем данные
+  const result = relations.map(relation => {
+    const teacher = users?.find(u => u.id === relation.teacher_id)
+    return {
+      ...relation,
+      teacher: teacher ? {
+        id: teacher.id,
+        email: teacher.email || '',
+        full_name: teacher.user_metadata?.display_name || teacher.email?.split('@')[0] || 'Преподаватель',
+        role: teacher.user_metadata?.role || 'teacher'
+      } : null
+    }
+  })
+
+  return result as TeacherStudentRelation[]
 }
 
 // Создать ссылку-приглашение через RPC
@@ -125,13 +113,6 @@ export async function createInviteLink(data: {
   type: 'teacher' | 'student'
 }): Promise<string | null> {
   const supabase = createSupabaseBrowserClient()
-  
-  // Убеждаемся, что профиль пользователя существует
-  const userProfile = await ensureUserProfile(data.createdBy)
-  if (!userProfile) {
-    console.error('Failed to ensure user profile exists')
-    return null
-  }
   
   const inviteType = data.type === 'student' ? 'teacher_to_student' : 'student_to_teacher'
   

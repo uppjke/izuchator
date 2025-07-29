@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          operationName?: string
-          query?: string
-          variables?: Json
-          extensions?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       invite_links: {
@@ -76,15 +51,7 @@ export type Database = {
           message?: string | null
           used_count?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "invite_links_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       invite_uses: {
         Row: {
@@ -120,13 +87,6 @@ export type Database = {
             columns: ["invite_link_id"]
             isOneToOne: false
             referencedRelation: "invite_links"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invite_uses_used_by_fkey"
-            columns: ["used_by"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -284,79 +244,6 @@ export type Database = {
           status?: string
           student_id?: string
           teacher_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "teacher_student_relations_invited_by_fkey"
-            columns: ["invited_by"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "teacher_student_relations_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "teacher_student_relations_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_profiles: {
-        Row: {
-          avatar_url: string | null
-          bio: string | null
-          created_at: string
-          deleted_at: string | null
-          full_name: string
-          id: string
-          notification_email: boolean | null
-          notification_push: boolean | null
-          phone: string | null
-          role: string
-          subjects: string[] | null
-          telegram: string | null
-          timezone: string | null
-          updated_at: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string
-          deleted_at?: string | null
-          full_name: string
-          id: string
-          notification_email?: boolean | null
-          notification_push?: boolean | null
-          phone?: string | null
-          role?: string
-          subjects?: string[] | null
-          telegram?: string | null
-          timezone?: string | null
-          updated_at?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string
-          deleted_at?: string | null
-          full_name?: string
-          id?: string
-          notification_email?: boolean | null
-          notification_push?: boolean | null
-          phone?: string | null
-          role?: string
-          subjects?: string[] | null
-          telegram?: string | null
-          timezone?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -525,9 +412,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

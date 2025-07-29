@@ -14,8 +14,8 @@ type StudentRelation = {
   student: {
     id: string
     email: string
-    display_name?: string
-    name?: string
+    full_name: string
+    role: string
   } | null
   status: string
   created_at: string
@@ -57,16 +57,16 @@ export function StudentsTab() {
 
   const getDisplayName = (student: StudentRelation['student']) => {
     if (!student) return 'Неизвестный ученик'
-    return student.display_name || student.name || 'Ученик'
+    return student.full_name || 'Ученик'
   }
 
   const getInitials = (student: StudentRelation['student']) => {
     if (!student) return '?'
-    const name = student.display_name || student.name
-    if (name) {
+    const name = student.full_name
+    if (name && name !== student.email?.split('@')[0]) {
       return name.charAt(0).toUpperCase()
     }
-    return student.email.charAt(0).toUpperCase()
+    return student.email?.charAt(0).toUpperCase() || 'У'
   }
 
   useEffect(() => {

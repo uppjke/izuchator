@@ -14,8 +14,8 @@ type TeacherRelation = {
   teacher: {
     id: string
     email: string
-    display_name?: string
-    name?: string
+    full_name: string
+    role: string
   } | null
   status: string
   created_at: string
@@ -57,16 +57,16 @@ export function TeachersTab() {
 
   const getDisplayName = (teacher: TeacherRelation['teacher']) => {
     if (!teacher) return 'Неизвестный преподаватель'
-    return teacher.display_name || teacher.name || 'Преподаватель'
+    return teacher.full_name || 'Преподаватель'
   }
 
   const getInitials = (teacher: TeacherRelation['teacher']) => {
     if (!teacher) return '?'
-    const name = teacher.display_name || teacher.name
-    if (name) {
+    const name = teacher.full_name
+    if (name && name !== teacher.email?.split('@')[0]) {
       return name.charAt(0).toUpperCase()
     }
-    return teacher.email.charAt(0).toUpperCase()
+    return teacher.email?.charAt(0).toUpperCase() || 'П'
   }
 
   useEffect(() => {
@@ -91,7 +91,7 @@ export function TeachersTab() {
       <div className="relative">
         <div className="absolute top-0 right-0">
           <Button onClick={handleInvite} className="flex items-center gap-2">
-            <Plus className="!w-4 !h-4" />
+            <Icon icon={Plus} size="sm" />
             Пригласить
           </Button>
         </div>
