@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, Mail, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Icon } from '@/components/ui/icon'
 import { InviteDialog } from '@/components/invite-dialog'
 import { getStudentTeachers, removeTeacherStudentRelation } from '@/lib/api'
@@ -108,7 +108,7 @@ export function TeachersTab() {
     <div className="relative">
       {/* Счетчик в левом верхнем углу */}
       <div className="absolute top-0 left-0">
-        <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+        <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
           Преподавателей: {teachers.length}
         </div>
       </div>
@@ -135,7 +135,7 @@ export function TeachersTab() {
           {teachers.map((relation) => (
             <div
               key={relation.id}
-              className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200 hover:shadow-md transition-shadow"
+              className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200"
             >
               {/* Аватар с инициалами */}
               <div className="flex items-center justify-center w-12 h-12 bg-green-500 rounded-full text-white font-medium text-lg">
@@ -147,13 +147,9 @@ export function TeachersTab() {
                 <h3 className="font-medium text-gray-900 text-lg">
                   {getDisplayName(relation.teacher)}
                 </h3>
-                <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
-                  <Icon icon={Mail} size="sm" />
+                <p className="text-sm text-gray-500 mt-1">
                   {relation.teacher?.email}
-                </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  Добавлен {new Date(relation.created_at).toLocaleDateString('ru-RU')}
-                </div>
+                </p>
               </div>
               
               {/* Кнопка удаления */}
