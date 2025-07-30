@@ -232,10 +232,13 @@ export async function updateCustomNameInRelation(relationId: string, customName:
     ? 'teacher_custom_name_for_student' 
     : 'student_custom_name_for_teacher'
   
+  // Явно преобразуем пустую строку в null
+  const nameValue = customName.trim() === '' ? null : customName.trim()
+  
   const { error } = await supabase
     .from('teacher_student_relations')
     .update({ 
-      [updateField]: customName || null,
+      [updateField]: nameValue,
       updated_at: new Date().toISOString()
     })
     .eq('id', relationId)
@@ -250,6 +253,6 @@ export async function updateCustomNameInRelation(relationId: string, customName:
   
   return {
     success: true,
-    message: 'Имя успешно обновлено'
+    message: nameValue === null ? 'Имя сброшено' : 'Имя успешно обновлено'
   }
 }

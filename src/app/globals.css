@@ -340,3 +340,25 @@
 [data-slot="sheet-content"] > button[data-state="open"]:hover {
   opacity: 1;
 }
+
+/* Toast center positioning - strict horizontal centering */
+.toast-center {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Toast container centering for Sonner */
+[data-sonner-toaster] {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  left: 0 !important;
+  right: 0 !important;
+  margin: 0 auto !important;
+}

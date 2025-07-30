@@ -120,7 +120,7 @@ export function StudentsTab() {
     setUpdatingNameId(relationId)
     
     try {
-      // Удаляем кастомное имя, передавая пустую строку (будет преобразована в null в API)
+      // Передаем null напрямую вместо пустой строки
       const result = await updateCustomNameInRelation(relationId, '', true)
       
       if (result.success) {
@@ -133,7 +133,7 @@ export function StudentsTab() {
       } else {
         showCustomToast(result.message, '❌')
       }
-    } catch {
+    } catch (error) {
       showCustomToast('Ошибка при возврате имени', '❌')
     } finally {
       setEditingNameId(null)
