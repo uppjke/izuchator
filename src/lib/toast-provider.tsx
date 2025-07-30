@@ -10,6 +10,7 @@ export function ToastProvider() {
       richColors
       closeButton={false}
       duration={2000}
+      containerAriaLabel="Уведомления"
       toastOptions={{
         style: {
           background: 'white',
@@ -21,23 +22,19 @@ export function ToastProvider() {
           fontWeight: '500',
           minWidth: 'auto',
           width: 'fit-content',
-          maxWidth: 'min(320px, 80vw)', // Адаптивная ширина: до 320px на десктопе, до 80% экрана на мобильных
-          whiteSpace: 'nowrap', // Предотвращаем перенос текста
+          maxWidth: 'min(320px, 80vw)',
+          whiteSpace: 'nowrap',
           overflow: 'hidden',
-          textOverflow: 'ellipsis', // Добавляем многоточие если текст все же не помещается
+          textOverflow: 'ellipsis',
           boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
           zIndex: '2147483647',
-          // Строгое центрирование
-          position: 'fixed',
+          // Абсолютное центрирование каждого тоста
+          position: 'relative',
           left: '50%',
           transform: 'translateX(-50%)',
-          marginLeft: '0',
-          marginRight: '0',
+          margin: '0 auto',
         },
-        className: 'toast-center',
-      }}
-      style={{
-        zIndex: 2147483647,
+        className: 'toast-center-item',
       }}
     />
   )

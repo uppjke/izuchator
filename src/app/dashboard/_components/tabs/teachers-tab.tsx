@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -34,6 +34,7 @@ export function TeachersTab() {
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
   const [updatingNameId, setUpdatingNameId] = useState<string | null>(null)
+  const editingRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
 
   const handleInvite = () => {
@@ -142,6 +143,23 @@ export function TeachersTab() {
     }
   }
 
+  // Отслеживание кликов вне области редактирования
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (editingNameId && editingRef.current && !editingRef.current.contains(event.target as Node)) {
+        handleCancelRename()
+      }
+    }
+
+    if (editingNameId) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [editingNameId])
+
   useEffect(() => {
     const loadTeachers = async () => {
       if (!user?.id) return
@@ -224,7 +242,7 @@ export function TeachersTab() {
               <div className="flex-1">
                 {editingNameId === relation.id ? (
                   /* Режим редактирования */
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div ref={editingRef} className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <Input
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value)}

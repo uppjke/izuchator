@@ -352,13 +352,30 @@
 
 /* Toast container centering for Sonner */
 [data-sonner-toaster] {
+  position: fixed !important;
   left: 50% !important;
+  top: 20px !important;
   transform: translateX(-50%) !important;
   margin: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  pointer-events: none !important;
 }
 
 [data-sonner-toaster] [data-sonner-toast] {
+  position: relative !important;
   left: 0 !important;
   right: 0 !important;
   margin: 0 auto !important;
+  transform: none !important;
+  pointer-events: auto !important;
+}
+
+/* Дополнительное центрирование для классов */
+.toast-center-item {
+  margin: 0 auto !important;
+  text-align: center !important;
 }
