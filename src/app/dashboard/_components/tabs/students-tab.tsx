@@ -127,7 +127,7 @@ export function StudentsTab() {
           {students.map((relation) => (
             <div
               key={relation.id}
-              className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200"
+              className="flex items-center gap-4 p-4 bg-zinc-50/80 rounded-xl border border-zinc-200/50"
             >
               {/* Аватар */}
               <UserAvatar 
