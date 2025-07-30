@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Trash2, Edit3, Check, X } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Plus, Trash2, Edit3, Check, X, RotateCcw } from 'lucide-react'
 import { Icon } from '@/components/ui/icon'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { InviteDialog } from '@/components/invite-dialog'
@@ -33,7 +34,6 @@ export function StudentsTab() {
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
   const [updatingNameId, setUpdatingNameId] = useState<string | null>(null)
-  const [showingOriginalId, setShowingOriginalId] = useState<string | null>(null)
   const { user } = useAuth()
 
   const handleInvite = () => {
@@ -66,12 +66,7 @@ export function StudentsTab() {
   const getDisplayName = (student: StudentRelation['student'], relation: StudentRelation) => {
     if (!student) return 'Неизвестный ученик'
     
-    // Если показываем оригинальное имя
-    if (showingOriginalId === relation.id) {
-      return student.full_name || 'Ученик'
-    }
-    
-    // Если есть пользовательское имя от преподавателя
+    // Если есть пользовательское имя от преподавателя, используем его
     if (relation.teacher_custom_name_for_student) {
       return relation.teacher_custom_name_for_student
     }
@@ -121,9 +116,29 @@ export function StudentsTab() {
     setEditingName('')
   }
 
-  const handleNameClick = (relationId: string) => {
-    if (hasCustomName(students.find(s => s.id === relationId)!)) {
-      setShowingOriginalId(showingOriginalId === relationId ? null : relationId)
+  const handleResetToOriginal = async (relationId: string, originalName: string) => {
+    setUpdatingNameId(relationId)
+    
+    try {
+      // Удаляем кастомное имя, передавая пустую строку (будет преобразована в null в API)
+      const result = await updateCustomNameInRelation(relationId, '', true)
+      
+      if (result.success) {
+        setStudents(prev => prev.map(s => 
+          s.id === relationId 
+            ? { ...s, teacher_custom_name_for_student: null }
+            : s
+        ))
+        showCustomToast('Возвращено оригинальное имя', '✅')
+      } else {
+        showCustomToast(result.message, '❌')
+      }
+    } catch {
+      showCustomToast('Ошибка при возврате имени', '❌')
+    } finally {
+      setEditingNameId(null)
+      setUpdatingNameId(null)
+      setEditingName('')
     }
   }
 
@@ -209,56 +224,84 @@ export function StudentsTab() {
               <div className="flex-1">
                 {editingNameId === relation.id ? (
                   /* Режим редактирования */
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <Input
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value)}
-                      className="text-lg font-medium"
+                      className="text-lg font-medium w-full sm:w-48 md:w-56 lg:w-64 xl:w-72"
                       placeholder="Введите имя"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleSaveRename(relation.id)
                         if (e.key === 'Escape') handleCancelRename()
                       }}
+                      onBlur={handleCancelRename}
                       autoFocus
                     />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleSaveRename(relation.id)}
-                      disabled={updatingNameId === relation.id}
-                      className="text-green-600 hover:text-green-700"
-                    >
-                      {updatingNameId === relation.id ? (
-                        <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Icon icon={Check} size="sm" />
+                    <div className="flex items-center gap-1 sm:gap-2 justify-end sm:justify-start">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleSaveRename(relation.id)}
+                        disabled={updatingNameId === relation.id}
+                        className="text-green-600 hover:text-green-700 h-8 w-8 sm:h-10 sm:w-10"
+                      >
+                        {updatingNameId === relation.id ? (
+                          <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Icon icon={Check} size="xs" className="sm:hidden" />
+                        )}
+                        {updatingNameId !== relation.id && (
+                          <Icon icon={Check} size="sm" className="hidden sm:block" />
+                        )}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={handleCancelRename}
+                        disabled={updatingNameId === relation.id}
+                        className="text-gray-600 hover:text-gray-700 h-8 w-8 sm:h-10 sm:w-10"
+                      >
+                        <Icon icon={X} size="xs" className="sm:hidden" />
+                        <Icon icon={X} size="sm" className="hidden sm:block" />
+                      </Button>
+                      {hasCustomName(relation) && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleResetToOriginal(relation.id, relation.student?.full_name || '')}
+                          disabled={updatingNameId === relation.id}
+                          className="text-orange-500 hover:text-orange-600 h-8 w-8 sm:h-10 sm:w-10"
+                          title="Вернуть оригинальное имя"
+                        >
+                          <Icon icon={RotateCcw} size="xs" className="sm:hidden" />
+                          <Icon icon={RotateCcw} size="sm" className="hidden sm:block" />
+                        </Button>
                       )}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={handleCancelRename}
-                      disabled={updatingNameId === relation.id}
-                      className="text-gray-600 hover:text-gray-700"
-                    >
-                      <Icon icon={X} size="sm" />
-                    </Button>
+                    </div>
                   </div>
                 ) : (
                   /* Обычный режим */
                   <div className="flex items-center gap-2">
-                    <h3 
-                      className={`font-medium text-gray-900 text-lg ${
-                        hasCustomName(relation) ? 'cursor-pointer hover:text-blue-600' : ''
-                      }`}
-                      onClick={() => handleNameClick(relation.id)}
-                      title={hasCustomName(relation) ? 'Нажмите, чтобы показать оригинальное имя' : undefined}
-                    >
-                      {getDisplayName(relation.student, relation)}
-                      {hasCustomName(relation) && showingOriginalId !== relation.id && (
-                        <span className="ml-1 text-xs text-blue-500">*</span>
-                      )}
-                    </h3>
+                    {hasCustomName(relation) ? (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <h3 className="font-medium text-gray-900 text-lg cursor-pointer hover:text-blue-600 transition-colors">
+                            {getDisplayName(relation.student, relation)}
+                            <span className="text-xs font-medium select-none" style={{ color: '#3b82f6', marginLeft: '0.5rem' }}>*</span>
+                          </h3>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-3 bg-white border border-gray-200 shadow-lg rounded-lg" side="bottom" align="start">
+                          <div className="text-sm">
+                            <p className="text-gray-500 mb-1">Оригинальное имя:</p>
+                            <p className="font-medium text-gray-900">{relation.student?.full_name || 'Ученик'}</p>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <h3 className="font-medium text-gray-900 text-lg">
+                        {getDisplayName(relation.student, relation)}
+                      </h3>
+                    )}
                     <Button
                       size="icon"
                       variant="ghost"

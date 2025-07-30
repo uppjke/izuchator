@@ -35,7 +35,7 @@ export async function getTeacherStudents(teacherId: string): Promise<TeacherStud
   }
 
   // Преобразуем данные в нужный формат
-  const result = data.map(row => {
+  const result = data.map((row: any) => {
     return {
       id: row.id,
       created_at: row.created_at,
@@ -47,12 +47,9 @@ export async function getTeacherStudents(teacherId: string): Promise<TeacherStud
       invite_message: row.invite_message,
       rejected_reason: row.rejected_reason,
       deleted_at: row.deleted_at,
-      student: {
-        id: row.student_id,
-        email: row.student_email || '',
-        full_name: row.student_name || 'Студент',
-        role: row.student_role || 'student'
-      }
+      teacher_custom_name_for_student: row.teacher_custom_name_for_student,
+      student_custom_name_for_teacher: row.student_custom_name_for_teacher,
+      student: row.student // student уже приходит как JSON объект от базы данных
     }
   })
 
@@ -79,7 +76,7 @@ export async function getStudentTeachers(studentId: string): Promise<TeacherStud
   }
 
   // Преобразуем данные в нужный формат
-  const result = data.map(row => {
+  const result = data.map((row: any) => {
     return {
       id: row.id,
       created_at: row.created_at,
@@ -91,12 +88,9 @@ export async function getStudentTeachers(studentId: string): Promise<TeacherStud
       invite_message: row.invite_message,
       rejected_reason: row.rejected_reason,
       deleted_at: row.deleted_at,
-      teacher: {
-        id: row.teacher_id,
-        email: row.teacher_email || '',
-        full_name: row.teacher_name || 'Преподаватель',
-        role: row.teacher_role || 'teacher'
-      }
+      teacher_custom_name_for_student: row.teacher_custom_name_for_student,
+      student_custom_name_for_teacher: row.student_custom_name_for_teacher,
+      teacher: row.teacher // teacher уже приходит как JSON объект от базы данных
     }
   })
 
