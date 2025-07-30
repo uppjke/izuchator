@@ -234,7 +234,6 @@ export function TeachersTab() {
                         if (e.key === 'Enter') handleSaveRename(relation.id)
                         if (e.key === 'Escape') handleCancelRename()
                       }}
-                      onBlur={handleCancelRename}
                       autoFocus
                     />
                     <div className="flex items-center gap-1 sm:gap-2 justify-end sm:justify-start">
@@ -268,7 +267,11 @@ export function TeachersTab() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={() => handleResetToOriginal(relation.id, relation.teacher?.full_name || '')}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleResetToOriginal(relation.id, relation.teacher?.full_name || '')
+                          }}
                           disabled={updatingNameId === relation.id}
                           className="text-orange-500 hover:text-orange-600 h-8 w-8 sm:h-10 sm:w-10"
                           title="Вернуть оригинальное имя"
