@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -222,10 +223,22 @@ export function StudentsTab() {
       ) : (
         /* Список учеников */
         <div className="space-y-4 pt-16">
-          {students.map((relation) => (
-            <div
+          {students.map((relation, index) => (
+            <motion.div
               key={relation.id}
               className="flex items-center gap-4 p-4 bg-zinc-50/80 rounded-xl border border-zinc-200/50"
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ 
+                duration: 0.3, 
+                delay: index * 0.05,
+                ease: "easeOut"
+              }}
+              whileHover={{ 
+                scale: 1.01,
+                transition: { duration: 0.2 }
+              }}
             >
               {/* Аватар */}
               <UserAvatar 
@@ -239,119 +252,189 @@ export function StudentsTab() {
               
               {/* Информация о пользователе */}
               <div className="flex-1">
-                {editingNameId === relation.id ? (
-                  /* Режим редактирования */
-                  <div ref={editingRef} className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <Input
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      className="text-lg font-medium w-full sm:w-48 md:w-56 lg:w-64 xl:w-72"
-                      placeholder="Введите имя"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSaveRename(relation.id)
-                        if (e.key === 'Escape') handleCancelRename()
-                      }}
-                      autoFocus
-                    />
-                    <div className="flex items-center gap-1 sm:gap-2 justify-end sm:justify-start">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleSaveRename(relation.id)}
-                        disabled={updatingNameId === relation.id}
-                        className="text-green-600 hover:text-green-700 h-8 w-8 sm:h-10 sm:w-10"
+                <AnimatePresence mode="wait">
+                  {editingNameId === relation.id ? (
+                    /* Режим редактирования */
+                    <motion.div 
+                      ref={editingRef} 
+                      key="editing"
+                      className="flex flex-col sm:flex-row sm:items-center gap-2"
+                      initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                    >
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.05, duration: 0.2 }}
                       >
-                        {updatingNameId === relation.id ? (
-                          <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Icon icon={Check} size="xs" className="sm:hidden" />
-                        )}
-                        {updatingNameId !== relation.id && (
-                          <Icon icon={Check} size="sm" className="hidden sm:block" />
-                        )}
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={handleCancelRename}
-                        disabled={updatingNameId === relation.id}
-                        className="text-gray-600 hover:text-gray-700 h-8 w-8 sm:h-10 sm:w-10"
+                        <Input
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          className="text-lg font-medium w-full sm:w-48 md:w-56 lg:w-64 xl:w-72"
+                          placeholder="Введите имя"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveRename(relation.id)
+                            if (e.key === 'Escape') handleCancelRename()
+                          }}
+                          autoFocus
+                        />
+                      </motion.div>
+                      <motion.div 
+                        className="flex items-center gap-1 sm:gap-2 justify-end sm:justify-start"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1, duration: 0.2 }}
                       >
-                        <Icon icon={X} size="xs" className="sm:hidden" />
-                        <Icon icon={X} size="sm" className="hidden sm:block" />
-                      </Button>
-                      {hasCustomName(relation) && (
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleSaveRename(relation.id)}
+                            disabled={updatingNameId === relation.id}
+                            className="text-green-600 hover:text-green-700 h-8 w-8 sm:h-10 sm:w-10"
+                          >
+                            {updatingNameId === relation.id ? (
+                              <motion.div 
+                                className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-green-600 border-t-transparent rounded-full"
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                              />
+                            ) : (
+                              <Icon icon={Check} size="xs" className="sm:hidden" />
+                            )}
+                            {updatingNameId !== relation.id && (
+                              <Icon icon={Check} size="sm" className="hidden sm:block" />
+                            )}
+                          </Button>
+                        </motion.div>
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={handleCancelRename}
+                            disabled={updatingNameId === relation.id}
+                            className="text-gray-600 hover:text-gray-700 h-8 w-8 sm:h-10 sm:w-10"
+                          >
+                            <Icon icon={X} size="xs" className="sm:hidden" />
+                            <Icon icon={X} size="sm" className="hidden sm:block" />
+                          </Button>
+                        </motion.div>
+                        {hasCustomName(relation) && (
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.15, duration: 0.2 }}
+                          >
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleResetToOriginal(relation.id, relation.student?.full_name || '')
+                              }}
+                              disabled={updatingNameId === relation.id}
+                              className="text-orange-500 hover:text-orange-600 h-8 w-8 sm:h-10 sm:w-10"
+                              title="Вернуть оригинальное имя"
+                            >
+                              <Icon icon={RotateCcw} size="xs" className="sm:hidden" />
+                              <Icon icon={RotateCcw} size="sm" className="hidden sm:block" />
+                            </Button>
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    </motion.div>
+                  ) : (
+                    /* Обычный режим */
+                    <motion.div 
+                      key="normal"
+                      className="flex items-center gap-2"
+                      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                    >
+                      {hasCustomName(relation) ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <motion.h3 
+                              className="font-medium text-gray-900 text-lg cursor-pointer hover:text-blue-600 transition-colors"
+                              whileHover={{ scale: 1.02 }}
+                            >
+                              {getDisplayName(relation.student, relation)}
+                              <span className="text-xs font-medium select-none" style={{ color: '#3b82f6', marginLeft: '0.5rem' }}>*</span>
+                            </motion.h3>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-3 bg-white border border-gray-200 shadow-lg rounded-lg" side="bottom" align="start">
+                            <div className="text-sm">
+                              <p className="text-gray-500 mb-1">Оригинальное имя:</p>
+                              <p className="font-medium text-gray-900">{relation.student?.full_name || 'Ученик'}</p>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <motion.h3 
+                          className="font-medium text-gray-900 text-lg"
+                          whileHover={{ scale: 1.02 }}
+                        >
+                          {getDisplayName(relation.student, relation)}
+                        </motion.h3>
+                      )}
+                      <motion.div
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            handleResetToOriginal(relation.id, relation.student?.full_name || '')
-                          }}
-                          disabled={updatingNameId === relation.id}
-                          className="text-orange-500 hover:text-orange-600 h-8 w-8 sm:h-10 sm:w-10"
-                          title="Вернуть оригинальное имя"
+                          onClick={() => handleStartRename(relation)}
+                          className="text-gray-400 hover:text-gray-600 w-8 h-8"
                         >
-                          <Icon icon={RotateCcw} size="xs" className="sm:hidden" />
-                          <Icon icon={RotateCcw} size="sm" className="hidden sm:block" />
+                          <Icon icon={Edit3} size="xs" />
                         </Button>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  /* Обычный режим */
-                  <div className="flex items-center gap-2">
-                    {hasCustomName(relation) ? (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <h3 className="font-medium text-gray-900 text-lg cursor-pointer hover:text-blue-600 transition-colors">
-                            {getDisplayName(relation.student, relation)}
-                            <span className="text-xs font-medium select-none" style={{ color: '#3b82f6', marginLeft: '0.5rem' }}>*</span>
-                          </h3>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-3 bg-white border border-gray-200 shadow-lg rounded-lg" side="bottom" align="start">
-                          <div className="text-sm">
-                            <p className="text-gray-500 mb-1">Оригинальное имя:</p>
-                            <p className="font-medium text-gray-900">{relation.student?.full_name || 'Ученик'}</p>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <h3 className="font-medium text-gray-900 text-lg">
-                        {getDisplayName(relation.student, relation)}
-                      </h3>
-                    )}
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleStartRename(relation)}
-                      className="text-gray-400 hover:text-gray-600 w-8 h-8"
-                    >
-                      <Icon icon={Edit3} size="xs" />
-                    </Button>
-                  </div>
-                )}
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <p className="text-sm text-gray-500 mt-1">
                   {relation.student?.email}
                 </p>
               </div>
               
               {/* Кнопка удаления */}
-              <Button
-                variant="outline"
-                size="icon"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={() => handleRemoveStudent(relation.id)}
-                disabled={removingIds.has(relation.id)}
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                {removingIds.has(relation.id) ? (
-                  <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Icon icon={Trash2} size="sm" />
-                )}
-              </Button>
-            </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleRemoveStudent(relation.id)}
+                  disabled={removingIds.has(relation.id)}
+                >
+                  {removingIds.has(relation.id) ? (
+                    <motion.div 
+                      className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                  ) : (
+                    <Icon icon={Trash2} size="sm" />
+                  )}
+                </Button>
+              </motion.div>
+            </motion.div>
           ))}
         </div>
       )}
