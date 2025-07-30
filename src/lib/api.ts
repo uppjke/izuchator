@@ -15,8 +15,11 @@ type TeacherStudentRelation = Database['public']['Tables']['teacher_student_rela
   teacher?: AuthUser | null
 }
 
-// Получить связи преподавателя со студентами
-export async function getTeacherStudents(teacherId: string): Promise<TeacherStudentRelation[]> {
+// Типы для RPC функций
+type GetTeacherStudentsReturn = Database['public']['Functions']['get_teacher_students']['Returns'][0]
+type GetStudentTeachersReturn = Database['public']['Functions']['get_student_teachers']['Returns'][0]
+
+export async function getTeacherStudents(teacherId: string) {
   const supabase = createSupabaseBrowserClient()
   
   // Используем RPC функцию для получения данных с именами
@@ -35,7 +38,7 @@ export async function getTeacherStudents(teacherId: string): Promise<TeacherStud
   }
 
   // Преобразуем данные в нужный формат
-  const result = data.map((row: any) => {
+  const result = data.map((row: GetTeacherStudentsReturn) => {
     return {
       id: row.id,
       created_at: row.created_at,
@@ -76,7 +79,7 @@ export async function getStudentTeachers(studentId: string): Promise<TeacherStud
   }
 
   // Преобразуем данные в нужный формат
-  const result = data.map((row: any) => {
+  const result = data.map((row: GetStudentTeachersReturn) => {
     return {
       id: row.id,
       created_at: row.created_at,

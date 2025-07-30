@@ -218,7 +218,9 @@ export type Database = {
           invited_by: string
           rejected_reason: string | null
           status: string
+          student_custom_name_for_teacher: string | null
           student_id: string
+          teacher_custom_name_for_student: string | null
           teacher_id: string
           updated_at: string
         }
@@ -230,7 +232,9 @@ export type Database = {
           invited_by: string
           rejected_reason?: string | null
           status?: string
+          student_custom_name_for_teacher?: string | null
           student_id: string
+          teacher_custom_name_for_student?: string | null
           teacher_id: string
           updated_at?: string
         }
@@ -242,7 +246,9 @@ export type Database = {
           invited_by?: string
           rejected_reason?: string | null
           status?: string
+          student_custom_name_for_teacher?: string | null
           student_id?: string
+          teacher_custom_name_for_student?: string | null
           teacher_id?: string
           updated_at?: string
         }
@@ -293,9 +299,9 @@ export type Database = {
           invite_message: string
           rejected_reason: string
           deleted_at: string
-          teacher_email: string
-          teacher_name: string
-          teacher_role: string
+          teacher_custom_name_for_student: string
+          student_custom_name_for_teacher: string
+          teacher: Json
         }[]
       }
       get_teacher_students: {
@@ -311,9 +317,9 @@ export type Database = {
           invite_message: string
           rejected_reason: string
           deleted_at: string
-          student_email: string
-          student_name: string
-          student_role: string
+          teacher_custom_name_for_student: string
+          student_custom_name_for_teacher: string
+          student: Json
         }[]
       }
       use_invite_link: {

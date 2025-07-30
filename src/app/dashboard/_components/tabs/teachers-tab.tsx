@@ -118,7 +118,7 @@ export function TeachersTab() {
     setEditingName('')
   }
 
-  const handleResetToOriginal = async (relationId: string, originalName: string) => {
+  const handleResetToOriginal = async (relationId: string) => {
     setUpdatingNameId(relationId)
     
     try {
@@ -135,7 +135,7 @@ export function TeachersTab() {
       } else {
         toast.error(result.message)
       }
-    } catch (error) {
+    } catch {
       toast.error('Ошибка при возврате имени')
     } finally {
       setEditingNameId(null)
@@ -224,7 +224,7 @@ export function TeachersTab() {
       ) : (
         /* Список преподавателей */
         <div className="space-y-4 pt-16">
-          {teachers.map((relation, index) => (
+          {teachers.map((relation) => (
             <motion.div
               key={relation.id}
               className="flex items-center gap-4 p-4 bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 min-h-[88px]"
@@ -325,7 +325,7 @@ export function TeachersTab() {
                           onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
-                            handleResetToOriginal(relation.id, relation.teacher?.full_name || '')
+                            handleResetToOriginal(relation.id)
                           }}
                           disabled={updatingNameId === relation.id}
                           className="text-orange-500 hover:text-orange-600 h-8 w-8"
