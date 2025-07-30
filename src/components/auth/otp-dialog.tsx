@@ -192,7 +192,7 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-sm w-auto max-w-[90dvw]">
+      <DialogContent className="sm:max-w-sm max-w-[100dvw] w-auto">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-semibold">Подтверждение</DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">

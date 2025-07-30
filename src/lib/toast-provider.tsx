@@ -28,13 +28,7 @@ export function ToastProvider() {
           textOverflow: 'ellipsis',
           boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
           zIndex: '2147483647',
-          // Абсолютное центрирование каждого тоста
-          position: 'relative',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          margin: '0 auto',
         },
-        className: 'toast-center-item',
       }}
     />
   )
