@@ -140,40 +140,47 @@
   body {
     @apply bg-background text-foreground;
   }
-  
+
   /* Глобальное скрытие полосы прокрутки */
   * {
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* Internet Explorer 10+ */
   }
-  
+
   *::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
   }
-  
+
   /* Apple-style global button styling */
   button {
     @apply rounded-full transition-all duration-200 ease-out;
   }
-  
+
   /* Enhanced button states for better Apple-like feel */
   button:active {
     @apply scale-95;
   }
-  
+
   button:focus-visible {
     @apply outline-2 outline-offset-2;
   }
-  
+
   /* Shake animation for OTP errors */
   .animate-shake {
     animation: shake 0.5s ease-in-out;
   }
-  
+
   @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-4px); }
-    75% { transform: translateX(4px); }
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-4px);
+    }
+    75% {
+      transform: translateX(4px);
+    }
   }
 
   /* iOS Safari safe area and viewport height fixes */
@@ -197,188 +204,174 @@
     /* Add support for safe areas */
     padding-bottom: env(safe-area-inset-bottom);
   }
-}
 
-/* Toast positioning and z-index fixes */
-[data-sonner-toaster] {
-  z-index: 2147483647 !important;
-}
-
-[data-sonner-toast] {
-  z-index: 2147483647 !important;
-}
-
-/* Dialog animations for smooth experience */
-@keyframes dialog-in {
-  0% {
-    opacity: 0;
-    scale: 0.96;
+  /* Dialog animations for smooth experience */
+  @keyframes dialog-in {
+    0% {
+      opacity: 0;
+      scale: 0.96;
+    }
+    100% {
+      opacity: 1;
+      scale: 1;
+    }
   }
-  100% {
+
+  @keyframes dialog-out {
+    0% {
+      opacity: 1;
+      scale: 1;
+    }
+    100% {
+      opacity: 0;
+      scale: 0.96;
+    }
+  }
+
+  @keyframes overlay-in {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes overlay-out {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* Apply smooth animations to dialog elements */
+  [data-state="open"][data-slot="dialog-content"] {
+    animation: dialog-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-state="closed"][data-slot="dialog-content"] {
+    animation: dialog-out 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-state="open"][data-slot="dialog-overlay"] {
+    animation: overlay-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-state="closed"][data-slot="dialog-overlay"] {
+    animation: overlay-out 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Sheet animations for smooth mobile menu experience */
+  @keyframes sheet-in-from-right {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes sheet-out-to-right {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes sheet-in-from-left {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes sheet-out-to-left {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  /* Apply smooth animations to sheet elements */
+  [data-state="open"][data-slot="sheet-content"] {
+    animation: sheet-in-from-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-state="closed"][data-slot="sheet-content"] {
+    animation: sheet-out-to-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-state="open"][data-slot="sheet-overlay"] {
+    animation: overlay-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-state="closed"][data-slot="sheet-overlay"] {
+    animation: overlay-out 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Custom sheet close button styling */
+  [data-slot="sheet-content"] > button[data-state="open"] {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  [data-slot="sheet-content"] > button[data-state="open"]:hover {
     opacity: 1;
-    scale: 1;
   }
-}
 
-@keyframes dialog-out {
-  0% {
-    opacity: 1;
-    scale: 1;
+  /* Улучшенная обработка длинного текста в карточках */
+  .user-card-name {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    /* Принудительное обрезание для очень длинных имен */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
   }
-  100% {
-    opacity: 0;
-    scale: 0.96;
+
+  .user-card-email {
+    word-break: break-all;
+    overflow-wrap: break-word;
   }
-}
 
-@keyframes overlay-in {
-  0% {
-    opacity: 0;
+  /* Поддержка переноса строк в поповерах */
+  .overflow-wrap-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.4;
   }
-  100% {
-    opacity: 1;
+
+  /* Улучшенные тултипы с переносами строк */
+  [title] {
+    position: relative;
   }
-}
 
-@keyframes overlay-out {
-  0% {
-    opacity: 1;
+  /* Стили для whitespace-pre-wrap в popover контенте */
+  .whitespace-pre-wrap {
+    white-space: pre-wrap !important;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
-  100% {
-    opacity: 0;
+
+  /* Агрессивные стили для переноса длинных слов на мобильных */
+  .force-break-words {
+    word-break: break-all !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
+    hyphens: auto !important;
+    line-break: anywhere !important;
+    -webkit-hyphens: auto !important;
+    -moz-hyphens: auto !important;
+    -ms-hyphens: auto !important;
   }
-}
 
-/* Apply smooth animations to dialog elements */
-[data-state="open"][data-slot="dialog-content"] {
-  animation: dialog-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-state="closed"][data-slot="dialog-content"] {
-  animation: dialog-out 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-state="open"][data-slot="dialog-overlay"] {
-  animation: overlay-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-state="closed"][data-slot="dialog-overlay"] {
-  animation: overlay-out 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Sheet animations for smooth mobile menu experience */
-@keyframes sheet-in-from-right {
-  0% {
-    transform: translateX(100%);
-  }
-  100% {
-    transform: translateX(0);
-  }
-}
-
-@keyframes sheet-out-to-right {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-@keyframes sheet-in-from-left {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(0);
-  }
-}
-
-@keyframes sheet-out-to-left {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-100%);
-  }
-}
-
-/* Apply smooth animations to sheet elements */
-[data-state="open"][data-slot="sheet-content"] {
-  animation: sheet-in-from-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-state="closed"][data-slot="sheet-content"] {
-  animation: sheet-out-to-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-state="open"][data-slot="sheet-overlay"] {
-  animation: overlay-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-state="closed"][data-slot="sheet-overlay"] {
-  animation: overlay-out 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Custom sheet close button styling */
-[data-slot="sheet-content"] > button[data-state="open"] {
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-
-[data-slot="sheet-content"] > button[data-state="open"]:hover {
-  opacity: 1;
-}
-
-/* Дополнительное центрирование для классов */
-.toast-center-item {
-  margin: 0 auto !important;
-  text-align: center !important;
-}
-
-/* Улучшенная обработка длинного текста в карточках */
-.user-card-name {
-  word-break: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
-  /* Принудительное обрезание для очень длинных имен */
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.user-card-email {
-  word-break: break-all;
-  overflow-wrap: break-word;
-}
-
-/* Поддержка переноса строк в поповерах */
-.overflow-wrap-anywhere {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  line-height: 1.4;
-}
-
-/* Улучшенные тултипы с переносами строк */
-[title] {
-  position: relative;
-}
-
-/* Стили для whitespace-pre-wrap в popover контенте */
-.whitespace-pre-wrap {
-  white-space: pre-wrap !important;
-  word-break: break-word;
-  overflow-wrap: break-word;
-}
-
-/* Агрессивные стили для переноса длинных слов на мобильных */
-.force-break-words {
-  word-break: break-all !important;
-  overflow-wrap: break-word !important;
-  white-space: normal !important;
-  hyphens: auto !important;
-  line-break: anywhere !important;
-  -webkit-hyphens: auto !important;
-  -moz-hyphens: auto !important;
-  -ms-hyphens: auto !important;
 }

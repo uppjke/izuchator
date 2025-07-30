@@ -11,7 +11,7 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { InviteDialog } from '@/components/invite-dialog'
 import { getTeacherStudents, removeTeacherStudentRelation, updateCustomNameInRelation } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
-import { showCustomToast } from '@/lib/custom-toast'
+import { toast } from 'sonner'
 
 type StudentRelation = {
   id: string
@@ -50,12 +50,12 @@ export function StudentsTab() {
       
       if (result.success) {
         setStudents(prev => prev.filter(s => s.id !== relationId))
-        showCustomToast('Ученик успешно удален', '✅')
+        toast.success('Ученик успешно удален')
       } else {
-        showCustomToast(result.message, '❌')
+        toast.error(result.message)
       }
     } catch {
-      showCustomToast('Ошибка при удалении ученика', '❌')
+      toast.error('Ошибка при удалении ученика')
     } finally {
       setRemovingIds(prev => {
         const next = new Set(prev)
@@ -100,12 +100,12 @@ export function StudentsTab() {
             ? { ...s, teacher_custom_name_for_student: editingName.trim() }
             : s
         ))
-        showCustomToast('Имя успешно обновлено', '✅')
+        toast.success('Имя успешно обновлено')
       } else {
-        showCustomToast(result.message, '❌')
+        toast.error(result.message)
       }
     } catch {
-      showCustomToast('Ошибка при обновлении имени', '❌')
+      toast.error('Ошибка при обновлении имени')
     } finally {
       setEditingNameId(null)
       setUpdatingNameId(null)
@@ -130,12 +130,12 @@ export function StudentsTab() {
             ? { ...s, teacher_custom_name_for_student: null }
             : s
         ))
-        showCustomToast('Возвращено оригинальное имя', '✅')
+        toast.success('Возвращено оригинальное имя')
       } else {
-        showCustomToast(result.message, '❌')
+        toast.error(result.message)
       }
     } catch (error) {
-      showCustomToast('Ошибка при возврате имени', '❌')
+      toast.error('Ошибка при возврате имени')
     } finally {
       setEditingNameId(null)
       setUpdatingNameId(null)

@@ -11,7 +11,7 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { InviteDialog } from '@/components/invite-dialog'
 import { getStudentTeachers, removeTeacherStudentRelation, updateCustomNameInRelation } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
-import { showCustomToast } from '@/lib/custom-toast'
+import { toast } from 'sonner'
 
 type TeacherRelation = {
   id: string
@@ -50,12 +50,12 @@ export function TeachersTab() {
       
       if (result.success) {
         setTeachers(prev => prev.filter(t => t.id !== relationId))
-        showCustomToast('Преподаватель успешно удален', '✅')
+        toast.success('Преподаватель успешно удален')
       } else {
-        showCustomToast(result.message, '❌')
+        toast.error(result.message)
       }
     } catch {
-      showCustomToast('Ошибка при удалении преподавателя', '❌')
+      toast.error('Ошибка при удалении преподавателя')
     } finally {
       setRemovingIds(prev => {
         const next = new Set(prev)
@@ -100,12 +100,12 @@ export function TeachersTab() {
             ? { ...t, student_custom_name_for_teacher: editingName.trim() }
             : t
         ))
-        showCustomToast('Имя успешно обновлено', '✅')
+        toast.success('Имя успешно обновлено')
       } else {
-        showCustomToast(result.message, '❌')
+        toast.error(result.message)
       }
     } catch {
-      showCustomToast('Ошибка при обновлении имени', '❌')
+      toast.error('Ошибка при обновлении имени')
     } finally {
       setEditingNameId(null)
       setUpdatingNameId(null)
@@ -131,12 +131,12 @@ export function TeachersTab() {
             ? { ...t, student_custom_name_for_teacher: null }
             : t
         ))
-        showCustomToast('Возвращено оригинальное имя', '✅')
+        toast.success('Возвращено оригинальное имя')
       } else {
-        showCustomToast(result.message, '❌')
+        toast.error(result.message)
       }
     } catch (error) {
-      showCustomToast('Ошибка при возврате имени', '❌')
+      toast.error('Ошибка при возврате имени')
     } finally {
       setEditingNameId(null)
       setUpdatingNameId(null)
