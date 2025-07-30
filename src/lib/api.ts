@@ -226,3 +226,36 @@ export async function removeTeacherStudentRelation(relationId: string): Promise<
     message: 'Связь успешно удалена'
   }
 }
+
+// Обновить пользовательское имя в связи
+export async function updateCustomNameInRelation(relationId: string, customName: string, isTeacherUpdating: boolean): Promise<{
+  success: boolean
+  message: string
+}> {
+  const supabase = createSupabaseBrowserClient()
+  
+  const updateField = isTeacherUpdating 
+    ? 'teacher_custom_name_for_student' 
+    : 'student_custom_name_for_teacher'
+  
+  const { error } = await supabase
+    .from('teacher_student_relations')
+    .update({ 
+      [updateField]: customName || null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', relationId)
+  
+  if (error) {
+    console.error('Error updating custom name:', error)
+    return { 
+      success: false, 
+      message: 'Ошибка при обновлении имени' 
+    }
+  }
+  
+  return {
+    success: true,
+    message: 'Имя успешно обновлено'
+  }
+}
