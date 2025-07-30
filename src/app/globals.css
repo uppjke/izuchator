@@ -414,3 +414,15 @@
   word-break: break-word;
   overflow-wrap: break-word;
 }
+
+/* Агрессивные стили для переноса длинных слов на мобильных */
+.force-break-words {
+  word-break: break-all !important;
+  overflow-wrap: break-word !important;
+  white-space: normal !important;
+  hyphens: auto !important;
+  line-break: anywhere !important;
+  -webkit-hyphens: auto !important;
+  -moz-hyphens: auto !important;
+  -ms-hyphens: auto !important;
+}

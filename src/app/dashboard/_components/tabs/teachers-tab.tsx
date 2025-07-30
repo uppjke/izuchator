@@ -373,7 +373,7 @@ export function TeachersTab() {
                           <PopoverTrigger asChild>
                             <motion.div 
                               className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors max-w-[200px] sm:max-w-[250px] md:max-w-[300px] lg:max-w-[350px] overflow-hidden"
-                              whileHover={{ scale: 1.02 }}
+                              title={getDisplayName(relation.teacher, relation)}
                             >
                               <h3 className="font-medium text-gray-900 text-lg truncate user-card-name flex-1 min-w-0">
                                 {getDisplayName(relation.teacher, relation)}
@@ -381,19 +381,30 @@ export function TeachersTab() {
                               <span className="text-xs font-medium select-none flex-shrink-0 ml-1" style={{ color: '#3b82f6' }}>*</span>
                             </motion.div>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto max-w-[300px] p-3 bg-white border border-gray-200 shadow-lg rounded-lg" side="bottom" align="start">
-                            <div className="text-sm">
-                              <p className="text-gray-500 mb-1">Текущее имя:</p>
-                              <p className="font-medium text-gray-900 mb-2 break-words whitespace-pre-wrap overflow-wrap-anywhere">{getDisplayName(relation.teacher, relation)}</p>
-                              <p className="text-gray-500 mb-1">Оригинальное имя:</p>
-                              <p className="font-medium text-gray-900 break-words whitespace-pre-wrap overflow-wrap-anywhere">{relation.teacher?.full_name || 'Преподаватель'}</p>
-                            </div>
+                          <PopoverContent className="w-auto max-w-[280px] sm:max-w-[300px] p-0 bg-transparent border-0 shadow-none" side="bottom" align="start">
+                            <motion.div
+                              className="p-3 bg-white border border-gray-200 shadow-lg rounded-lg"
+                              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                              transition={{ duration: 0.2, ease: "easeOut" }}
+                            >
+                              <div className="text-sm">
+                                <p className="text-gray-500 mb-1">Оригинальное имя:</p>
+                                <p className="font-medium text-gray-900" style={{ 
+                                  wordBreak: 'break-all', 
+                                  overflowWrap: 'break-word', 
+                                  whiteSpace: 'normal',
+                                  hyphens: 'auto',
+                                  lineBreak: 'anywhere'
+                                }}>{relation.teacher?.full_name || 'Преподаватель'}</p>
+                              </div>
+                            </motion.div>
                           </PopoverContent>
                         </Popover>
                       ) : (
                         <motion.h3 
                           className="font-medium text-gray-900 text-lg truncate max-w-[200px] sm:max-w-[250px] md:max-w-[300px] lg:max-w-[350px] user-card-name"
-                          whileHover={{ scale: 1.02 }}
                           title={getDisplayName(relation.teacher, relation)}
                         >
                           {getDisplayName(relation.teacher, relation)}
