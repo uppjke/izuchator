@@ -379,3 +379,38 @@
   margin: 0 auto !important;
   text-align: center !important;
 }
+
+/* Улучшенная обработка длинного текста в карточках */
+.user-card-name {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  /* Принудительное обрезание для очень длинных имен */
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.user-card-email {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+/* Поддержка переноса строк в поповерах */
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+/* Улучшенные тултипы с переносами строк */
+[title] {
+  position: relative;
+}
+
+/* Стили для whitespace-pre-wrap в popover контенте */
+.whitespace-pre-wrap {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}

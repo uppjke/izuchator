@@ -226,7 +226,7 @@ export function StudentsTab() {
           {students.map((relation, index) => (
             <motion.div
               key={relation.id}
-              className="flex items-center gap-4 p-4 bg-zinc-50/80 rounded-xl border border-zinc-200/50"
+              className="flex items-center gap-4 p-4 bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0"
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -241,17 +241,19 @@ export function StudentsTab() {
               }}
             >
               {/* Аватар */}
-              <UserAvatar 
-                user={{
-                  name: relation.student?.full_name,
-                  email: relation.student?.email,
-                  avatar_url: null // Пока null, потом добавим логику
-                }}
-                size="md"
-              />
+              <div className="flex-shrink-0">
+                <UserAvatar 
+                  user={{
+                    name: relation.student?.full_name,
+                    email: relation.student?.email,
+                    avatar_url: null // Пока null, потом добавим логику
+                  }}
+                  size="md"
+                />
+              </div>
               
               {/* Информация о пользователе */}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <AnimatePresence mode="wait">
                   {editingNameId === relation.id ? (
                     /* Режим редактирования */
@@ -274,6 +276,7 @@ export function StudentsTab() {
                           onChange={(e) => setEditingName(e.target.value)}
                           className="text-lg font-medium w-full sm:w-48 md:w-56 lg:w-64 xl:w-72"
                           placeholder="Введите имя"
+                          maxLength={100}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleSaveRename(relation.id)
                             if (e.key === 'Escape') handleCancelRename()
@@ -367,25 +370,30 @@ export function StudentsTab() {
                       {hasCustomName(relation) ? (
                         <Popover>
                           <PopoverTrigger asChild>
-                            <motion.h3 
-                              className="font-medium text-gray-900 text-lg cursor-pointer hover:text-blue-600 transition-colors"
+                            <motion.div 
+                              className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors max-w-[200px] sm:max-w-[250px] md:max-w-[300px] lg:max-w-[350px] overflow-hidden"
                               whileHover={{ scale: 1.02 }}
                             >
-                              {getDisplayName(relation.student, relation)}
-                              <span className="text-xs font-medium select-none" style={{ color: '#3b82f6', marginLeft: '0.5rem' }}>*</span>
-                            </motion.h3>
+                              <h3 className="font-medium text-gray-900 text-lg truncate user-card-name flex-1 min-w-0">
+                                {getDisplayName(relation.student, relation)}
+                              </h3>
+                              <span className="text-xs font-medium select-none flex-shrink-0 ml-1" style={{ color: '#3b82f6' }}>*</span>
+                            </motion.div>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-3 bg-white border border-gray-200 shadow-lg rounded-lg" side="bottom" align="start">
+                          <PopoverContent className="w-auto max-w-[300px] p-3 bg-white border border-gray-200 shadow-lg rounded-lg" side="bottom" align="start">
                             <div className="text-sm">
+                              <p className="text-gray-500 mb-1">Текущее имя:</p>
+                              <p className="font-medium text-gray-900 mb-2 break-words whitespace-pre-wrap overflow-wrap-anywhere">{getDisplayName(relation.student, relation)}</p>
                               <p className="text-gray-500 mb-1">Оригинальное имя:</p>
-                              <p className="font-medium text-gray-900">{relation.student?.full_name || 'Ученик'}</p>
+                              <p className="font-medium text-gray-900 break-words whitespace-pre-wrap overflow-wrap-anywhere">{relation.student?.full_name || 'Ученик'}</p>
                             </div>
                           </PopoverContent>
                         </Popover>
                       ) : (
                         <motion.h3 
-                          className="font-medium text-gray-900 text-lg"
+                          className="font-medium text-gray-900 text-lg truncate max-w-[200px] sm:max-w-[250px] md:max-w-[300px] lg:max-w-[350px] user-card-name"
                           whileHover={{ scale: 1.02 }}
+                          title={getDisplayName(relation.student, relation)}
                         >
                           {getDisplayName(relation.student, relation)}
                         </motion.h3>
@@ -406,34 +414,36 @@ export function StudentsTab() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 mt-1 truncate max-w-[300px] sm:max-w-[350px] md:max-w-[400px] user-card-email" title={relation.student?.email} style={{ whiteSpace: 'pre-wrap' }}>
                   {relation.student?.email}
                 </p>
               </div>
               
               {/* Кнопка удаления */}
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => handleRemoveStudent(relation.id)}
-                  disabled={removingIds.has(relation.id)}
+              <div className="flex-shrink-0">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  {removingIds.has(relation.id) ? (
-                    <motion.div 
-                      className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    />
-                  ) : (
-                    <Icon icon={Trash2} size="sm" />
-                  )}
-                </Button>
-              </motion.div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => handleRemoveStudent(relation.id)}
+                    disabled={removingIds.has(relation.id)}
+                  >
+                    {removingIds.has(relation.id) ? (
+                      <motion.div 
+                        className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      />
+                    ) : (
+                      <Icon icon={Trash2} size="sm" />
+                    )}
+                  </Button>
+                </motion.div>
+              </div>
             </motion.div>
           ))}
         </div>
