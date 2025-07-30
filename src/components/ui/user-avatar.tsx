@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 interface UserAvatarProps {
@@ -30,15 +31,19 @@ export function UserAvatar({ user, size = 'md', className }: UserAvatarProps) {
   // Если есть аватар, показываем его
   if (user?.avatar_url) {
     return (
-      <img
-        src={user.avatar_url}
-        alt={user.name || 'Пользователь'}
-        className={cn(
-          'rounded-full object-cover',
-          sizeClasses[size],
-          className
-        )}
-      />
+      <div className={cn(
+        'rounded-full overflow-hidden flex-shrink-0',
+        sizeClasses[size],
+        className
+      )}>
+        <Image
+          src={user.avatar_url}
+          alt={user.name || 'Пользователь'}
+          width={size === 'sm' ? 32 : size === 'md' ? 48 : 64}
+          height={size === 'sm' ? 32 : size === 'md' ? 48 : 64}
+          className="w-full h-full object-cover"
+        />
+      </div>
     )
   }
 
