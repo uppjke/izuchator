@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Icon } from '@/components/ui/icon'
 import { Clock } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 
@@ -191,7 +192,7 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-sm w-auto max-w-[90dvw]">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-semibold">Подтверждение</DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">
@@ -200,7 +201,7 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className={`flex gap-2 justify-center ${shake ? 'animate-shake' : ''}`}>
+          <div className={`flex gap-2 justify-center items-center w-full ${shake ? 'animate-shake' : ''}`}>
             {otp.map((digit, index) => (
               <Input
                 key={index}
@@ -232,24 +233,28 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
             </div>
           )}
           
-          <Button 
-            onClick={() => handleSubmit(otpString)}
-            className="w-full bg-zinc-900 hover:bg-zinc-700" 
-            disabled={isSubmitting || !isOtpComplete}
-          >
-            {isSubmitting ? 'Проверяем...' : 'Проверить'}
-          </Button>
+          {!success && (
+            <Button 
+              onClick={() => handleSubmit(otpString)}
+              className="w-full bg-zinc-900 hover:bg-zinc-700" 
+              disabled={isSubmitting || !isOtpComplete}
+            >
+              {isSubmitting ? 'Проверяем...' : 'Проверить'}
+            </Button>
+          )}
           
-          <Button 
-            onClick={handleResend}
-            variant="ghost"
-            size="sm"
-            className="w-full text-xs text-muted-foreground hover:text-foreground"
-            disabled={!canResend}
-          >
-            {canResend ? 'Отправить код повторно' : `Отправить код повторно через ${resendTimer}с`}
-            <Clock className="!w-4 !h-4 mr-1" />
-          </Button>
+          {!success && (
+            <Button 
+              onClick={handleResend}
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs text-muted-foreground hover:text-foreground"
+              disabled={!canResend}
+            >
+              {canResend ? 'Отправить код повторно' : `Отправить код повторно через ${resendTimer}с`}
+              <Icon icon={Clock} size="xs" />
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
