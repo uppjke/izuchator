@@ -237,27 +237,46 @@ export function TeachersTab() {
               }}
             >
               {/* Аватар - скрываем в режиме редактирования */}
-              {editingNameId !== relation.id && (
-                <div className="flex-shrink-0">
-                  <UserAvatar 
-                    user={{
-                      name: relation.teacher?.full_name,
-                      email: relation.teacher?.email,
-                      avatar_url: null // Пока null, потом добавим логику
+              <AnimatePresence>
+                {editingNameId !== relation.id && (
+                  <motion.div 
+                    className="flex-shrink-0"
+                    initial={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ 
+                      duration: 0.2,
+                      ease: "easeOut"
                     }}
-                    size="md"
-                  />
-                </div>
-              )}
+                  >
+                    <UserAvatar 
+                      user={{
+                        name: relation.teacher?.full_name,
+                        email: relation.teacher?.email,
+                        avatar_url: null // Пока null, потом добавим логику
+                      }}
+                      size="md"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
               
               {/* Информация о пользователе */}
               <div className="flex-1 min-w-0 h-[60px] flex flex-col justify-center">
-                {editingNameId === relation.id ? (
-                  /* Режим редактирования - только поле и кнопки */
-                  <div
-                    ref={editingRef} 
-                    className="flex items-center gap-2 w-full"
-                  >
+                <AnimatePresence mode="wait">
+                  {editingNameId === relation.id ? (
+                    /* Режим редактирования - только поле и кнопки */
+                    <motion.div
+                      key="editing"
+                      ref={editingRef} 
+                      className="flex items-center gap-2 w-full"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ 
+                        duration: 0.2,
+                        ease: "easeOut"
+                      }}
+                    >
                     <div className="flex-1 min-w-0">
                       <Input
                         value={editingName}
@@ -316,10 +335,19 @@ export function TeachersTab() {
                         </Button>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 ) : (
                   /* Обычный режим */
-                  <div>
+                  <motion.div
+                    key="normal"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ 
+                      duration: 0.2,
+                      ease: "easeOut"
+                    }}
+                  >
                     <div className="flex items-center gap-2">
                       {hasCustomName(relation) ? (
                         <Popover>
@@ -378,32 +406,43 @@ export function TeachersTab() {
                     >
                       {relation.teacher?.email}
                     </p>
-                  </div>
+                  </motion.div>
                 )}
+                </AnimatePresence>
               </div>
               
               {/* Кнопка удаления - скрываем в режиме редактирования */}
-              {editingNameId !== relation.id && (
-                <div className="flex-shrink-0">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => handleRemoveTeacher(relation.id)}
-                    disabled={removingIds.has(relation.id)}
+              <AnimatePresence>
+                {editingNameId !== relation.id && (
+                  <motion.div 
+                    className="flex-shrink-0"
+                    initial={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ 
+                      duration: 0.2,
+                      ease: "easeOut"
+                    }}
                   >
-                    {removingIds.has(relation.id) ? (
-                      <motion.div 
-                        className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      />
-                    ) : (
-                      <Icon icon={Trash2} size="sm" />
-                    )}
-                  </Button>
-                </div>
-              )}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => handleRemoveTeacher(relation.id)}
+                      disabled={removingIds.has(relation.id)}
+                    >
+                      {removingIds.has(relation.id) ? (
+                        <motion.div 
+                          className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full"
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        />
+                      ) : (
+                        <Icon icon={Trash2} size="sm" />
+                      )}
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           ))}
         </div>
