@@ -1,22 +1,23 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth-context'
-import { Sidebar } from './_components/sidebar'
-import { DashboardHeader } from './_components/header'
-import { DashboardTab } from './_components/tabs/dashboard-tab'
-import { PlannerTab } from './_components/tabs/planner-tab'
-import { StudentsTab } from './_components/tabs/students-tab'
-import { TeachersTab } from './_components/tabs/teachers-tab'
-import { MaterialsTab } from './_components/tabs/materials-tab'
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { Sidebar } from "./_components/sidebar";
+import { DashboardHeader } from "./_components/header";
+import { DashboardTab } from "./_components/tabs/dashboard-tab";
+import { PlannerTab } from "./_components/tabs/planner-tab";
+import { StudentsTab } from "./_components/tabs/students-tab";
+import { TeachersTab } from "./_components/tabs/teachers-tab";
+import { MaterialsTab } from "./_components/tabs/materials-tab";
 
-type TabType = 'dashboard' | 'planner' | 'students' | 'teachers' | 'materials'
-type UserRole = 'student' | 'teacher'
+type TabType = "dashboard" | "planner" | "students" | "teachers" | "materials";
+type UserRole = "student" | "teacher";
 
 // Константы стилей
-const CONTAINER_CLASSES = "bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-zinc-200/50 h-full overflow-auto"
-const MAIN_PADDING = "p-4 lg:p-6"
+const CONTAINER_CLASSES =
+  "bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-zinc-200/50 h-full overflow-auto";
+const MAIN_PADDING = "p-4 lg:p-6";
 
 // Компоненты табов
 const tabComponents = {
@@ -25,86 +26,104 @@ const tabComponents = {
   students: StudentsTab,
   teachers: TeachersTab,
   materials: MaterialsTab,
-} as const
+} as const;
 
 export default function DashboardLayout() {
-  const { user, isAuthenticated, loading } = useAuth()
-  const router = useRouter()
-  const userRole = (user?.role as UserRole) || 'student'
-  
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { user, isAuthenticated, loading } = useAuth();
+  const router = useRouter();
+  const userRole = (user?.role as UserRole) || "student";
+
+  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Восстановление активного таба из localStorage при монтировании
   useEffect(() => {
-    const savedTab = localStorage.getItem('dashboardActiveTab') as TabType
-    if (savedTab && ['dashboard', 'planner', 'students', 'teachers', 'materials'].includes(savedTab)) {
+    const savedTab = localStorage.getItem("dashboardActiveTab") as TabType;
+    if (
+      savedTab &&
+      ["dashboard", "planner", "students", "teachers", "materials"].includes(
+        savedTab
+      )
+    ) {
       // Проверяем права доступа к табу
-      if ((savedTab === 'students' && userRole !== 'teacher') || 
-          (savedTab === 'teachers' && userRole !== 'student')) {
-        return // Не восстанавливаем таб, если нет доступа
+      if (
+        (savedTab === "students" && userRole !== "teacher") ||
+        (savedTab === "teachers" && userRole !== "student")
+      ) {
+        return; // Не восстанавливаем таб, если нет доступа
       }
-      setActiveTab(savedTab)
+      setActiveTab(savedTab);
     }
-  }, [userRole])
+  }, [userRole]);
 
-  const changeTab = useCallback((newTab: TabType) => {
-    // Валидация доступа к табам по роли
-    if ((newTab === 'students' && userRole !== 'teacher') || 
-        (newTab === 'teachers' && userRole !== 'student')) return
-    
-    setActiveTab(newTab)
-    localStorage.setItem('dashboardActiveTab', newTab) // Сохраняем в localStorage
-    setSidebarOpen(false) // Закрываем мобильное меню при смене таба
-  }, [userRole])
+  const changeTab = useCallback(
+    (newTab: TabType) => {
+      // Валидация доступа к табам по роли
+      if (
+        (newTab === "students" && userRole !== "teacher") ||
+        (newTab === "teachers" && userRole !== "student")
+      )
+        return;
+
+      setActiveTab(newTab);
+      localStorage.setItem("dashboardActiveTab", newTab); // Сохраняем в localStorage
+      setSidebarOpen(false); // Закрываем мобильное меню при смене таба
+    },
+    [userRole]
+  );
 
   const toggleSidebar = useCallback(() => {
-    setSidebarOpen(prev => !prev)
-  }, [])
+    setSidebarOpen((prev) => !prev);
+  }, []);
 
   const closeSidebar = useCallback(() => {
-    setSidebarOpen(false)
-  }, [])
+    setSidebarOpen(false);
+  }, []);
 
   // Логика выбора активного компонента таба
   const ActiveTabComponent = useMemo(() => {
     // Валидация доступа к табам по роли
-    if ((activeTab === 'students' && userRole !== 'teacher') ||
-        (activeTab === 'teachers' && userRole !== 'student')) {
-      return tabComponents.dashboard
+    if (
+      (activeTab === "students" && userRole !== "teacher") ||
+      (activeTab === "teachers" && userRole !== "student")
+    ) {
+      return tabComponents.dashboard;
     }
-    
-    return tabComponents[activeTab as keyof typeof tabComponents] || tabComponents.dashboard
-  }, [activeTab, userRole])
+
+    return (
+      tabComponents[activeTab as keyof typeof tabComponents] ||
+      tabComponents.dashboard
+    );
+  }, [activeTab, userRole]);
 
   // iOS Safari viewport height fix
   useEffect(() => {
     function setVH() {
-      const vh = window.innerHeight * 0.01
-      document.documentElement.style.setProperty('--vh', `${vh}px`)
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty("--vh", `${vh}px`);
     }
 
     // Set initial value
-    setVH()
+    setVH();
 
     // Update on resize and orientation change
-    window.addEventListener('resize', setVH)
-    window.addEventListener('orientationchange', () => {
+    window.addEventListener("resize", setVH);
+    window.addEventListener("orientationchange", () => {
       // Delay to ensure the viewport has updated
-      setTimeout(setVH, 100)
-    })
+      setTimeout(setVH, 100);
+    });
 
     return () => {
-      window.removeEventListener('resize', setVH)
-      window.removeEventListener('orientationchange', setVH)
-    }
-  }, [])
+      window.removeEventListener("resize", setVH);
+      window.removeEventListener("orientationchange", setVH);
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push('/')
+      router.push("/");
     }
-  }, [isAuthenticated, loading, router])
+  }, [isAuthenticated, loading, router]);
 
   // Early returns для состояний загрузки и авторизации
   if (loading) {
@@ -115,11 +134,11 @@ export default function DashboardLayout() {
           <p className="text-gray-600">Загрузка...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!isAuthenticated) {
-    return null
+    return null;
   }
 
   return (
@@ -137,10 +156,7 @@ export default function DashboardLayout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <DashboardHeader 
-          onMenuClick={toggleSidebar} 
-          activeTab={activeTab}
-        />
+        <DashboardHeader onMenuClick={toggleSidebar} activeTab={activeTab} />
 
         {/* Page content */}
         <main className={`flex-1 overflow-hidden ${MAIN_PADDING}`}>
@@ -152,5 +168,5 @@ export default function DashboardLayout() {
         </main>
       </div>
     </div>
-  )
+  );
 }
