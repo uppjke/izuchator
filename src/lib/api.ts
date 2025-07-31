@@ -55,6 +55,8 @@ export async function getTeacherStudents(teacherId: string) {
       deleted_at: row.deleted_at,
       teacher_custom_name_for_student: row.teacher_custom_name_for_student,
       student_custom_name_for_teacher: row.student_custom_name_for_teacher,
+      teacher_notes: row.teacher_notes,
+      student_notes: row.student_notes,
       student: row.student // student уже приходит как JSON объект от базы данных
     }
   })
@@ -96,6 +98,8 @@ export async function getStudentTeachers(studentId: string): Promise<TeacherStud
       deleted_at: row.deleted_at,
       teacher_custom_name_for_student: row.teacher_custom_name_for_student,
       student_custom_name_for_teacher: row.student_custom_name_for_teacher,
+      teacher_notes: row.teacher_notes,
+      student_notes: row.student_notes,
       teacher: row.teacher // teacher уже приходит как JSON объект от базы данных
     }
   })
@@ -260,5 +264,41 @@ export async function updateCustomNameInRelation(relationId: string, customName:
   return {
     success: true,
     message: nameValue === null ? 'Имя сброшено' : 'Имя успешно обновлено'
+  }
+}
+
+// Обновить заметку в связи
+export async function updateNotesInRelation(relationId: string, notes: string, isTeacherUpdating: boolean): Promise<{
+  success: boolean
+  message: string
+}> {
+  const supabase = createSupabaseBrowserClient()
+  
+  const updateField = isTeacherUpdating 
+    ? 'teacher_notes' 
+    : 'student_notes'
+  
+  // Ограничиваем заметку до 500 символов и преобразуем пустую строку в null
+  const notesValue = notes.trim() === '' ? null : notes.trim().substring(0, 500)
+  
+  const { error } = await supabase
+    .from('teacher_student_relations')
+    .update({ 
+      [updateField]: notesValue,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', relationId)
+  
+  if (error) {
+    console.error('Error updating notes:', error)
+    return { 
+      success: false, 
+      message: 'Ошибка при обновлении заметки' 
+    }
+  }
+  
+  return {
+    success: true,
+    message: notesValue === null ? 'Заметка удалена' : 'Заметка успешно сохранена'
   }
 }

@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Plus, Trash2, Edit3, Check, X, RotateCcw } from 'lucide-react'
+import { Plus, Trash2, Edit3, Check, X, RotateCcw, FileText, ChevronDown } from 'lucide-react'
 import { Icon } from '@/components/ui/icon'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { InviteDialog } from '@/components/invite-dialog'
+import { NotesDialog } from '@/components/notes-dialog'
 import { getTeacherStudents, removeTeacherStudentRelation, updateCustomNameInRelation } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { toast } from 'sonner'
@@ -25,6 +26,8 @@ type StudentRelation = {
   created_at: string
   teacher_custom_name_for_student?: string | null
   student_custom_name_for_teacher?: string | null
+  teacher_notes?: string | null
+  student_notes?: string | null
 }
 
 export function StudentsTab() {
@@ -35,7 +38,11 @@ export function StudentsTab() {
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
   const [updatingNameId, setUpdatingNameId] = useState<string | null>(null)
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false)
+  const [currentNotesRelation, setCurrentNotesRelation] = useState<StudentRelation | null>(null)
+  const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null)
   const editingRef = useRef<HTMLDivElement>(null)
+  const notesRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
 
   const handleInvite = () => {
@@ -143,6 +150,40 @@ export function StudentsTab() {
     }
   }
 
+  // Обработчики заметок
+  const handleToggleNotes = (relationId: string) => {
+    setExpandedNotesId(prev => prev === relationId ? null : relationId)
+  }
+
+  const handleOpenNotes = (relation: StudentRelation) => {
+    setCurrentNotesRelation(relation)
+    setNotesDialogOpen(true)
+  }
+
+  const handleNotesUpdated = () => {
+    // Обновляем данные студентов после сохранения заметки
+    const loadStudents = async () => {
+      if (!user?.id) return
+      
+      setLoading(true)
+      try {
+        const result = await getTeacherStudents(user.id)
+        setStudents(result as StudentRelation[])
+        
+        // Автоматически раскрываем блок заметок для текущей записи
+        if (currentNotesRelation?.id) {
+          setExpandedNotesId(currentNotesRelation.id)
+        }
+      } catch (error) {
+        console.error('Error loading students:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadStudents()
+  }
+
   // Отслеживание кликов вне области редактирования
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -176,6 +217,27 @@ export function StudentsTab() {
 
     loadStudents()
   }, [user?.id])
+
+  // Отслеживание кликов вне области заметок
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (expandedNotesId && notesRef.current && !notesRef.current.contains(event.target as Node)) {
+        // Проверяем, что клик не был по кнопке заметок
+        const target = event.target as Element
+        if (!target.closest('[data-notes-toggle]')) {
+          setExpandedNotesId(null)
+        }
+      }
+    }
+
+    if (expandedNotesId) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [expandedNotesId])
 
   if (loading) {
     return (
@@ -224,13 +286,13 @@ export function StudentsTab() {
         /* Список учеников */
         <div className="space-y-4 pt-16">
           {students.map((relation) => (
-            <motion.div
-              key={relation.id}
-              className="flex items-center gap-4 p-4 bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 min-h-[88px]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ 
+            <div key={relation.id}>
+              <motion.div
+                className="flex items-center gap-4 p-4 bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 min-h-[88px]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ 
                 duration: 0.2,
                 ease: "easeOut"
               }}
@@ -410,42 +472,127 @@ export function StudentsTab() {
                 </AnimatePresence>
               </div>
               
-              {/* Кнопка удаления - скрываем в режиме редактирования */}
-              <AnimatePresence>
-                {editingNameId !== relation.id && (
-                  <motion.div 
-                    className="flex-shrink-0"
-                    initial={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ 
-                      duration: 0.2,
-                      ease: "easeOut"
-                    }}
-                  >
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleRemoveStudent(relation.id)}
-                      disabled={removingIds.has(relation.id)}
+              {/* Кнопки действий */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Кнопки заметок и удаления - скрываем в режиме редактирования */}
+                <AnimatePresence>
+                  {editingNameId !== relation.id && (
+                    <motion.div 
+                      className="flex items-center gap-2"
+                      initial={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ 
+                        duration: 0.2,
+                        ease: "easeOut"
+                      }}
                     >
-                      {removingIds.has(relation.id) ? (
-                        <motion.div 
-                          className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full"
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      {/* Кнопка заметок */}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        onClick={() => handleOpenNotes(relation)}
+                        title="Добавить заметку"
+                        data-notes-toggle
+                      >
+                        <Icon icon={FileText} size="sm" />
+                      </Button>
+
+                      {/* Кнопка удаления */}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleRemoveStudent(relation.id)}
+                        disabled={removingIds.has(relation.id)}
+                      >
+                        {removingIds.has(relation.id) ? (
+                          <motion.div 
+                            className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full"
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          />
+                        ) : (
+                          <Icon icon={Trash2} size="sm" />
+                        )}
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Кнопка шеврона для заметок - в самом правом углу */}
+                <AnimatePresence>
+                  {editingNameId !== relation.id && (
+                    <motion.div
+                      initial={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ 
+                        duration: 0.2,
+                        ease: "easeOut"
+                      }}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-gray-400 hover:text-gray-600"
+                        onClick={() => handleToggleNotes(relation.id)}
+                        data-notes-toggle
+                      >
+                        <Icon 
+                          icon={ChevronDown} 
+                          size="sm" 
+                          className={`transition-transform duration-200 ${
+                            expandedNotesId === relation.id ? 'rotate-180' : ''
+                          }`}
                         />
-                      ) : (
-                        <Icon icon={Trash2} size="sm" />
-                      )}
-                    </Button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </motion.div>
-          ))}
-        </div>
-      )}
+
+            {/* Заметки - выезжают снизу под карточкой */}
+            <AnimatePresence>
+              {expandedNotesId === relation.id && (
+                <motion.div
+                  ref={notesRef}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="mx-4 mb-4 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+                    {relation.teacher_notes ? (
+                      <div className="text-sm text-gray-700">
+                        <p className="font-medium text-gray-900 mb-1">Заметка:</p>
+                        <p className="whitespace-pre-wrap">{relation.teacher_notes}</p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">
+                        Заметок нет. Нажмите на кнопку с документом, чтобы добавить заметку.
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* Диалог заметок */}
+    <NotesDialog
+      open={notesDialogOpen}
+      onOpenChange={setNotesDialogOpen}
+      relationId={currentNotesRelation?.id || ''}
+      currentNotes={currentNotesRelation?.teacher_notes || null}
+      isTeacherUpdating={true}
+      userName={currentNotesRelation?.student?.full_name || ''}
+      onNotesUpdated={handleNotesUpdated}
+    />
 
       {/* Диалог приглашения */}
       <InviteDialog

@@ -220,8 +220,10 @@ export type Database = {
           status: string
           student_custom_name_for_teacher: string | null
           student_id: string
+          student_notes: string | null
           teacher_custom_name_for_student: string | null
           teacher_id: string
+          teacher_notes: string | null
           updated_at: string
         }
         Insert: {
@@ -234,8 +236,10 @@ export type Database = {
           status?: string
           student_custom_name_for_teacher?: string | null
           student_id: string
+          student_notes?: string | null
           teacher_custom_name_for_student?: string | null
           teacher_id: string
+          teacher_notes?: string | null
           updated_at?: string
         }
         Update: {
@@ -248,8 +252,10 @@ export type Database = {
           status?: string
           student_custom_name_for_teacher?: string | null
           student_id?: string
+          student_notes?: string | null
           teacher_custom_name_for_student?: string | null
           teacher_id?: string
+          teacher_notes?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -301,6 +307,8 @@ export type Database = {
           deleted_at: string
           teacher_custom_name_for_student: string
           student_custom_name_for_teacher: string
+          teacher_notes: string
+          student_notes: string
           teacher: Json
         }[]
       }
@@ -319,6 +327,8 @@ export type Database = {
           deleted_at: string
           teacher_custom_name_for_student: string
           student_custom_name_for_teacher: string
+          teacher_notes: string
+          student_notes: string
           student: Json
         }[]
       }
