@@ -76,12 +76,13 @@ pnpm types:generate
 - Use `RelationStatus` type in `src/lib/api.ts` for type safety
 - RPC functions automatically filter `status = 'active'` AND `deleted_at IS NULL`
 - For soft delete: set `status = 'blocked'` AND `deleted_at = timestamp`
+- **Reactivation logic**: When accepting invites for existing relations, custom names and user data are reset
 
 **Key RPC Functions:**
 - `get_teacher_students(teacher_user_id)` - Returns teacher's students with user info
 - `get_student_teachers(student_user_id)` - Returns student's teachers with user info  
 - `create_invite_link(p_invite_type, p_message?, p_expires_in_hours?)` - Creates invitation
-- `accept_invite_link(p_invite_code)` - Accepts invitation and creates relation
+- `accept_invite_link(p_invite_code)` - Accepts invitation and creates/reactivates relation with data reset
 
 ## Form Handling & Validation
 - **React Hook Form 7** for form state management

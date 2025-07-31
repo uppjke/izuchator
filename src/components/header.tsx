@@ -35,7 +35,11 @@ const LOGO_CONFIG = {
   size: 24
 } as const
 
-export function Header() {
+interface HeaderProps {
+  hideAuthButtons?: boolean
+}
+
+export function Header({ hideAuthButtons = false }: HeaderProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -57,7 +61,7 @@ export function Header() {
   const openLogin = useCallback(() => setLoginOpen(true), [])
   const openRegister = useCallback(() => setRegisterOpen(true), [])
   
-  // Не показываем Header на страницах дашборда
+  // Не показываем Header на страницах дашборда (у них свой header)
   if (pathname.startsWith('/dashboard')) {
     return null;
   }
@@ -80,7 +84,7 @@ export function Header() {
         {/* Десктопные кнопки */}
         <div className="hidden sm:flex items-center gap-4">
           {loading ? (
-            <div className="w-24 h-9 bg-gray-200 animate-pulse rounded"></div>
+            !hideAuthButtons && <div className="w-24 h-9 bg-gray-200 animate-pulse rounded"></div>
           ) : isAuthenticated ? (
             <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>
@@ -137,7 +141,7 @@ export function Header() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
+          ) : !hideAuthButtons ? (
             <>
               <Button 
                 size="header" 
@@ -155,17 +159,18 @@ export function Header() {
                 Создать аккаунт
               </Button>
             </>
-          )}
+          ) : null}
         </div>
 
         {/* Мобильное бургер-меню */}
-        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="sm:hidden">
-              <Icon icon={Menu} size="lg" />
-              <span className="sr-only">Открыть меню</span>
-            </Button>
-          </SheetTrigger>
+        {!hideAuthButtons && (
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="sm:hidden">
+                <Icon icon={Menu} size="lg" />
+                <span className="sr-only">Открыть меню</span>
+              </Button>
+            </SheetTrigger>
           <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180 border-l border-white/20 [&>button]:hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent pointer-events-none"></div>
             <div className="relative z-10">
@@ -221,10 +226,12 @@ export function Header() {
             </SheetHeader>
             <div className="flex flex-col gap-4 mt-8 items-center">
               {loading ? (
-                <div className="space-y-3">
-                  <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
-                  <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
-                </div>
+                !hideAuthButtons && (
+                  <div className="space-y-3">
+                    <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
+                    <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
+                  </div>
+                )
               ) : isAuthenticated ? (
                 <>
                   <Button 
@@ -253,7 +260,7 @@ export function Header() {
                     Выйти
                   </Button>
                 </>
-              ) : (
+              ) : !hideAuthButtons ? (
                 <>
                   <Button 
                     size="mobileMenu" 
@@ -277,11 +284,12 @@ export function Header() {
                     Создать аккаунт
                   </Button>
                 </>
-              )}
+              ) : null}
             </div>
             </div>
           </SheetContent>
         </Sheet>
+        )}
         </div>
       </div>
       

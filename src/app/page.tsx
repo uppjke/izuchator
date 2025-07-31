@@ -9,6 +9,7 @@ import { AnimatedBlobs } from '@/components/animated-blobs';
 import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
 import { InviteHandler } from '@/components/invite-handler';
+import { Header } from '@/components/header';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 
@@ -46,7 +47,9 @@ export default function Home() {
     setLoginOpen(true)
   }, [])
   return (
-    <div className="min-h-[calc(100dvh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
+    <>
+      <Header />
+      <div className="min-h-[calc(100dvh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
       <AnimatedBlobs />
       
       {/* Обработчик параметров приглашения */}
@@ -127,6 +130,7 @@ export default function Home() {
         onOpenChange={setRegisterOpen}
         onSwitchToLogin={handleSwitchToLogin}
       />
-    </div>
+      </div>
+    </>
   );
 }
