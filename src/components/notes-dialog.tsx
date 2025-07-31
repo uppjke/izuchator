@@ -86,7 +86,7 @@ export function NotesDialog({
               value={notes}
               onChange={(e) => setNotes(e.target.value.substring(0, MAX_NOTES_LENGTH))}
               placeholder="Введите заметку..."
-              className="w-full min-h-[120px] p-3 border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-sm bg-background"
+              className="w-full min-h-[120px] p-3 border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-base bg-background"
               disabled={isSubmitting}
             />
             <div className="flex justify-between items-center text-xs text-muted-foreground">
