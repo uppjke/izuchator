@@ -58,22 +58,25 @@ export function NotesDialog({
     }
   }
 
-  const handleClose = () => {
-    setNotes(currentNotes || '')
-    onOpenChange(false)
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      // При закрытии диалога сбрасываем изменения к исходному состоянию
+      setNotes(currentNotes || '')
+    }
+    onOpenChange(open)
   }
 
   const remainingChars = MAX_NOTES_LENGTH - notes.length
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Заметка о {userName}
+          <DialogTitle className="text-center text-2xl font-semibold">
+            Заметка
           </DialogTitle>
-          <DialogDescription>
-            Добавьте личную заметку об этом пользователе. Максимум {MAX_NOTES_LENGTH} символов.
+          <DialogDescription className="text-center text-sm text-muted-foreground">
+            Добавьте личную заметку о <strong>{userName}</strong>.
           </DialogDescription>
         </DialogHeader>
         
@@ -83,10 +86,10 @@ export function NotesDialog({
               value={notes}
               onChange={(e) => setNotes(e.target.value.substring(0, MAX_NOTES_LENGTH))}
               placeholder="Введите заметку..."
-              className="w-full min-h-[120px] p-3 border border-zinc-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent text-sm"
+              className="w-full min-h-[120px] p-3 border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-sm bg-background"
               disabled={isSubmitting}
             />
-            <div className="flex justify-between items-center text-xs text-zinc-500">
+            <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span>
                 {notes.length} / {MAX_NOTES_LENGTH} символов
               </span>
@@ -96,21 +99,12 @@ export function NotesDialog({
             </div>
           </div>
           
-          <div className="flex gap-3 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              <Icon icon={X} size="sm" className="mr-2" />
-              Отмена
-            </Button>
+          <div className="flex justify-center">
             <Button
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || remainingChars < 0}
-              className="bg-zinc-900 hover:bg-zinc-700"
+              className="w-full"
             >
               <Icon icon={Save} size="sm" className="mr-2" />
               {isSubmitting ? 'Сохранение...' : 'Сохранить'}

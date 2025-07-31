@@ -490,7 +490,7 @@ export function StudentsTab() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
                         onClick={() => handleOpenNotes(relation)}
                         title="Добавить заметку"
                         data-notes-toggle
@@ -502,13 +502,13 @@ export function StudentsTab() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
                         onClick={() => handleRemoveStudent(relation.id)}
                         disabled={removingIds.has(relation.id)}
                       >
                         {removingIds.has(relation.id) ? (
                           <motion.div 
-                            className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full"
+                            className="w-4 h-4 border-2 border-rose-600 border-t-transparent rounded-full"
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                           />
