@@ -304,7 +304,7 @@ export function StudentsTab() {
           {students.map((relation) => (
             <div key={relation.id}>
               <motion.div
-                className="flex items-center gap-4 p-4 bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 min-h-[88px]"
+                className="flex items-center gap-4 p-4 bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 min-h-[100px] sm:min-h-[88px]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -338,7 +338,7 @@ export function StudentsTab() {
               </AnimatePresence>
               
               {/* Информация о пользователе */}
-              <div className="flex-1 min-w-0 h-[60px] flex flex-col justify-center">
+              <div className="flex-1 min-w-0 h-[72px] sm:h-[60px] flex flex-col justify-center">
                 <AnimatePresence mode="wait">
                   {editingNameId === relation.id ? (
                     /* Режим редактирования - только поле и кнопки */
@@ -430,10 +430,10 @@ export function StudentsTab() {
                         <Popover>
                           <PopoverTrigger asChild>
                             <div 
-                              className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors max-w-[200px] sm:max-w-[250px] md:max-w-[300px] lg:max-w-[350px] overflow-hidden"
+                              className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors max-w-[280px] sm:max-w-[320px] md:max-w-[380px] lg:max-w-[450px] overflow-hidden"
                               title={getDisplayName(relation.student, relation)}
                             >
-                              <h3 className="font-medium text-gray-900 text-lg truncate user-card-name flex-1 min-w-0">
+                              <h3 className="font-medium text-gray-900 text-base sm:text-lg truncate user-card-name flex-1 min-w-0">
                                 {getDisplayName(relation.student, relation)}
                               </h3>
                               <span className="text-xs font-medium select-none flex-shrink-0 ml-1" style={{ color: '#3b82f6' }}>*</span>
@@ -462,7 +462,7 @@ export function StudentsTab() {
                         </Popover>
                       ) : (
                         <h3 
-                          className="font-medium text-gray-900 text-lg truncate max-w-[200px] sm:max-w-[250px] md:max-w-[300px] lg:max-w-[350px] user-card-name"
+                          className="font-medium text-gray-900 text-base sm:text-lg truncate max-w-[280px] sm:max-w-[320px] md:max-w-[380px] lg:max-w-[450px] user-card-name"
                           title={getDisplayName(relation.student, relation)}
                         >
                           {getDisplayName(relation.student, relation)}
@@ -472,13 +472,13 @@ export function StudentsTab() {
                         size="icon"
                         variant="ghost"
                         onClick={() => handleStartRename(relation)}
-                        className="text-gray-400 hover:text-gray-600 w-8 h-8"
+                        className="text-gray-400 hover:text-gray-600 w-6 h-6"
                       >
                         <Icon icon={Edit3} size="xs" />
                       </Button>
                     </div>
                     <p 
-                      className="text-sm text-gray-500 mt-1 truncate max-w-[300px] sm:max-w-[350px] md:max-w-[400px] user-card-email" 
+                      className="text-xs sm:text-sm text-gray-500 mt-2 sm:mt-1 truncate max-w-[380px] sm:max-w-[420px] md:max-w-[480px] lg:max-w-[550px] user-card-email" 
                       title={relation.student?.email}
                     >
                       {relation.student?.email}
@@ -504,9 +504,9 @@ export function StudentsTab() {
                     >
                       {/* Кнопка заметок */}
                       <Button
-                        variant="outline"
                         size="icon"
-                        className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
+                        variant="outline"
+                        className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200 w-7 h-7"
                         onClick={() => handleOpenNotes(relation)}
                         title="Добавить заметку"
                         data-notes-toggle
@@ -516,9 +516,9 @@ export function StudentsTab() {
 
                       {/* Кнопка удаления */}
                       <Button
-                        variant="outline"
                         size="icon"
-                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+                        variant="outline"
+                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 w-7 h-7"
                         onClick={() => handleDeleteClick(relation)}
                         disabled={removingIds.has(relation.id)}
                       >
