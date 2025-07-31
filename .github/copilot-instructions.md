@@ -52,6 +52,37 @@ This is a Next.js 15 project with App Router using TypeScript. The project is de
 - **@supabase/ssr** helper for server-side rendering support
 - Email-based authentication with OTP verification
 
+### Database Management & Type Generation
+
+**Connecting to Database:**
+```bash
+# Direct PostgreSQL connection to Supabase
+psql -h aws-0-eu-central-2.pooler.supabase.com -p 6543 -d postgres -U postgres.kurxrmzawghhxhwqyqbm
+
+# Execute SQL commands directly
+psql -h aws-0-eu-central-2.pooler.supabase.com -p 6543 -d postgres -U postgres.kurxrmzawghhxhwqyqbm -c "SQL_COMMAND_HERE"
+```
+
+**Updating TypeScript Types:**
+```bash
+# Generate fresh types from current database schema
+pnpm types:generate
+
+# This runs: supabase gen types typescript --project-id kurxrmzawghhxhwqyqbm > src/lib/types/database.generated.ts
+```
+
+**Database Schema Notes:**
+- Table `teacher_student_relations` has status constraint: `'pending' | 'active' | 'rejected' | 'blocked'`
+- Use `RelationStatus` type in `src/lib/api.ts` for type safety
+- RPC functions automatically filter `status = 'active'` AND `deleted_at IS NULL`
+- For soft delete: set `status = 'blocked'` AND `deleted_at = timestamp`
+
+**Key RPC Functions:**
+- `get_teacher_students(teacher_user_id)` - Returns teacher's students with user info
+- `get_student_teachers(student_user_id)` - Returns student's teachers with user info  
+- `create_invite_link(p_invite_type, p_message?, p_expires_in_hours?)` - Creates invitation
+- `accept_invite_link(p_invite_code)` - Accepts invitation and creates relation
+
 ## Form Handling & Validation
 - **React Hook Form 7** for form state management
 - **Zod 4** for schema validation and type safety

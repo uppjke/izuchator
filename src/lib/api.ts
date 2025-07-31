@@ -2,6 +2,9 @@
 import { createSupabaseBrowserClient } from './supabase'
 import type { Database } from './types/database.generated'
 
+// Допустимые статусы для teacher_student_relations
+export type RelationStatus = 'pending' | 'active' | 'rejected' | 'blocked'
+
 // Тип для пользователя из auth.users
 type AuthUser = {
   id: string
@@ -205,7 +208,7 @@ export async function removeTeacherStudentRelation(relationId: string): Promise<
   const { error } = await supabase
     .from('teacher_student_relations')
     .update({ 
-      status: 'inactive',
+      status: 'blocked' as RelationStatus,
       deleted_at: new Date().toISOString()
     })
     .eq('id', relationId)
