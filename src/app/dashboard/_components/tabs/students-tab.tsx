@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/icon'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { InviteDialog } from '@/components/invite-dialog'
 import { NotesDialog } from '@/components/notes-dialog'
+import { ConfirmationDialog } from '@/components/confirmation-dialog'
 import { getTeacherStudents, removeTeacherStudentRelation, updateCustomNameInRelation } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { toast } from 'sonner'
@@ -41,6 +42,8 @@ export function StudentsTab() {
   const [notesDialogOpen, setNotesDialogOpen] = useState(false)
   const [currentNotesRelation, setCurrentNotesRelation] = useState<StudentRelation | null>(null)
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [studentToDelete, setStudentToDelete] = useState<StudentRelation | null>(null)
   const editingRef = useRef<HTMLDivElement>(null)
   const notesRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
@@ -69,6 +72,19 @@ export function StudentsTab() {
         next.delete(relationId)
         return next
       })
+      setConfirmDeleteOpen(false)
+      setStudentToDelete(null)
+    }
+  }
+
+  const handleDeleteClick = (relation: StudentRelation) => {
+    setStudentToDelete(relation)
+    setConfirmDeleteOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (studentToDelete) {
+      handleRemoveStudent(studentToDelete.id)
     }
   }
 
@@ -503,7 +519,7 @@ export function StudentsTab() {
                         variant="outline"
                         size="icon"
                         className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
-                        onClick={() => handleRemoveStudent(relation.id)}
+                        onClick={() => handleDeleteClick(relation)}
                         disabled={removingIds.has(relation.id)}
                       >
                         {removingIds.has(relation.id) ? (
@@ -599,6 +615,18 @@ export function StudentsTab() {
         open={inviteDialogOpen}
         onOpenChange={setInviteDialogOpen}
         type="student"
+      />
+
+      {/* Диалог подтверждения удаления */}
+      <ConfirmationDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Удаление"
+        description={`Вы уверены, что хотите удалить ${studentToDelete ? `**${getDisplayName(studentToDelete.student, studentToDelete)}**` : 'ученика'}?\nЭто действие нельзя отменить.`}
+        confirmText="Удалить"
+        onConfirm={handleConfirmDelete}
+        isLoading={studentToDelete ? removingIds.has(studentToDelete.id) : false}
+        variant="destructive"
       />
     </div>
   )
