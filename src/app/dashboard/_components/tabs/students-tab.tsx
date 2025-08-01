@@ -11,34 +11,13 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { InviteDialog } from '@/components/invite-dialog'
 import { NotesDialog } from '@/components/notes-dialog'
 import { ConfirmationDialog } from '@/components/confirmation-dialog'
-import { getTeacherStudents, removeTeacherStudentRelation, updateCustomNameInRelation } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
-import { toast } from 'sonner'
-
-type StudentRelation = {
-  id: string
-  student: {
-    id: string
-    email: string
-    full_name: string
-    role: string
-  } | null
-  status: string
-  created_at: string
-  teacher_custom_name_for_student?: string | null
-  student_custom_name_for_teacher?: string | null
-  teacher_notes?: string | null
-  student_notes?: string | null
-}
+import { useTeacherStudents, useRemoveRelation, useUpdateCustomName, type StudentRelation } from '@/hooks/use-relations'
 
 export function StudentsTab() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
-  const [students, setStudents] = useState<StudentRelation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [removingIds, setRemovingIds] = useState<Set<string>>(new Set())
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
-  const [updatingNameId, setUpdatingNameId] = useState<string | null>(null)
   const [notesDialogOpen, setNotesDialogOpen] = useState(false)
   const [currentNotesRelation, setCurrentNotesRelation] = useState<StudentRelation | null>(null)
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null)
@@ -48,33 +27,17 @@ export function StudentsTab() {
   const notesRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
 
+  // Используем TanStack Query хуки
+  const { data: students = [], isLoading, error } = useTeacherStudents(user?.id)
+  const removeRelationMutation = useRemoveRelation()
+  const updateNameMutation = useUpdateCustomName()
+
   const handleInvite = () => {
     setInviteDialogOpen(true)
   }
 
   const handleRemoveStudent = async (relationId: string) => {
-    setRemovingIds(prev => new Set(prev).add(relationId))
-    
-    try {
-      const result = await removeTeacherStudentRelation(relationId)
-      
-      if (result.success) {
-        setStudents(prev => prev.filter(s => s.id !== relationId))
-        toast.success('Ученик успешно удален')
-      } else {
-        toast.error(result.message)
-      }
-    } catch {
-      toast.error('Ошибка при удалении ученика')
-    } finally {
-      setRemovingIds(prev => {
-        const next = new Set(prev)
-        next.delete(relationId)
-        return next
-      })
-      setConfirmDeleteOpen(false)
-      setStudentToDelete(null)
-    }
+    removeRelationMutation.mutate(relationId)
   }
 
   const handleDeleteClick = (relation: StudentRelation) => {
@@ -85,6 +48,8 @@ export function StudentsTab() {
   const handleConfirmDelete = () => {
     if (studentToDelete) {
       handleRemoveStudent(studentToDelete.id)
+      setConfirmDeleteOpen(false)
+      setStudentToDelete(null)
     }
   }
 
@@ -112,28 +77,16 @@ export function StudentsTab() {
   const handleSaveRename = async (relationId: string) => {
     if (!editingName.trim()) return
 
-    setUpdatingNameId(relationId)
-    
-    try {
-      const result = await updateCustomNameInRelation(relationId, editingName.trim(), true)
-      
-      if (result.success) {
-        setStudents(prev => prev.map(s => 
-          s.id === relationId 
-            ? { ...s, teacher_custom_name_for_student: editingName.trim() }
-            : s
-        ))
-        toast.success('Имя успешно обновлено')
-      } else {
-        toast.error(result.message)
+    updateNameMutation.mutate({
+      relationId,
+      customName: editingName.trim(),
+      isTeacherUpdating: true
+    }, {
+      onSuccess: () => {
+        setEditingNameId(null)
+        setEditingName('')
       }
-    } catch {
-      toast.error('Ошибка при обновлении имени')
-    } finally {
-      setEditingNameId(null)
-      setUpdatingNameId(null)
-      setEditingName('')
-    }
+    })
   }
 
   const handleCancelRename = () => {
@@ -142,28 +95,16 @@ export function StudentsTab() {
   }
 
   const handleResetToOriginal = async (relationId: string) => {
-    setUpdatingNameId(relationId)
-    
-    try {
-      const result = await updateCustomNameInRelation(relationId, '', true)
-      
-      if (result.success) {
-        setStudents(prev => prev.map(s => 
-          s.id === relationId 
-            ? { ...s, teacher_custom_name_for_student: null }
-            : s
-        ))
-        toast.success('Возвращено оригинальное имя')
-      } else {
-        toast.error(result.message)
+    updateNameMutation.mutate({
+      relationId,
+      customName: '',
+      isTeacherUpdating: true
+    }, {
+      onSuccess: () => {
+        setEditingNameId(null)
+        setEditingName('')
       }
-    } catch {
-      toast.error('Ошибка при возврате имени')
-    } finally {
-      setEditingNameId(null)
-      setUpdatingNameId(null)
-      setEditingName('')
-    }
+    })
   }
 
   // Обработчики заметок
@@ -177,27 +118,11 @@ export function StudentsTab() {
   }
 
   const handleNotesUpdated = () => {
-    // Обновляем данные студентов после сохранения заметки
-    const loadStudents = async () => {
-      if (!user?.id) return
-      
-      setLoading(true)
-      try {
-        const result = await getTeacherStudents(user.id)
-        setStudents(result as StudentRelation[])
-        
-        // Автоматически раскрываем блок заметок для текущей записи
-        if (currentNotesRelation?.id) {
-          setExpandedNotesId(currentNotesRelation.id)
-        }
-      } catch (error) {
-        console.error('Error loading students:', error)
-      } finally {
-        setLoading(false)
-      }
+    // С TanStack Query не нужно вручную перезагружать данные!
+    // Мутация автоматически инвалидирует кеш
+    if (currentNotesRelation?.id) {
+      setExpandedNotesId(currentNotesRelation.id)
     }
-    
-    loadStudents()
   }
 
   // Отслеживание кликов вне области редактирования
@@ -216,23 +141,6 @@ export function StudentsTab() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [editingNameId])
-
-  useEffect(() => {
-    const loadStudents = async () => {
-      if (!user?.id) return
-      
-      try {
-        const data = await getTeacherStudents(user.id)
-        setStudents(data as unknown as StudentRelation[]) // API возвращает данные с JOIN
-      } catch (error) {
-        console.error('Error loading students:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadStudents()
-  }, [user?.id])
 
   // Отслеживание кликов вне области заметок
   useEffect(() => {
@@ -255,7 +163,7 @@ export function StudentsTab() {
     }
   }, [expandedNotesId])
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="relative">
         <div className="absolute top-0 right-0">
@@ -268,6 +176,17 @@ export function StudentsTab() {
           <div className="text-center text-gray-500">
             <p>Загрузка учеников...</p>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center text-red-500">
+          <p>Ошибка загрузки данных</p>
+          <p className="text-sm">{error.message}</p>
         </div>
       </div>
     )
@@ -375,10 +294,10 @@ export function StudentsTab() {
                         size="icon"
                         variant="ghost"
                         onClick={() => handleSaveRename(relation.id)}
-                        disabled={updatingNameId === relation.id}
+                        disabled={updateNameMutation.isPending}
                         className="text-green-600 hover:text-green-700 h-8 w-8"
                       >
-                        {updatingNameId === relation.id ? (
+                        {updateNameMutation.isPending ? (
                           <motion.div 
                             className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full"
                             animate={{ rotate: 360 }}
@@ -392,7 +311,7 @@ export function StudentsTab() {
                         size="icon"
                         variant="ghost"
                         onClick={handleCancelRename}
-                        disabled={updatingNameId === relation.id}
+                        disabled={updateNameMutation.isPending}
                         className="text-gray-600 hover:text-gray-700 h-8 w-8"
                       >
                         <Icon icon={X} size="xs" />
@@ -406,7 +325,7 @@ export function StudentsTab() {
                             e.stopPropagation()
                             handleResetToOriginal(relation.id)
                           }}
-                          disabled={updatingNameId === relation.id}
+                          disabled={updateNameMutation.isPending}
                           className="text-orange-500 hover:text-orange-600 h-8 w-8"
                           title="Вернуть оригинальное имя"
                         >
@@ -522,9 +441,9 @@ export function StudentsTab() {
                         variant="outline"
                         className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 w-7 h-7"
                         onClick={() => handleDeleteClick(relation)}
-                        disabled={removingIds.has(relation.id)}
+                        disabled={removeRelationMutation.isPending}
                       >
-                        {removingIds.has(relation.id) ? (
+                        {removeRelationMutation.isPending ? (
                           <motion.div 
                             className="w-4 h-4 border-2 border-rose-600 border-t-transparent rounded-full"
                             animate={{ rotate: 360 }}
@@ -637,7 +556,7 @@ export function StudentsTab() {
         description={`Вы уверены, что хотите удалить ${studentToDelete ? `**${getDisplayName(studentToDelete.student, studentToDelete)}**` : 'ученика'}?\nЭто действие нельзя отменить.`}
         confirmText="Удалить"
         onConfirm={handleConfirmDelete}
-        isLoading={studentToDelete ? removingIds.has(studentToDelete.id) : false}
+        isLoading={removeRelationMutation.isPending}
         variant="destructive"
       />
     </div>
