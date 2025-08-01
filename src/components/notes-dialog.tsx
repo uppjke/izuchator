@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Icon } from '@/components/ui/icon'
-import { Save, X } from 'lucide-react'
+import { Save } from 'lucide-react'
 import { updateNotesInRelation } from '@/lib/api'
 import { toast } from 'sonner'
 
@@ -76,7 +76,7 @@ export function NotesDialog({
             Заметка
           </DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">
-            Добавьте личную заметку о <strong>{userName}</strong>.
+            Добавьте личную заметку для <strong>{userName}</strong>.
           </DialogDescription>
         </DialogHeader>
         
