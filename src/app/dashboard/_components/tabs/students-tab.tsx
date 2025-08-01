@@ -13,6 +13,7 @@ import { NotesDialog } from '@/components/notes-dialog'
 import { ConfirmationDialog } from '@/components/confirmation-dialog'
 import { useAuth } from '@/lib/auth-context'
 import { useTeacherStudents, useRemoveRelation, useUpdateCustomName, type StudentRelation } from '@/hooks/use-relations'
+import { usePresence } from '@/hooks/use-presence'
 
 export function StudentsTab() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
@@ -31,6 +32,9 @@ export function StudentsTab() {
   const { data: students = [], isLoading, error } = useTeacherStudents(user?.id)
   const removeRelationMutation = useRemoveRelation()
   const updateNameMutation = useUpdateCustomName()
+  
+  // Используем присутствие для отслеживания онлайн статуса
+  const { isUserOnline } = usePresence()
 
   const handleInvite = () => {
     setInviteDialogOpen(true)
@@ -250,9 +254,12 @@ export function StudentsTab() {
                       user={{
                         name: relation.student?.full_name,
                         email: relation.student?.email,
-                        avatar_url: null // Пока null, потом добавим логику
+                        avatar_url: null, // Пока null, потом добавим логику
+                        id: relation.student?.id
                       }}
                       size="md"
+                      showOnlineStatus={true}
+                      isOnline={relation.student?.id ? isUserOnline(relation.student.id) : false}
                     />
                   </motion.div>
                 )}
