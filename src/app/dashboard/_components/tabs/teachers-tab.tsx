@@ -579,8 +579,17 @@ export function TeachersTab() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    transition={{ 
+                      duration: 0.25, 
+                      ease: [0.4, 0.0, 0.2, 1], // Более плавная кривая для мобильных
+                      type: "tween" // Принудительно используем tween вместо spring
+                    }}
                     className="overflow-hidden border-t border-zinc-200/50"
+                    style={{
+                      // Принудительно включаем аппаратное ускорение
+                      transform: "translateZ(0)",
+                      willChange: "height, opacity"
+                    }}
                   >
                     <div className="px-4 py-3 bg-gray-50/80">
                       {relation.student_notes ? (
@@ -589,8 +598,8 @@ export function TeachersTab() {
                           <p className="whitespace-pre-wrap">{relation.student_notes}</p>
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-500">
-                          Заметок нет.
+                        <p className="text-sm text-gray-500 text-center">
+                          Пусто.
                         </p>
                       )}
                     </div>
