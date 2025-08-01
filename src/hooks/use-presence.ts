@@ -22,6 +22,9 @@ export function usePresence() {
   const { user } = useAuth()
   const supabase = createSupabaseBrowserClient()
 
+  // Определяем iOS Safari
+  const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as Window & { MSStream?: unknown }).MSStream
+
   // Функция для отправки присутствия
   const trackPresence = useCallback(async (channel: RealtimeChannel) => {
     if (!user?.id) return
@@ -106,37 +109,78 @@ export function usePresence() {
 
     // Обработка изменения видимости страницы
     const handleVisibilityChange = () => {
+      console.log('Visibility changed:', document.hidden)
       if (!document.hidden && channel.state === 'joined') {
         // Страница стала видимой - обновляем присутствие
         trackPresence(channel)
       }
     }
 
-    // Обработка восстановления соединения
-    const handleOnline = () => {
+    // Обработка фокуса окна (для iOS Safari)
+    const handleFocus = () => {
+      console.log('Window focused')
       if (channel.state === 'joined') {
         trackPresence(channel)
       }
     }
 
-    // Периодическое обновление присутствия (каждые 30 секунд)
+    // Обработка возврата в приложение (для iOS Safari)
+    const handlePageShow = (event: PageTransitionEvent) => {
+      console.log('Page show event:', event.persisted)
+      if (channel.state === 'joined') {
+        trackPresence(channel)
+      }
+    }
+
+    // Обработка восстановления соединения
+    const handleOnline = () => {
+      console.log('Connection restored')
+      if (channel.state === 'joined') {
+        trackPresence(channel)
+      }
+    }
+
+    // Периодическое обновление присутствия (более частое для iOS Safari)
     const heartbeatInterval = setInterval(() => {
       if (!document.hidden && navigator.onLine && channel.state === 'joined') {
         trackPresence(channel)
       }
-    }, 30000)
+    }, isIOSSafari ? 10000 : 15000) // 10 секунд для iOS Safari, 15 для остальных
 
+    // Обработка касания (для iOS Safari)
+    const handleTouch = () => {
+      if (channel.state === 'joined' && isIOSSafari) {
+        console.log('Touch detected on iOS Safari')
+        trackPresence(channel)
+      }
+    }
+
+    // Добавляем все обработчики событий
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('pageshow', handlePageShow)
     window.addEventListener('online', handleOnline)
+    
+    // Специальные обработчики для iOS Safari
+    if (isIOSSafari) {
+      document.addEventListener('touchstart', handleTouch, { passive: true })
+    }
 
     return () => {
       clearInterval(heartbeatInterval)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('pageshow', handlePageShow)
       window.removeEventListener('online', handleOnline)
+      
+      if (isIOSSafari) {
+        document.removeEventListener('touchstart', handleTouch)
+      }
+      
       channel.unsubscribe()
       setIsTracking(false)
     }
-  }, [user, supabase, trackPresence])
+  }, [user, supabase, trackPresence, isIOSSafari])
 
   const isUserOnline = (userId: string): boolean => {
     return onlineUsers.has(userId)
