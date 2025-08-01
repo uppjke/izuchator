@@ -305,7 +305,7 @@ export function TeachersTab() {
           {teachers.map((relation) => (
             <div key={relation.id}>
               <motion.div
-                className="flex items-center gap-4 p-4 bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 min-h-[100px] sm:min-h-[88px]"
+                className="flex flex-col bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 overflow-hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -314,6 +314,8 @@ export function TeachersTab() {
                 ease: "easeOut"
               }}
             >
+              {/* Основная часть карточки */}
+              <div className="flex items-center gap-4 p-4 min-h-[100px] sm:min-h-[88px]">
               {/* Аватар - скрываем в режиме редактирования */}
               <AnimatePresence>
                 {editingNameId !== relation.id && (
@@ -567,34 +569,35 @@ export function TeachersTab() {
                   )}
                 </AnimatePresence>
               </div>
+              </div>
+              
+              {/* Секция заметок внутри карточки */}
+              <AnimatePresence>
+                {expandedNotesId === relation.id && (
+                  <motion.div
+                    ref={notesRef}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="overflow-hidden border-t border-zinc-200/50"
+                  >
+                    <div className="px-4 py-3 bg-gray-50/80">
+                      {relation.student_notes ? (
+                        <div className="text-sm text-gray-700">
+                          <p className="font-medium text-gray-900 mb-1">Заметка:</p>
+                          <p className="whitespace-pre-wrap">{relation.student_notes}</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">
+                          Заметок нет.
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
-
-            {/* Заметки - выезжают снизу под карточкой */}
-            <AnimatePresence>
-              {expandedNotesId === relation.id && (
-                <motion.div
-                  ref={notesRef}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="overflow-hidden"
-                >
-                  <div className="mx-4 mb-4 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
-                    {relation.student_notes ? (
-                      <div className="text-sm text-gray-700">
-                        <p className="font-medium text-gray-900 mb-1">Заметка:</p>
-                        <p className="whitespace-pre-wrap">{relation.student_notes}</p>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 italic">
-                        Заметок нет. Нажмите на кнопку с документом, чтобы добавить заметку.
-                      </p>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
             </div>
           ))}
         </div>
