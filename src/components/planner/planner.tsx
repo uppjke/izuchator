@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { PlannerHeader } from './planner-header'
 import { getNextWeek, getPreviousWeek } from './utils'
 import type { PlannerProps } from './types'
@@ -53,7 +52,7 @@ export function Planner({
             Текущий режим: <span className="font-medium text-blue-600">{viewMode === 'week' ? 'Неделя' : viewMode === 'month' ? 'Месяц' : 'Год'}</span>
           </div>
           <div className="text-sm mt-2 text-blue-600">
-            Используйте кнопку "Режим" для переключения между видами
+            Используйте кнопку &ldquo;Режим&rdquo; для переключения между видами
           </div>
         </div>
       </div>
