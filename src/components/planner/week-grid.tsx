@@ -50,7 +50,7 @@ export function WeekGrid({ week }: WeekGridProps) {
         {hours.map((hour, hourIndex) => (
           <React.Fragment key={hour}>
             {/* Время */}
-            <div className={`bg-gray-50 p-3 text-sm text-gray-500 text-center font-medium ${
+            <div className={`bg-gray-50 p-3 h-16 flex items-center justify-center text-sm text-gray-500 font-medium ${
               hourIndex > 0 ? 'border-t border-gray-200' : ''
             }`}>
               {hour.toString().padStart(2, '0')}:00
@@ -60,7 +60,7 @@ export function WeekGrid({ week }: WeekGridProps) {
             {week.days.map((day) => (
               <div
                 key={`${day.date.toISOString()}-${hour}`}
-                className={`h-12 bg-white border-l border-gray-200 ${
+                className={`h-16 bg-white border-l border-gray-200 ${
                   hourIndex > 0 ? 'border-t border-gray-200' : ''
                 }`}
               />

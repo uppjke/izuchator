@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { PlannerHeader } from './planner-header'
 import { WeekGrid } from './week-grid'
+import { AgendaView } from './agenda-view'
 import { getNextWeek, getPreviousWeek, getWeekData } from './utils'
 import type { PlannerProps } from './types'
 
@@ -11,6 +12,19 @@ export function Planner({
 }: Pick<PlannerProps, 'onCreateLesson'>) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<'week' | 'month' | 'year'>('week')
+  const [isWideScreen, setIsWideScreen] = useState(true)
+  
+  // Проверка ширины экрана
+  useEffect(() => {
+    const checkScreenWidth = () => {
+      setIsWideScreen(window.innerWidth >= 1024) // lg breakpoint
+    }
+    
+    checkScreenWidth()
+    window.addEventListener('resize', checkScreenWidth)
+    
+    return () => window.removeEventListener('resize', checkScreenWidth)
+  }, [])
   
   const handlePreviousDate = () => {
     setCurrentDate(getPreviousWeek(currentDate))
@@ -44,13 +58,23 @@ export function Planner({
         onNextDate={handleNextDate}
         onToday={handleToday}
         onCreateLesson={() => handleCreateLesson(new Date())}
+        isWideScreen={isWideScreen}
       />
       
       {/* Содержимое планера */}
       <div className="flex-1 min-h-0">
-        {viewMode === 'week' && (
+        {viewMode === 'week' && isWideScreen && (
           <WeekGrid
             week={getWeekData(currentDate)}
+          />
+        )}
+        
+        {viewMode === 'week' && !isWideScreen && (
+          <AgendaView
+            week={getWeekData(currentDate)}
+            lessons={[]} // TODO: Добавить реальные данные уроков
+            onCreateLesson={(date) => handleCreateLesson(date)}
+            onEditLesson={(lesson) => console.log('Редактировать урок:', lesson)}
           />
         )}
         

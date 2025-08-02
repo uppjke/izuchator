@@ -15,6 +15,7 @@ interface PlannerHeaderProps {
   onNextDate: () => void
   onToday: () => void
   onCreateLesson: () => void
+  isWideScreen?: boolean
 }
 
 export function PlannerHeader({
@@ -24,7 +25,8 @@ export function PlannerHeader({
   onPreviousDate,
   onNextDate,
   onToday,
-  onCreateLesson
+  onCreateLesson,
+  isWideScreen = false
 }: PlannerHeaderProps) {
   // Форматируем дату с заглавной буквы
   const monthYear = format(currentDate, 'LLLL yyyy', { locale: ru })
@@ -71,47 +73,87 @@ export function PlannerHeader({
         </Button>
       </div>
 
-      {/* Нижний уровень - навигация по датам */}
-      <div className="px-4 pb-2">
-        {/* Навигация по датам слева */}
-        <div className="flex items-center gap-2">
-          {/* Кнопка назад */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onPreviousDate}
-            className="p-2"
-          >
-            <Icon icon={ChevronLeft} size="sm" />
-          </Button>
-          
-          {/* Кнопка "Сегодня" */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onToday}
-          >
-            Сегодня
-          </Button>
-          
-          {/* Кнопка вперед */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onNextDate}
-            className="p-2"
-          >
-            <Icon icon={ChevronRight} size="sm" />
-          </Button>
-        </div>
-      </div>
+      {/* Второй уровень - навигация по датам */}
+      {isWideScreen && viewMode === 'week' ? (
+        // Вид для широких экранов (сетка)
+        <div className="flex items-center justify-between px-4 pb-4">
+          {/* Навигация по датам слева */}
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onPreviousDate}
+              className="p-2"
+            >
+              <Icon icon={ChevronLeft} size="sm" />
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onToday}
+            >
+              Сегодня
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onNextDate}
+              className="p-2"
+            >
+              <Icon icon={ChevronRight} size="sm" />
+            </Button>
+          </div>
 
-      {/* Месяц и год по центру */}
-      <div className="flex justify-center px-4 pb-4">
-        <h2 className="text-lg font-semibold text-gray-900">
-          {capitalizedMonthYear}
-        </h2>
-      </div>
+          {/* Месяц и год по центру */}
+          <h2 className="text-lg font-semibold text-gray-900 absolute left-1/2 transform -translate-x-1/2">
+            {capitalizedMonthYear}
+          </h2>
+
+          {/* Пустое место справа для баланса */}
+          <div className="w-[180px]"></div>
+        </div>
+      ) : (
+        // Вид для узких экранов (агенда)
+        <>
+          <div className="px-4 pb-2">
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onPreviousDate}
+                className="p-2"
+              >
+                <Icon icon={ChevronLeft} size="sm" />
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onToday}
+              >
+                Сегодня
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onNextDate}
+                className="p-2"
+              >
+                <Icon icon={ChevronRight} size="sm" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex justify-center px-4 pb-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {capitalizedMonthYear}
+            </h2>
+          </div>
+        </>
+      )}
     </div>
   )
 }
