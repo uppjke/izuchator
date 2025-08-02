@@ -1,5 +1,6 @@
-import { Calendar } from '@/components/calendar'
-import type { Lesson } from '@/components/calendar'
+// TODO: Импортировать новый календарь
+// import { Calendar } from '@/components/calendar'
+// import type { Lesson } from '@/components/calendar'
 
 export function PlannerTab() {
   const handleCreateLesson = (date: Date, hour: number) => {
@@ -7,17 +8,17 @@ export function PlannerTab() {
     // TODO: Открыть диалог создания урока
   }
 
-  const handleEditLesson = (lesson: Lesson) => {
+  const handleEditLesson = (lesson: any) => {
     console.log('Редактировать урок:', lesson)
     // TODO: Открыть диалог редактирования урока
   }
 
   return (
     <div>
-      <Calendar
-        onCreateLesson={handleCreateLesson}
-        onEditLesson={handleEditLesson}
-      />
+      {/* TODO: Добавить новый календарь */}
+      <div className="p-8 text-center text-gray-500">
+        Календарь будет добавлен здесь
+      </div>
     </div>
   )
 }
