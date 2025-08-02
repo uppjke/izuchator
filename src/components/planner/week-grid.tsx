@@ -20,18 +20,18 @@ export function WeekGrid({ week }: WeekGridProps) {
   }
 
   return (
-    <div className="h-full flex flex-col border border-gray-200 rounded-lg overflow-hidden m-4">
+    <div className="h-full flex flex-col border border-gray-200/60 rounded-lg overflow-hidden m-4">
       {/* Фиксированный заголовок с днями недели */}
-      <div className="flex-none grid grid-cols-[60px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] border-b border-gray-200">
+      <div className="flex-none grid grid-cols-[60px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] border-b border-gray-200 bg-gradient-to-r from-white/60 via-white/50 to-white/60 backdrop-blur-md backdrop-saturate-180">
         {/* Пустая ячейка для времени */}
-        <div className="bg-gray-50 p-3 text-sm font-medium text-gray-500" />
+        <div className="bg-gray-50/80 p-3 text-sm font-medium text-gray-500" />
         
         {/* Заголовки дней */}
         {week.days.map((day) => (
           <div
             key={day.date.toISOString()}
             className={`p-3 text-sm font-medium text-center border-l border-gray-200 ${
-              day.isToday ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-700'
+              day.isToday ? 'bg-blue-50/80 text-blue-700' : 'bg-gray-50/80 text-gray-700'
             }`}
           >
             <div className="text-lg font-semibold">
@@ -50,7 +50,7 @@ export function WeekGrid({ week }: WeekGridProps) {
         {hours.map((hour, hourIndex) => (
           <React.Fragment key={hour}>
             {/* Время */}
-            <div className={`bg-gray-50 p-3 h-16 flex items-center justify-center text-sm text-gray-500 font-medium ${
+            <div className={`bg-gray-50/80 p-3 h-16 flex items-center justify-center text-sm text-gray-500 font-medium ${
               hourIndex > 0 ? 'border-t border-gray-200' : ''
             }`}>
               {hour.toString().padStart(2, '0')}:00
