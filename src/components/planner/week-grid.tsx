@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { formatDate } from './utils'
 import type { PlannerWeek } from './types'
 
@@ -12,12 +12,37 @@ export function WeekGrid({ week }: WeekGridProps) {
   // Часы для отображения (00:00 - 23:00)
   const hours = Array.from({ length: 24 }, (_, i) => i)
   
+  // Состояние для текущего времени
+  const [currentTime, setCurrentTime] = useState(new Date())
+  
+  // Обновляем время каждую минуту
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // Обновляем каждую минуту
+
+    return () => clearInterval(interval)
+  }, [])
+  
   // Сопоставление дней недели с двухбуквенными сокращениями
   const getDayAbbr = (date: Date): string => {
     const dayIndex = date.getDay()
     const dayAbbrs = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ']
     return dayAbbrs[dayIndex]
   }
+
+  // Получаем текущее время для отображения индикатора
+  const currentHour = currentTime.getHours()
+  const currentMinutes = currentTime.getMinutes()
+  
+  // Проверяем, находится ли текущая дата в отображаемой неделе
+  const today = new Date()
+  const isCurrentWeek = week.days.some(day => 
+    day.date.toDateString() === today.toDateString()
+  )
+  
+  // Вычисляем позицию индикатора времени в процентах от высоты ячейки
+  const timeIndicatorPosition = (currentMinutes / 60) * 100
 
   return (
     <div className="h-full flex flex-col border border-gray-200/60 rounded-lg overflow-hidden m-4">
@@ -45,25 +70,55 @@ export function WeekGrid({ week }: WeekGridProps) {
       </div>
 
       {/* Прокручиваемая сетка с часами */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-[60px_1fr_1fr_1fr_1fr_1fr_1fr_1fr]">
+      <div className="flex-1 overflow-y-auto relative">
+        <div className="grid grid-cols-[60px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] relative">
+        {/* Глобальный индикатор времени поверх всей сетки */}
+        {isCurrentWeek && currentHour >= 0 && currentHour < 24 && (
+          <div 
+            className="absolute bg-red-500 shadow-sm pointer-events-none"
+            style={{ 
+              left: '60px', // Начинаем после столбца времени
+              right: '0',
+              height: '2px',
+              top: `${(currentHour * 64) + (currentMinutes / 60) * 64 - 1}px`, // 64px = высота ячейки
+              boxShadow: '0 0 4px rgba(239, 68, 68, 0.6)',
+              zIndex: 9999
+            }}
+          />
+        )}
+        
         {hours.map((hour, hourIndex) => (
           <React.Fragment key={hour}>
             {/* Время */}
-            <div className={`bg-gray-50/80 p-3 h-16 flex items-center justify-center text-sm text-gray-500 font-medium ${
+            <div className={`bg-gray-50/80 p-3 h-16 flex items-center justify-center text-sm text-gray-500 font-medium relative ${
               hourIndex > 0 ? 'border-t border-gray-200' : ''
             }`}>
               {hour.toString().padStart(2, '0')}:00
+              
+              {/* Отображение текущего времени в столбце времени */}
+              {isCurrentWeek && hour === currentHour && (
+                <div 
+                  className="absolute text-xs font-medium text-white bg-red-500 px-2 py-1 rounded-full right-0 whitespace-nowrap"
+                  style={{ 
+                    top: `calc(${timeIndicatorPosition}% - 13px)`,
+                    boxShadow: '0 0 4px rgba(239, 68, 68, 0.6)',
+                    zIndex: 9999
+                  }}
+                >
+                  {currentTime.getHours().toString().padStart(2, '0')}:{currentTime.getMinutes().toString().padStart(2, '0')}
+                </div>
+              )}
             </div>
             
             {/* Ячейки дней */}
             {week.days.map((day) => (
               <div
                 key={`${day.date.toISOString()}-${hour}`}
-                className={`h-16 bg-white border-l border-gray-200 ${
+                className={`h-16 bg-white border-l border-gray-200 relative ${
                   hourIndex > 0 ? 'border-t border-gray-200' : ''
                 }`}
-              />
+              >
+              </div>
             ))}
           </React.Fragment>
         ))}
