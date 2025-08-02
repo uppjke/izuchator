@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { usePresence } from "@/hooks/use-presence";
+import { PresenceProvider } from "@/lib/presence-context";
 import { Sidebar } from "./_components/sidebar";
 import { DashboardHeader } from "./_components/header";
 import { DashboardTab } from "./_components/tabs/dashboard-tab";
@@ -32,6 +34,9 @@ export default function DashboardLayout() {
   const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
   const userRole = (user?.role as UserRole) || "student";
+
+  // Инициализируем отслеживание присутствия на уровне дашборда
+  const presenceData = usePresence();
 
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -142,31 +147,33 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="flex dashboard-container bg-zinc-50/50">
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={closeSidebar}
-        userRole={userRole}
-        user={user}
-        activeTab={activeTab}
-        onTabChange={changeTab}
-      />
+    <PresenceProvider value={presenceData}>
+      <div className="flex dashboard-container bg-zinc-50/50">
+        {/* Sidebar */}
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={closeSidebar}
+          userRole={userRole}
+          user={user}
+          activeTab={activeTab}
+          onTabChange={changeTab}
+        />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <DashboardHeader onMenuClick={toggleSidebar} activeTab={activeTab} />
+        {/* Main content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header */}
+          <DashboardHeader onMenuClick={toggleSidebar} activeTab={activeTab} />
 
-        {/* Page content */}
-        <main className={`flex-1 overflow-hidden ${MAIN_PADDING}`}>
-          <div className={CONTAINER_CLASSES}>
-            <div className={`${MAIN_PADDING} h-full`}>
-              <ActiveTabComponent />
+          {/* Page content */}
+          <main className={`flex-1 overflow-hidden ${MAIN_PADDING}`}>
+            <div className={CONTAINER_CLASSES}>
+              <div className={`${MAIN_PADDING} h-full`}>
+                <ActiveTabComponent />
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+    </PresenceProvider>
   );
 }

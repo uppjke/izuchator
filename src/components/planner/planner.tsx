@@ -2,17 +2,13 @@
 
 import React, { useState } from 'react'
 import { PlannerHeader } from './planner-header'
-import { getWeekData, getNextWeek, getPreviousWeek } from './utils'
+import { getNextWeek, getPreviousWeek } from './utils'
 import type { PlannerProps } from './types'
 
 export function Planner({ 
-  lessons = [], 
-  onCreateLesson, 
-  onEditLesson 
-}: PlannerProps) {
+  onCreateLesson
+}: Pick<PlannerProps, 'onCreateLesson'>) {
   const [currentDate, setCurrentDate] = useState(new Date())
-  
-  const weekData = getWeekData(currentDate)
   
   const handlePreviousWeek = () => {
     setCurrentDate(getPreviousWeek(currentDate))
