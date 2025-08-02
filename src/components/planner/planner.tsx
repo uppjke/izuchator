@@ -1,27 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import { PlannerHeader } from './planner-header'
-import { getNextWeek, getPreviousWeek } from './utils'
 import type { PlannerProps } from './types'
 
 export function Planner({ 
   onCreateLesson
 }: Pick<PlannerProps, 'onCreateLesson'>) {
-  const [currentDate, setCurrentDate] = useState(new Date())
-  
-  const handlePreviousWeek = () => {
-    setCurrentDate(getPreviousWeek(currentDate))
-  }
-  
-  const handleNextWeek = () => {
-    setCurrentDate(getNextWeek(currentDate))
-  }
-  
-  const handleToday = () => {
-    setCurrentDate(new Date())
-  }
-  
   const handleCreateLesson = () => {
     onCreateLesson?.(new Date())
   }
@@ -30,10 +15,6 @@ export function Planner({
     <div className="h-full flex flex-col">
       {/* Панель управления */}
       <PlannerHeader
-        currentDate={currentDate}
-        onPreviousWeek={handlePreviousWeek}
-        onNextWeek={handleNextWeek}
-        onToday={handleToday}
         onCreateLesson={handleCreateLesson}
       />
       
