@@ -1,6 +1,7 @@
 export { Planner } from './planner'
 export { PlannerHeader } from './planner-header'
 export { WeekView } from './week-view'
+export { WeekGrid } from './week-grid'
 export { AgendaView } from './agenda-view'
 export * from './types'
 export * from './utils'
