@@ -1,0 +1,55 @@
+'use client'
+
+import React, { useState } from 'react'
+import { PlannerHeader } from './planner-header'
+import { getWeekData, getNextWeek, getPreviousWeek } from './utils'
+import type { PlannerProps } from './types'
+
+export function Planner({ 
+  lessons = [], 
+  onCreateLesson, 
+  onEditLesson 
+}: PlannerProps) {
+  const [currentDate, setCurrentDate] = useState(new Date())
+  
+  const weekData = getWeekData(currentDate)
+  
+  const handlePreviousWeek = () => {
+    setCurrentDate(getPreviousWeek(currentDate))
+  }
+  
+  const handleNextWeek = () => {
+    setCurrentDate(getNextWeek(currentDate))
+  }
+  
+  const handleToday = () => {
+    setCurrentDate(new Date())
+  }
+  
+  const handleCreateLesson = () => {
+    onCreateLesson?.(new Date())
+  }
+  
+  return (
+    <div className="h-full flex flex-col">
+      {/* Панель управления */}
+      <PlannerHeader
+        currentDate={currentDate}
+        onPreviousWeek={handlePreviousWeek}
+        onNextWeek={handleNextWeek}
+        onToday={handleToday}
+        onCreateLesson={handleCreateLesson}
+      />
+      
+      {/* Временная заглушка для содержимого */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="text-center text-gray-500">
+          <div className="text-lg mb-2">Планер в разработке</div>
+          <div className="text-sm">
+            Здесь будет отображаться календарь и список уроков
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

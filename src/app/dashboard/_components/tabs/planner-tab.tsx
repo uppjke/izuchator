@@ -1,24 +1,23 @@
-// TODO: Импортировать новый календарь
-// import { Calendar } from '@/components/calendar'
-// import type { Lesson } from '@/components/calendar'
+import { Planner } from '@/components/planner'
+import type { Lesson } from '@/components/planner'
 
 export function PlannerTab() {
-  const handleCreateLesson = (date: Date, hour: number) => {
-    console.log('Создать урок:', date, hour)
+  const handleCreateLesson = (date: Date) => {
+    console.log('Создать урок:', date)
     // TODO: Открыть диалог создания урока
   }
 
-  const handleEditLesson = (lesson: any) => {
+  const handleEditLesson = (lesson: Lesson) => {
     console.log('Редактировать урок:', lesson)
     // TODO: Открыть диалог редактирования урока
   }
 
   return (
-    <div>
-      {/* TODO: Добавить новый календарь */}
-      <div className="p-8 text-center text-gray-500">
-        Календарь будет добавлен здесь
-      </div>
+    <div className="h-full">
+      <Planner
+        onCreateLesson={handleCreateLesson}
+        onEditLesson={handleEditLesson}
+      />
     </div>
   )
 }
