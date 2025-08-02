@@ -10,6 +10,7 @@ export function Planner({
   onCreateLesson
 }: Pick<PlannerProps, 'onCreateLesson'>) {
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [viewMode, setViewMode] = useState<'week' | 'month' | 'year'>('week')
   
   const handlePreviousDate = () => {
     setCurrentDate(getPreviousWeek(currentDate))
@@ -27,11 +28,17 @@ export function Planner({
     onCreateLesson?.(new Date())
   }
   
+  const handleViewModeChange = (mode: 'week' | 'month' | 'year') => {
+    setViewMode(mode)
+  }
+  
   return (
     <div className="h-full flex flex-col">
       {/* Панель управления */}
       <PlannerHeader
         currentDate={currentDate}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
         onPreviousDate={handlePreviousDate}
         onNextDate={handleNextDate}
         onToday={handleToday}
@@ -43,11 +50,10 @@ export function Planner({
         <div className="text-center text-gray-500">
           <div className="text-lg mb-2">Планер в разработке</div>
           <div className="text-sm">
-            Здесь будет отображаться календарь и список уроков
+            Текущий режим: <span className="font-medium text-blue-600">{viewMode === 'week' ? 'Неделя' : viewMode === 'month' ? 'Месяц' : 'Год'}</span>
           </div>
           <div className="text-sm mt-2 text-blue-600">
-            На широких экранах (≥1024px) - недельная сетка с датой по центру<br/>
-            На узких экранах (&lt;1024px) - агенда с датой под панелью
+            Используйте кнопку "Режим" для переключения между видами
           </div>
         </div>
       </div>
