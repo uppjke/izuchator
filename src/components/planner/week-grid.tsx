@@ -95,7 +95,7 @@ export function WeekGrid({ week }: WeekGridProps) {
     
     // Выполняем сразу без задержки
     scrollToCurrentTime()
-  }, [week, isCurrentWeek]) // Зависимости: только неделя и проверка текущей недели
+  }, [week, isCurrentWeek, currentTime]) // Добавили currentTime в зависимости
   
   // Вычисляем позицию индикатора времени в процентах от высоты ячейки
   const timeIndicatorPosition = (currentMinutes / 60) * 100
