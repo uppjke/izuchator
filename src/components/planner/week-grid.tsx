@@ -15,6 +15,9 @@ export function WeekGrid({ week }: WeekGridProps) {
   // Состояние для текущего времени
   const [currentTime, setCurrentTime] = useState(new Date())
   
+  // Реф для контейнера прокрутки
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null)
+  
   // Обновляем время каждую секунду для точной синхронизации
   useEffect(() => {
     // Устанавливаем текущее время сразу
@@ -56,7 +59,7 @@ export function WeekGrid({ week }: WeekGridProps) {
     const dayAbbrs = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ']
     return dayAbbrs[dayIndex]
   }
-
+  
   // Получаем текущее время для отображения индикатора
   const currentHour = currentTime.getHours()
   const currentMinutes = currentTime.getMinutes()
@@ -67,6 +70,37 @@ export function WeekGrid({ week }: WeekGridProps) {
     const currentDate = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate())
     return dayDate.getTime() === currentDate.getTime()
   })
+  
+  // Автопрокрутка к текущему времени только при загрузке страницы
+  useEffect(() => {
+    if (!scrollContainerRef.current || !isCurrentWeek) return
+    
+    const scrollToCurrentTime = () => {
+      const container = scrollContainerRef.current
+      if (!container) return
+      
+      const currentHour = currentTime.getHours()
+      const currentMinutes = currentTime.getMinutes()
+      
+      // Вычисляем позицию текущего времени (64px = высота ячейки)
+      const timePosition = (currentHour * 64) + (currentMinutes / 60) * 64
+      
+      // Вычисляем позицию для центрирования (половина высоты контейнера)
+      const containerHeight = container.clientHeight
+      const scrollPosition = timePosition - (containerHeight / 2)
+      
+      // Плавная прокрутка
+      container.scrollTo({
+        top: Math.max(0, scrollPosition),
+        behavior: 'smooth'
+      })
+    }
+    
+    // Небольшая задержка для рендеринга
+    const timeoutId = setTimeout(scrollToCurrentTime, 100)
+    
+    return () => clearTimeout(timeoutId)
+  }, [week, isCurrentWeek]) // Зависимости: только неделя и проверка текущей недели
   
   // Вычисляем позицию индикатора времени в процентах от высоты ячейки
   const timeIndicatorPosition = (currentMinutes / 60) * 100
@@ -97,7 +131,7 @@ export function WeekGrid({ week }: WeekGridProps) {
       </div>
 
       {/* Прокручиваемая сетка с часами */}
-      <div className="flex-1 overflow-y-auto relative">
+      <div className="flex-1 overflow-y-auto relative" ref={scrollContainerRef}>
         <div className="grid grid-cols-[60px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] relative">
         {/* Глобальный индикатор времени поверх всей сетки */}
         {isCurrentWeek && currentHour >= 0 && currentHour < 24 && (
@@ -129,7 +163,9 @@ export function WeekGrid({ week }: WeekGridProps) {
                   style={{ 
                     top: `calc(${timeIndicatorPosition}% - 13px)`,
                     boxShadow: '0 0 4px rgba(239, 68, 68, 0.6)',
-                    zIndex: 9999
+                    zIndex: 9999,
+                    width: '48px', // Фиксированная ширина для HH:MM формата
+                    textAlign: 'center'
                   }}
                 >
                   {currentTime.getHours().toString().padStart(2, '0')}:{currentTime.getMinutes().toString().padStart(2, '0')}
