@@ -15,13 +15,39 @@ export function WeekGrid({ week }: WeekGridProps) {
   // Состояние для текущего времени
   const [currentTime, setCurrentTime] = useState(new Date())
   
-  // Обновляем время каждую минуту
+  // Обновляем время каждую секунду для точной синхронизации
   useEffect(() => {
-    const interval = setInterval(() => {
+    // Устанавливаем текущее время сразу
+    setCurrentTime(new Date())
+    
+    const updateTime = () => {
       setCurrentTime(new Date())
-    }, 60000) // Обновляем каждую минуту
+    }
+    
+    const interval = setInterval(updateTime, 1000)
+    
+    // Обработчики для мобильных устройств и планшетов
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        updateTime() // Обновляем время при возврате на вкладку
+      }
+    }
+    
+    const handleFocus = () => {
+      updateTime() // Обновляем время при фокусе на окне
+    }
+    
+    // Добавляем слушатели событий
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('pageshow', updateTime) // Для мобильных браузеров
 
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('pageshow', updateTime)
+    }
   }, [])
   
   // Сопоставление дней недели с двухбуквенными сокращениями
@@ -36,10 +62,11 @@ export function WeekGrid({ week }: WeekGridProps) {
   const currentMinutes = currentTime.getMinutes()
   
   // Проверяем, находится ли текущая дата в отображаемой неделе
-  const today = new Date()
-  const isCurrentWeek = week.days.some(day => 
-    day.date.toDateString() === today.toDateString()
-  )
+  const isCurrentWeek = week.days.some(day => {
+    const dayDate = new Date(day.date.getFullYear(), day.date.getMonth(), day.date.getDate())
+    const currentDate = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate())
+    return dayDate.getTime() === currentDate.getTime()
+  })
   
   // Вычисляем позицию индикатора времени в процентах от высоты ячейки
   const timeIndicatorPosition = (currentMinutes / 60) * 100
