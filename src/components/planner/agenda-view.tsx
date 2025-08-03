@@ -29,6 +29,16 @@ export function AgendaView({
     }
   }, [week])
   
+  // Получаем уроки для выбранного дня
+  const dayLessons = lessons.filter(lesson => {
+    const lessonDate = new Date(lesson.start_time)
+    return (
+      lessonDate.getDate() === selectedDay.date.getDate() &&
+      lessonDate.getMonth() === selectedDay.date.getMonth() &&
+      lessonDate.getFullYear() === selectedDay.date.getFullYear()
+    )
+  }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+  
   // Сопоставление дней недели с двухбуквенными сокращениями
   const getDayAbbr = (date: Date): string => {
     const dayIndex = date.getDay()
@@ -65,7 +75,22 @@ export function AgendaView({
 
         {/* Контент выбранного дня */}
         <div className="flex-1 p-4">
-          {/* Контент для выбранного дня */}
+          {dayLessons.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center text-gray-500">
+                <div className="text-lg font-medium mb-2">
+                  Занятий не запланировано
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Здесь будет список уроков */}
+              <div className="text-center text-gray-500">
+                Найдено уроков: {dayLessons.length}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
