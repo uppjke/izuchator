@@ -147,7 +147,7 @@ export function PlannerHeader({
             </div>
           </div>
 
-          <div className="flex justify-center px-4 pb-4">
+          <div className="flex justify-center px-4 pb-4 pt-4">
             <h2 className="text-lg font-semibold text-gray-900">
               {capitalizedMonthYear}
             </h2>
