@@ -57,7 +57,7 @@ export function PlannerHeader({
               const nextIndex = (currentIndex + 1) % modes.length
               onViewModeChange(modes[nextIndex])
             }}
-            className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+            className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 w-20 justify-center"
           >
             {getModeText(viewMode)}
           </Button>
