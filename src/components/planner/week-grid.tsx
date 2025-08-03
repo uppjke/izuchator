@@ -71,14 +71,10 @@ export function WeekGrid({ week }: WeekGridProps) {
     return dayDate.getTime() === currentDate.getTime()
   })
   
-  // Мгновенная прокрутка к текущему времени при загрузке страницы
+  // Автоскролл к текущему времени только при первой загрузке
   useEffect(() => {
-    if (!scrollContainerRef.current || !isCurrentWeek) return
-    
-    const scrollToCurrentTime = () => {
+    if (scrollContainerRef.current && isCurrentWeek) {
       const container = scrollContainerRef.current
-      if (!container) return
-      
       const currentHour = currentTime.getHours()
       const currentMinutes = currentTime.getMinutes()
       
@@ -89,13 +85,10 @@ export function WeekGrid({ week }: WeekGridProps) {
       const containerHeight = container.clientHeight
       const scrollPosition = timePosition - (containerHeight / 2)
       
-      // Мгновенная прокрутка без анимации
+      // Устанавливаем позицию скролла мгновенно только один раз
       container.scrollTop = Math.max(0, scrollPosition)
     }
-    
-    // Выполняем сразу без задержки
-    scrollToCurrentTime()
-  }, [week, isCurrentWeek, currentTime]) // Добавили currentTime в зависимости
+  }, [isCurrentWeek]) // Только при изменении недели
   
   // Вычисляем позицию индикатора времени в процентах от высоты ячейки
   const timeIndicatorPosition = (currentMinutes / 60) * 100
