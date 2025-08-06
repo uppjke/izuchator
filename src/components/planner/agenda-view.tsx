@@ -76,7 +76,7 @@ export function AgendaView({
           {dayLessons.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center text-gray-500">
-                <div className="text-lg font-medium mb-2">
+                <div className="text-md font-medium mb-2">
                   Занятий не запланировано
                 </div>
               </div>
