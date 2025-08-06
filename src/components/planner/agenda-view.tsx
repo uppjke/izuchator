@@ -13,9 +13,7 @@ interface AgendaViewProps {
 
 export function AgendaView({ 
   week, 
-  lessons, 
-  onCreateLesson, 
-  onEditLesson 
+  lessons 
 }: AgendaViewProps) {
   const [selectedDay, setSelectedDay] = useState(
     week.days.find(day => day.isToday) || week.days[0]

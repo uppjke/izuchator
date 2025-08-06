@@ -75,8 +75,9 @@ export function WeekGrid({ week }: WeekGridProps) {
   useEffect(() => {
     if (scrollContainerRef.current && isCurrentWeek) {
       const container = scrollContainerRef.current
-      const currentHour = currentTime.getHours()
-      const currentMinutes = currentTime.getMinutes()
+      const now = new Date() // Получаем текущее время внутри эффекта
+      const currentHour = now.getHours()
+      const currentMinutes = now.getMinutes()
       
       // Вычисляем позицию текущего времени (64px = высота ячейки)
       const timePosition = (currentHour * 64) + (currentMinutes / 60) * 64
