@@ -15,13 +15,14 @@ export function Planner({
   const [isWideScreen, setIsWideScreen] = useState(true)
   const [forceTodayInAgenda, setForceTodayInAgenda] = useState(false)
   
-  // Тестовые данные уроков
+  // Тестовые данные уроков - все возможные варианты
   const testLessons: Lesson[] = [
+    // Сегодня - 4 урока
     {
       id: '1',
       title: 'Математика',
       description: 'Изучение квадратных уравнений',
-      start_time: new Date(2025, 7, 7, 10, 0).toISOString(), // Сегодня 10:00
+      start_time: new Date(2025, 7, 7, 9, 0).toISOString(), // Сегодня 9:00
       duration_minutes: 60,
       student_id: 'student1',
       owner_id: 'teacher1',
@@ -40,11 +41,11 @@ export function Planner({
       id: '2',
       title: 'Физика',
       description: 'Законы Ньютона',
-      start_time: new Date(2025, 7, 7, 14, 30).toISOString(), // Сегодня 14:30
+      start_time: new Date(2025, 7, 7, 11, 30).toISOString(), // Сегодня 11:30
       duration_minutes: 90,
       student_id: 'student2',
       owner_id: 'teacher1',
-      status: 'scheduled',
+      status: 'completed',
       price: 2000,
       reminder_minutes: 30,
       is_series_master: false,
@@ -57,13 +58,53 @@ export function Planner({
     },
     {
       id: '3',
-      title: 'Английский язык',
-      description: 'Present Perfect',
-      start_time: new Date(2025, 7, 8, 9, 0).toISOString(), // Завтра 9:00
-      duration_minutes: 45,
+      title: 'Химия',
+      description: 'Органические соединения',
+      start_time: new Date(2025, 7, 7, 14, 0).toISOString(), // Сегодня 14:00
+      duration_minutes: 75,
       student_id: 'student3',
       owner_id: 'teacher1',
-      status: 'scheduled',
+      status: 'cancelled',
+      price: null,
+      reminder_minutes: 20,
+      is_series_master: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      parent_series_id: null,
+      recurrence_rule: null,
+      room_id: null
+    },
+    {
+      id: '4',
+      title: 'История',
+      description: 'Великая Отечественная война',
+      start_time: new Date(2025, 7, 7, 16, 30).toISOString(), // Сегодня 16:30
+      duration_minutes: 60,
+      student_id: 'student4',
+      owner_id: 'teacher1',
+      status: 'confirmed',
+      price: 1800,
+      reminder_minutes: 15,
+      is_series_master: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      parent_series_id: null,
+      recurrence_rule: null,
+      room_id: null
+    },
+    
+    // Завтра - 5 уроков
+    {
+      id: '5',
+      title: 'Английский язык',
+      description: 'Present Perfect',
+      start_time: new Date(2025, 7, 8, 8, 30).toISOString(), // Завтра 8:30
+      duration_minutes: 45,
+      student_id: 'student5',
+      owner_id: 'teacher1',
+      status: 'in_progress',
       price: 1200,
       reminder_minutes: 10,
       is_series_master: false,
@@ -75,15 +116,34 @@ export function Planner({
       room_id: null
     },
     {
-      id: '4',
-      title: 'Химия',
-      description: 'Органические соединения',
-      start_time: new Date(2025, 7, 8, 16, 0).toISOString(), // Завтра 16:00
-      duration_minutes: 75,
-      student_id: 'student4',
+      id: '6',
+      title: 'Биология',
+      description: 'Клеточное строение',
+      start_time: new Date(2025, 7, 8, 10, 15).toISOString(), // Завтра 10:15
+      duration_minutes: 60,
+      student_id: 'student6',
       owner_id: 'teacher1',
       status: 'scheduled',
-      price: 1800,
+      price: null,
+      reminder_minutes: 15,
+      is_series_master: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      parent_series_id: null,
+      recurrence_rule: null,
+      room_id: null
+    },
+    {
+      id: '7',
+      title: 'Информатика',
+      description: 'Алгоритмы и структуры данных',
+      start_time: new Date(2025, 7, 8, 12, 0).toISOString(), // Завтра 12:00
+      duration_minutes: 90,
+      student_id: 'student7',
+      owner_id: 'teacher1',
+      status: 'completed',
+      price: null,
       reminder_minutes: 20,
       is_series_master: false,
       created_at: new Date().toISOString(),
@@ -94,16 +154,94 @@ export function Planner({
       room_id: null
     },
     {
-      id: '5',
-      title: 'История',
-      description: 'Великая Отечественная война',
-      start_time: new Date(2025, 7, 9, 11, 30).toISOString(), // Послезавтра 11:30
+      id: '8',
+      title: 'География',
+      description: 'Климатические зоны',
+      start_time: new Date(2025, 7, 8, 15, 30).toISOString(), // Завтра 15:30
+      duration_minutes: 45,
+      student_id: 'student8',
+      owner_id: 'teacher1',
+      status: 'cancelled',
+      price: 1000,
+      reminder_minutes: 10,
+      is_series_master: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      parent_series_id: null,
+      recurrence_rule: null,
+      room_id: null
+    },
+    {
+      id: '9',
+      title: 'Литература',
+      description: 'Анализ произведений',
+      start_time: new Date(2025, 7, 8, 17, 45).toISOString(), // Завтра 17:45
       duration_minutes: 60,
-      student_id: 'student5',
+      student_id: 'student9',
+      owner_id: 'teacher1',
+      status: 'confirmed',
+      price: null,
+      reminder_minutes: 15,
+      is_series_master: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      parent_series_id: null,
+      recurrence_rule: null,
+      room_id: null
+    },
+    
+    // Послезавтра - 3 урока
+    {
+      id: '10',
+      title: 'Русский язык',
+      description: 'Синтаксис и пунктуация',
+      start_time: new Date(2025, 7, 9, 10, 0).toISOString(), // Послезавтра 10:00
+      duration_minutes: 60,
+      student_id: 'student10',
+      owner_id: 'teacher1',
+      status: 'in_progress',
+      price: null,
+      reminder_minutes: 15,
+      is_series_master: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      parent_series_id: null,
+      recurrence_rule: null,
+      room_id: null
+    },
+    {
+      id: '11',
+      title: 'Обществознание',
+      description: 'Политическая система',
+      start_time: new Date(2025, 7, 9, 14, 30).toISOString(), // Послезавтра 14:30
+      duration_minutes: 75,
+      student_id: 'student1', // Повторяющийся студент
       owner_id: 'teacher1',
       status: 'scheduled',
-      price: 1400,
-      reminder_minutes: 15,
+      price: 1600,
+      reminder_minutes: 20,
+      is_series_master: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      parent_series_id: null,
+      recurrence_rule: null,
+      room_id: null
+    },
+    {
+      id: '12',
+      title: 'Экономика',
+      description: 'Микроэкономика',
+      start_time: new Date(2025, 7, 9, 16, 15).toISOString(), // Послезавтра 16:15
+      duration_minutes: 90,
+      student_id: 'student2', // Повторяющийся студент
+      owner_id: 'teacher1',
+      status: 'completed',
+      price: 2200,
+      reminder_minutes: 25,
       is_series_master: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

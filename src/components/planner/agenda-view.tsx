@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react'
 import { formatDate } from './utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { Icon } from '@/components/ui/icon'
-import { Clock, BookOpen, DollarSign, User } from 'lucide-react'
+import { Clock, CheckCircle, XCircle } from 'lucide-react'
 import type { PlannerWeek, Lesson } from './types'
 
 interface AgendaViewProps {
@@ -24,6 +25,20 @@ export function AgendaView({
   const [selectedDay, setSelectedDay] = useState(
     week.days.find(day => day.isToday) || week.days[0]
   )
+  
+  // Тестовые данные студентов
+  const testStudents = {
+    student1: { name: 'Анна Петрова', customName: 'Аня' },
+    student2: { name: 'Иван Сидоров', customName: null },
+    student3: { name: 'Мария Козлова', customName: 'Маша' },
+    student4: { name: 'Дмитрий Волков', customName: 'Дима' },
+    student5: { name: 'Елена Новикова', customName: null },
+    student6: { name: 'Алексей Морозов', customName: 'Леша' },
+    student7: { name: 'Софья Романова', customName: 'Соня' },
+    student8: { name: 'Николай Федоров', customName: 'Коля' },
+    student9: { name: 'Татьяна Лебедева', customName: null },
+    student10: { name: 'Максим Орлов', customName: 'Макс' }
+  }
   
   // Отслеживаем изменения недели и автоматически выбираем сегодняшний день только при смене недели
   useEffect(() => {
@@ -107,15 +122,66 @@ export function AgendaView({
               {dayLessons.map((lesson) => {
                 const lessonDate = new Date(lesson.start_time)
                 const endTime = new Date(lessonDate.getTime() + lesson.duration_minutes * 60000)
+                const student = testStudents[lesson.student_id as keyof typeof testStudents]
+                const studentDisplayName = student?.customName || student?.name || 'Неизвестный студент'
+                
+                // Функция для получения статуса и цвета
+                const getStatusInfo = (status: string) => {
+                  switch (status) {
+                    case 'scheduled':
+                      return { 
+                        label: 'Запланировано', 
+                        color: 'bg-blue-100 text-blue-700 border-blue-200',
+                        cornerColor: 'border-t-blue-500'
+                      }
+                    case 'completed':
+                      return { 
+                        label: 'Завершено', 
+                        color: 'bg-green-100 text-green-700 border-green-200',
+                        cornerColor: 'border-t-green-500'
+                      }
+                    case 'cancelled':
+                      return { 
+                        label: 'Отменено', 
+                        color: 'bg-red-100 text-red-700 border-red-200',
+                        cornerColor: 'border-t-red-500'
+                      }
+                    case 'confirmed':
+                      return { 
+                        label: 'Подтверждено', 
+                        color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                        cornerColor: 'border-t-emerald-500'
+                      }
+                    case 'in_progress':
+                      return { 
+                        label: 'В процессе', 
+                        color: 'bg-orange-100 text-orange-700 border-orange-200',
+                        cornerColor: 'border-t-orange-500'
+                      }
+                    default:
+                      return { 
+                        label: status, 
+                        color: 'bg-gray-100 text-gray-700 border-gray-200',
+                        cornerColor: 'border-t-gray-500'
+                      }
+                  }
+                }
+                
+                const statusInfo = getStatusInfo(lesson.status)
                 
                 return (
                   <Card 
                     key={lesson.id} 
-                    className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-blue-500"
+                    className="cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden"
                     onClick={() => onEditLesson(lesson)}
                   >
+                    {/* Цветной уголок справа сверху */}
+                    <div 
+                      className={`absolute top-0 right-0 w-0 h-0 border-l-[20px] border-l-transparent border-t-[20px] ${statusInfo.cornerColor}`}
+                    />
+                    
                     <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between pr-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
                           {lesson.title}
                         </CardTitle>
@@ -135,43 +201,45 @@ export function AgendaView({
                     </CardHeader>
                     
                     <CardContent className="pt-0">
-                      {lesson.description && (
-                        <div className="flex items-start mb-3">
-                          <Icon icon={BookOpen} size="xs" />
-                          <p className="text-sm text-gray-600 ml-2 leading-relaxed">
-                            {lesson.description}
-                          </p>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center text-gray-500">
-                          <Icon icon={User} size="xs" />
-                          <span className="ml-1">Студент: {lesson.student_id}</span>
+                      <div className="space-y-3">
+                        {/* Студент */}
+                        <div className="flex items-center">
+                          <UserAvatar 
+                            user={{ 
+                              name: studentDisplayName,
+                              avatar_url: null
+                            }} 
+                            size="sm" 
+                          />
+                          <span className="ml-2 text-sm font-medium text-gray-700">
+                            {studentDisplayName}
+                          </span>
                         </div>
                         
-                        {lesson.price && (
-                          <div className="flex items-center text-green-600 font-medium">
-                            <Icon icon={DollarSign} size="xs" />
-                            <span className="ml-1">{lesson.price} ₽</span>
+                        <div className="flex items-center justify-between">
+                          {/* Оплата - только статус */}
+                          <div className="flex items-center">
+                            {lesson.price ? (
+                              <>
+                                <Icon icon={CheckCircle} size="xs" />
+                                <span className="ml-1 text-sm text-green-600 font-medium">
+                                  Оплачено
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Icon icon={XCircle} size="xs" />
+                                <span className="ml-1 text-sm text-red-600 font-medium">
+                                  Не оплачено
+                                </span>
+                              </>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      
-                      <div className="mt-2 flex items-center justify-between">
-                        <div className="text-xs text-gray-400">
-                          Длительность: {lesson.duration_minutes} мин
-                        </div>
-                        <div className={`text-xs px-2 py-1 rounded-full ${
-                          lesson.status === 'scheduled' 
-                            ? 'bg-blue-100 text-blue-700' 
-                            : lesson.status === 'completed'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {lesson.status === 'scheduled' ? 'Запланировано' : 
-                           lesson.status === 'completed' ? 'Завершено' : 
-                           lesson.status}
+                          
+                          {/* Статус */}
+                          <div className={`text-xs px-2 py-1 rounded-full border ${statusInfo.color}`}>
+                            {statusInfo.label}
+                          </div>
                         </div>
                       </div>
                     </CardContent>
