@@ -312,6 +312,8 @@ export function Planner({
         {viewMode === 'week' && isWideScreen && (
           <WeekGrid
             week={getWeekData(currentDate)}
+            lessons={testLessons}
+            onEditLesson={(lesson) => console.log('Редактировать урок:', lesson)}
           />
         )}
         

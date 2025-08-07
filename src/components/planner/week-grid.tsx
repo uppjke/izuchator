@@ -2,13 +2,18 @@
 
 import React, { useState, useEffect } from 'react'
 import { formatDate } from './utils'
-import type { PlannerWeek } from './types'
+import { UserAvatar } from '@/components/ui/user-avatar'
+import { Icon } from '@/components/ui/icon'
+import { Clock } from 'lucide-react'
+import type { PlannerWeek, Lesson } from './types'
 
 interface WeekGridProps {
   week: PlannerWeek
+  lessons?: Lesson[]
+  onEditLesson?: (lesson: Lesson) => void
 }
 
-export function WeekGrid({ week }: WeekGridProps) {
+export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
   // Часы для отображения (00:00 - 23:00)
   const hours = Array.from({ length: 24 }, (_, i) => i)
   
@@ -18,6 +23,68 @@ export function WeekGrid({ week }: WeekGridProps) {
   // Реф для контейнера прокрутки
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   
+  // Тестовые данные студентов (те же что в agenda-view)
+  const testStudents = {
+    student1: { name: 'Анна Петрова', customName: 'Аня' },
+    student2: { name: 'Иван Сидоров', customName: null },
+    student3: { name: 'Мария Козлова', customName: 'Маша' },
+    student4: { name: 'Дмитрий Волков', customName: 'Дима' },
+    student5: { name: 'Елена Новикова', customName: null },
+    student6: { name: 'Алексей Морозов', customName: 'Леша' },
+    student7: { name: 'Софья Романова', customName: 'Соня' },
+    student8: { name: 'Николай Федоров', customName: 'Коля' },
+    student9: { name: 'Татьяна Лебедева', customName: null },
+    student10: { name: 'Максим Орлов', customName: 'Макс' }
+  }
+  
+  // Функция для получения цвета статуса (эффект цветного стекла)
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'scheduled':
+        return 'bg-blue-500/80 backdrop-blur-sm border border-blue-400/60 text-white shadow-lg'
+      case 'completed':
+        return 'bg-green-500/80 backdrop-blur-sm border border-green-400/60 text-white shadow-lg'
+      case 'cancelled':
+        return 'bg-red-500/80 backdrop-blur-sm border border-red-400/60 text-white shadow-lg'
+      case 'confirmed':
+        return 'bg-emerald-500/80 backdrop-blur-sm border border-emerald-400/60 text-white shadow-lg'
+      case 'in_progress':
+        return 'bg-orange-500/80 backdrop-blur-sm border border-orange-400/60 text-white shadow-lg'
+      default:
+        return 'bg-gray-500/80 backdrop-blur-sm border border-gray-400/60 text-white shadow-lg'
+    }
+  }
+
+  // Функция для получения уроков в конкретный день
+  const getLessonsForDay = (dayDate: Date) => {
+    return lessons.filter(lesson => {
+      const lessonDate = new Date(lesson.start_time)
+      return (
+        lessonDate.getDate() === dayDate.getDate() &&
+        lessonDate.getMonth() === dayDate.getMonth() &&
+        lessonDate.getFullYear() === dayDate.getFullYear()
+      )
+    })
+  }
+
+  // Функция для вычисления позиции и размера карточки урока
+  const getLessonPosition = (lesson: Lesson) => {
+    const startTime = new Date(lesson.start_time)
+    const hours = startTime.getHours()
+    const minutes = startTime.getMinutes()
+    
+    // Высота одного часа = 64px
+    const hourHeight = 64
+    const top = (hours * hourHeight) + (minutes / 60) * hourHeight
+    
+    // Максимальная длительность - 8 часов (480 минут)
+    const maxDuration = 8 * 60
+    const duration = Math.min(lesson.duration_minutes, maxDuration)
+    const height = (duration / 60) * hourHeight
+    
+    return { top, height }
+  }
+
   // Обновляем время каждую секунду для точной синхронизации
   useEffect(() => {
     // Устанавливаем текущее время сразу
@@ -163,15 +230,101 @@ export function WeekGrid({ week }: WeekGridProps) {
             </div>
             
             {/* Ячейки дней */}
-            {week.days.map((day) => (
-              <div
-                key={`${day.date.toISOString()}-${hour}`}
-                className={`h-16 bg-white border-l border-gray-200 relative ${
-                  hourIndex > 0 ? 'border-t border-gray-200' : ''
-                }`}
-              >
-              </div>
-            ))}
+            {week.days.map((day, dayIndex) => {
+              const dayLessons = getLessonsForDay(day.date)
+              
+              return (
+                <div
+                  key={`${day.date.toISOString()}-${hour}`}
+                  className={`h-16 bg-white border-l border-gray-200 relative ${
+                    hourIndex > 0 ? 'border-t border-gray-200' : ''
+                  }`}
+                >
+                  {/* Карточки уроков - отображаем только для первого часа каждого дня */}
+                  {hourIndex === 0 && dayLessons.map((lesson) => {
+                    const position = getLessonPosition(lesson)
+                    const student = testStudents[lesson.student_id as keyof typeof testStudents]
+                    const studentDisplayName = student?.customName || student?.name || 'Неизвестный студент'
+                    const statusColor = getStatusColor(lesson.status)
+                    const startTime = new Date(lesson.start_time)
+                    const endTime = new Date(startTime.getTime() + lesson.duration_minutes * 60000)
+                    
+                    return (
+                      <div
+                        key={lesson.id}
+                        className={`absolute left-1 right-1 rounded-lg cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] overflow-hidden ${statusColor}`}
+                        style={{
+                          top: `${position.top}px`,
+                          height: `${position.height}px`,
+                          zIndex: 10
+                        }}
+                        onClick={() => onEditLesson?.(lesson)}
+                      >
+                        <div className="p-1.5 h-full flex flex-col">
+                          {/* Заголовок урока - всегда видимый */}
+                          <div className="font-semibold text-white text-xs truncate leading-tight">
+                            {lesson.title}
+                          </div>
+                          
+                          {/* Spacer для выравнивания контента */}
+                          <div className="flex-1 min-h-0" />
+                          
+                          {/* Приоритет: 1) Аватар + имя, 2) Время */}
+                          
+                          {/* Для карточек от 64px - показываем аватар + имя */}
+                          {position.height >= 64 && (
+                            <div className="flex items-center text-white text-[9px] mb-1">
+                              <UserAvatar 
+                                user={{ 
+                                  name: studentDisplayName,
+                                  avatar_url: null
+                                }} 
+                                size="sm"
+                                className={`${position.height >= 80 ? 'w-4 h-4' : 'w-3 h-3'} text-[7px] flex-shrink-0`}
+                              />
+                              <span className="ml-1 truncate text-[8px]">
+                                {studentDisplayName}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Время - показываем только если есть место после аватара */}
+                          {position.height >= 90 && (
+                            <div className="flex items-center text-white/90 text-[8px]">
+                              <Icon icon={Clock} size="xs" />
+                              <span className="ml-1 truncate">
+                                {startTime.toLocaleTimeString('ru-RU', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })} - {endTime.toLocaleTimeString('ru-RU', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Для маленьких карточек (50-64px) - только инициал */}
+                          {position.height >= 50 && position.height < 64 && (
+                            <div className="flex items-center justify-between text-white/90 text-[8px]">
+                              <div className="w-2.5 h-2.5 rounded-full bg-black/40 flex items-center justify-center text-[7px] font-bold text-white">
+                                {studentDisplayName.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="text-[7px]">
+                                {startTime.toLocaleTimeString('ru-RU', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
           </React.Fragment>
         ))}
         </div>
