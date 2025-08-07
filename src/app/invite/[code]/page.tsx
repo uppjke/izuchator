@@ -26,9 +26,15 @@ export default function InvitePage() {
     inviterName: string
   } | null>(null)
 
-  const inviteCode = params.code as string
+  const inviteCode = params?.code as string
 
   useEffect(() => {
+    if (!inviteCode) {
+      setError('Неверная ссылка приглашения')
+      setLoading(false)
+      return
+    }
+    
     // Проверяем валидность приглашения
     const checkInvite = async () => {
       try {

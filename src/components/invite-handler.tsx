@@ -14,8 +14,8 @@ export function InviteHandler({ onInviteFound }: InviteHandlerProps) {
   const { isAuthenticated, user } = useAuth()
 
   useEffect(() => {
-    const inviteCode = searchParams.get('invite')
-    const inviteType = searchParams.get('type')
+    const inviteCode = searchParams?.get('invite')
+    const inviteType = searchParams?.get('type')
     
     if (inviteCode && inviteType) {
       // Сохраняем invite code в localStorage для использования после авторизации

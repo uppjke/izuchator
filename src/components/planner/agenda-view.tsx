@@ -10,7 +10,7 @@ import type { PlannerWeek, Lesson } from './types'
 interface AgendaViewProps {
   week: PlannerWeek
   lessons: Lesson[]
-  onCreateLesson: (date: Date) => void
+  onCreateLesson?: (date: Date) => void // Делаем опциональным, так как не используется
   onEditLesson: (lesson: Lesson) => void
   forceToday?: boolean // Флаг для принудительного выбора сегодняшнего дня
 }
@@ -18,7 +18,6 @@ interface AgendaViewProps {
 export function AgendaView({ 
   week, 
   lessons,
-  onCreateLesson,
   onEditLesson,
   forceToday = false
 }: AgendaViewProps) {

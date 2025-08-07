@@ -62,7 +62,7 @@ export function Header({ hideAuthButtons = false }: HeaderProps) {
   const openRegister = useCallback(() => setRegisterOpen(true), [])
   
   // Не показываем Header на страницах дашборда (у них свой header)
-  if (pathname.startsWith('/dashboard')) {
+  if (pathname?.startsWith('/dashboard')) {
     return null;
   }
   return (
