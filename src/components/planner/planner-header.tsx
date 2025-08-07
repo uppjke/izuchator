@@ -117,7 +117,15 @@ export function PlannerHeader({
       ) : (
         // Вид для узких экранов (агенда)
         <>
-          <div className="px-4 pb-2">
+          {/* Месяц и год сверху */}
+          <div className="flex justify-center px-4 pb-2 pt-2">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {capitalizedMonthYear}
+            </h2>
+          </div>
+
+          {/* Кнопки управления снизу */}
+          <div className="px-4 pb-4">
             <div className="flex items-center gap-2">
               <Button 
                 variant="outline" 
@@ -145,12 +153,6 @@ export function PlannerHeader({
                 <Icon icon={ChevronRight} size="sm" />
               </Button>
             </div>
-          </div>
-
-          <div className="flex justify-center px-4 pb-4 pt-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {capitalizedMonthYear}
-            </h2>
           </div>
         </>
       )}
