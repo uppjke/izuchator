@@ -181,7 +181,7 @@ export function AgendaView({
                     />
                     
                     <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between pr-2">
+                      <div className="flex items-center justify-between pr-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
                           {lesson.title}
                         </CardTitle>
