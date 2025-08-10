@@ -5,6 +5,7 @@ import { PlannerHeader } from './planner-header'
 import { WeekGrid } from './week-grid'
 import { AgendaView } from './agenda-view'
 import { getNextWeek, getPreviousWeek, getWeekData } from './utils'
+import { LessonDialog } from './lesson-dialog'
 import type { PlannerProps, Lesson } from './types'
 
 export function Planner({ 
@@ -14,6 +15,8 @@ export function Planner({
   const [viewMode, setViewMode] = useState<'week' | 'month' | 'year'>('week')
   const [isWideScreen, setIsWideScreen] = useState(true)
   const [forceTodayInAgenda, setForceTodayInAgenda] = useState(false)
+  const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false)
+  const [newLessonDate, setNewLessonDate] = useState<Date | null>(null)
   
   // Тестовые данные уроков - все возможные варианты
   const testLessons: Lesson[] = [
@@ -285,7 +288,10 @@ export function Planner({
   }
   
   const handleCreateLesson = (date: Date, hour?: number) => {
-    const lessonDate = hour ? new Date(date.setHours(hour, 0, 0, 0)) : date
+    const baseDate = new Date(date)
+    const lessonDate = hour !== undefined ? new Date(baseDate.setHours(hour, 0, 0, 0)) : baseDate
+    setNewLessonDate(lessonDate)
+    setIsLessonDialogOpen(true)
     onCreateLesson?.(lessonDate)
   }
   
@@ -305,6 +311,11 @@ export function Planner({
         onToday={handleToday}
         onCreateLesson={() => handleCreateLesson(new Date())}
         isWideScreen={isWideScreen}
+      />
+      <LessonDialog 
+        open={isLessonDialogOpen} 
+        onOpenChange={setIsLessonDialogOpen} 
+        date={newLessonDate}
       />
       
       {/* Содержимое планера */}
