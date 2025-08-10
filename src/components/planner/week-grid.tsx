@@ -37,21 +37,21 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
     student10: { name: 'Максим Орлов', customName: 'Макс' }
   }
   
-  // Функция для получения цвета статуса (эффект цветного стекла)
-  const getStatusColor = (status: string) => {
+  // Стиль статусов: белый фон, цветной бордер и текст
+  const getStatusStyle = (status: string) => {
     switch (status) {
       case 'scheduled':
-        return 'bg-blue-500/80 backdrop-blur-sm border border-blue-400/60 text-white shadow-lg'
+        return { card: 'bg-white border border-blue-500 text-blue-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-blue-600/70', icon: 'text-blue-500' }
       case 'completed':
-        return 'bg-green-500/80 backdrop-blur-sm border border-green-400/60 text-white shadow-lg'
+        return { card: 'bg-white border border-green-500 text-green-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-green-600/70', icon: 'text-green-500' }
       case 'cancelled':
-        return 'bg-red-500/80 backdrop-blur-sm border border-red-400/60 text-white shadow-lg'
+        return { card: 'bg-white border border-red-500 text-red-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-red-600/70', icon: 'text-red-500' }
       case 'confirmed':
-        return 'bg-emerald-500/80 backdrop-blur-sm border border-emerald-400/60 text-white shadow-lg'
+        return { card: 'bg-white border border-emerald-500 text-emerald-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-emerald-600/70', icon: 'text-emerald-500' }
       case 'in_progress':
-        return 'bg-orange-500/80 backdrop-blur-sm border border-orange-400/60 text-white shadow-lg'
+        return { card: 'bg-white border border-orange-500 text-orange-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-orange-600/70', icon: 'text-orange-500' }
       default:
-        return 'bg-gray-500/80 backdrop-blur-sm border border-gray-400/60 text-white shadow-lg'
+        return { card: 'bg-white border border-gray-500 text-gray-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-gray-600/70', icon: 'text-gray-500' }
     }
   }
 
@@ -245,14 +245,14 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                     const position = getLessonPosition(lesson)
                     const student = testStudents[lesson.student_id as keyof typeof testStudents]
                     const studentDisplayName = student?.customName || student?.name || 'Неизвестный студент'
-                    const statusColor = getStatusColor(lesson.status)
+                    const statusStyle = getStatusStyle(lesson.status)
                     const startTime = new Date(lesson.start_time)
                     const endTime = new Date(startTime.getTime() + lesson.duration_minutes * 60000)
                     
                     return (
                       <div
                         key={lesson.id}
-                        className={`absolute left-1 right-1 rounded-lg cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] overflow-hidden ${statusColor}`}
+                        className={`absolute left-1 right-1 rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-[1.015] overflow-hidden ${statusStyle.card}`}
                         style={{
                           top: `${position.top}px`,
                           height: `${position.height}px`,
@@ -260,44 +260,44 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                         }}
                         onClick={() => onEditLesson?.(lesson)}
                       >
-                        <div className="p-1.5 h-full flex flex-col overflow-hidden">
+                        <div className="p-1.5 h-full flex flex-col overflow-hidden text-[11px]">
                           {(() => {
                             const h = position.height
                             return (
                               <>
                                 {/* Title */}
-                                <div className={`font-semibold text-white truncate leading-tight ${h < 40 ? 'text-[10px]' : 'text-[11px]'}`}>
+                                <div className={`font-semibold truncate leading-tight ${h < 40 ? 'text-[10px]' : 'text-[11px]'}`}>
                                   {lesson.title}
                                 </div>
                                 <div className="flex-1 min-h-0" />
                                 {/* Breakpoints recalibrated: title always; avatar+name prioritized; time only on taller cards */}
                                 {h >= 78 && (
                                   <>
-                                    <div className="flex items-center text-white/90 text-[9px] mb-0.5">
-                                      <div className="w-4 h-4 rounded-full bg-zinc-900 flex items-center justify-center text-[8px] leading-none font-medium mr-1 flex-shrink-0">
+                                    <div className="flex items-center text-[9px] mb-0.5">
+                                      <div className={`w-4 h-4 rounded-full ${statusStyle.avatar} flex items-center justify-center text-[8px] leading-none font-medium mr-1 flex-shrink-0`}> 
                                         {studentDisplayName.charAt(0).toUpperCase()}
                                       </div>
                                       <span className="truncate">{studentDisplayName}</span>
                                     </div>
-                                    <div className="flex items-center justify-end text-white/80 text-[8px] w-full">
-                                      <span className="truncate">
+                                    <div className={`flex items-center justify-end ${statusStyle.dim} text-[8px] w-full`}>
+                                      <span className="truncate font-medium">
                                         {startTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} – {endTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                                       </span>
-                                      <Icon icon={Clock} size="xs" className="ml-1 opacity-80 scale-90" />
+                                      <Icon icon={Clock} size="xs" className={`ml-1 scale-90 ${statusStyle.icon}`} />
                                     </div>
                                   </>
                                 )}
                                 {h >= 56 && h < 78 && (
-                                  <div className="flex items-center text-white/90 text-[8px]">
-                                    <div className="w-3.5 h-3.5 rounded-full bg-zinc-900 flex items-center justify-center text-[7px] leading-none font-medium mr-1 flex-shrink-0">
+                                  <div className="flex items-center text-[8px]">
+                                    <div className={`w-3.5 h-3.5 rounded-full ${statusStyle.avatar} flex items-center justify-center text-[7px] leading-none font-medium mr-1 flex-shrink-0`}>
                                       {studentDisplayName.charAt(0).toUpperCase()}
                                     </div>
                                     <span className="truncate">{studentDisplayName}</span>
                                   </div>
                                 )}
                                 {h >= 44 && h < 56 && (
-                                  <div className="flex items-center text-white/90 text-[8px]">
-                                    <div className="w-3 h-3 rounded-full bg-zinc-900 flex items-center justify-center text-[7px] leading-none font-medium mr-1 flex-shrink-0">
+                                  <div className="flex items-center text-[8px]">
+                                    <div className={`w-3 h-3 rounded-full ${statusStyle.avatar} flex items-center justify-center text-[7px] leading-none font-medium mr-1 flex-shrink-0`}>
                                       {studentDisplayName.charAt(0).toUpperCase()}
                                     </div>
                                     <span className="truncate">{studentDisplayName}</span>
@@ -305,7 +305,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                                 )}
                                 {h >= 36 && h < 44 && (
                                   <div className="flex items-center">
-                                    <div className="w-3 h-3 rounded-full bg-zinc-900 flex items-center justify-center text-[7px] leading-none font-medium text-white" />
+                                    <div className={`w-3 h-3 rounded-full ${statusStyle.avatar} flex items-center justify-center text-[7px] leading-none font-medium`} />
                                   </div>
                                 )}
                                 {/* <36px: only title already rendered */}
