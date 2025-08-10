@@ -230,7 +230,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
             </div>
             
             {/* Ячейки дней */}
-            {week.days.map((day, dayIndex) => {
+            {week.days.map((day) => {
               const dayLessons = getLessonsForDay(day.date)
               
               return (
@@ -260,64 +260,58 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                         }}
                         onClick={() => onEditLesson?.(lesson)}
                       >
-                        <div className="p-1.5 h-full flex flex-col">
-                          {/* Заголовок урока - всегда видимый */}
-                          <div className="font-semibold text-white text-xs truncate leading-tight">
-                            {lesson.title}
-                          </div>
-                          
-                          {/* Spacer для выравнивания контента */}
-                          <div className="flex-1 min-h-0" />
-                          
-                          {/* Приоритет: 1) Аватар + имя, 2) Время */}
-                          
-                          {/* Для карточек от 64px - показываем аватар + имя */}
-                          {position.height >= 64 && (
-                            <div className="flex items-center text-white text-[9px] mb-1">
-                              <UserAvatar 
-                                user={{ 
-                                  name: studentDisplayName,
-                                  avatar_url: null
-                                }} 
-                                size="sm"
-                                className={`${position.height >= 80 ? 'w-4 h-4' : 'w-3 h-3'} text-[7px] flex-shrink-0`}
-                              />
-                              <span className="ml-1 truncate text-[8px]">
-                                {studentDisplayName}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Время - показываем только если есть место после аватара */}
-                          {position.height >= 90 && (
-                            <div className="flex items-center text-white/90 text-[8px]">
-                              <Icon icon={Clock} size="xs" />
-                              <span className="ml-1 truncate">
-                                {startTime.toLocaleTimeString('ru-RU', { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })} - {endTime.toLocaleTimeString('ru-RU', { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Для маленьких карточек (50-64px) - только инициал */}
-                          {position.height >= 50 && position.height < 64 && (
-                            <div className="flex items-center justify-between text-white/90 text-[8px]">
-                              <div className="w-2.5 h-2.5 rounded-full bg-black/40 flex items-center justify-center text-[7px] font-bold text-white">
-                                {studentDisplayName.charAt(0).toUpperCase()}
-                              </div>
-                              <span className="text-[7px]">
-                                {startTime.toLocaleTimeString('ru-RU', { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
-                              </span>
-                            </div>
-                          )}
+                        <div className="p-1.5 h-full flex flex-col overflow-hidden">
+                          {(() => {
+                            const h = position.height
+                            return (
+                              <>
+                                {/* Title */}
+                                <div className={`font-semibold text-white truncate leading-tight ${h < 40 ? 'text-[10px]' : 'text-[11px]'}`}>
+                                  {lesson.title}
+                                </div>
+                                <div className="flex-1 min-h-0" />
+                                {/* Breakpoints recalibrated: title always; avatar+name prioritized; time only on taller cards */}
+                                {h >= 78 && (
+                                  <>
+                                    <div className="flex items-center text-white/90 text-[9px] mb-0.5">
+                                      <div className="w-4 h-4 rounded-full bg-zinc-900 flex items-center justify-center text-[8px] leading-none font-medium mr-1 flex-shrink-0">
+                                        {studentDisplayName.charAt(0).toUpperCase()}
+                                      </div>
+                                      <span className="truncate">{studentDisplayName}</span>
+                                    </div>
+                                    <div className="flex items-center justify-end text-white/80 text-[8px] w-full">
+                                      <span className="truncate">
+                                        {startTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} – {endTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                      <Icon icon={Clock} size="xs" className="ml-1 opacity-80 scale-90" />
+                                    </div>
+                                  </>
+                                )}
+                                {h >= 56 && h < 78 && (
+                                  <div className="flex items-center text-white/90 text-[8px]">
+                                    <div className="w-3.5 h-3.5 rounded-full bg-zinc-900 flex items-center justify-center text-[7px] leading-none font-medium mr-1 flex-shrink-0">
+                                      {studentDisplayName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className="truncate">{studentDisplayName}</span>
+                                  </div>
+                                )}
+                                {h >= 44 && h < 56 && (
+                                  <div className="flex items-center text-white/90 text-[8px]">
+                                    <div className="w-3 h-3 rounded-full bg-zinc-900 flex items-center justify-center text-[7px] leading-none font-medium mr-1 flex-shrink-0">
+                                      {studentDisplayName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className="truncate">{studentDisplayName}</span>
+                                  </div>
+                                )}
+                                {h >= 36 && h < 44 && (
+                                  <div className="flex items-center">
+                                    <div className="w-3 h-3 rounded-full bg-zinc-900 flex items-center justify-center text-[7px] leading-none font-medium text-white" />
+                                  </div>
+                                )}
+                                {/* <36px: only title already rendered */}
+                              </>
+                            )
+                          })()}
                         </div>
                       </div>
                     )
