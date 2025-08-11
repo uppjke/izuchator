@@ -302,3 +302,90 @@ export async function updateNotesInRelation(relationId: string, notes: string, i
     message: notesValue === null ? 'Заметка удалена' : 'Заметка успешно сохранена'
   }
 }
+
+// =============================
+// Lessons (planner)
+// =============================
+
+// Тип строки урока из БД
+type LessonRow = Database['public']['Tables']['lessons']['Row']
+
+// Получить занятия за период через RPC (учитывает RLS)
+export async function getLessonsForPeriod(start: Date, end: Date): Promise<LessonRow[]> {
+  const supabase = createSupabaseBrowserClient()
+
+  const { data, error } = await supabase.rpc(
+    'get_lessons_for_period',
+    {
+      p_start: start.toISOString(),
+      p_end: end.toISOString()
+    }
+  )
+
+  if (error) {
+    console.error('Error fetching lessons for period:', error)
+    return []
+  }
+
+  // data может быть любым Json, поэтому дополнительно проверяем что это массив объектов с ожидаемыми ключами
+  if (!Array.isArray(data)) return []
+  return data as LessonRow[]
+}
+
+// Создать занятие (owner_id = текущий пользователь, RLS проверит)
+export async function createLesson(input: {
+  title: string
+  description?: string | null
+  start_time: Date | string
+  duration_minutes: number
+  student_id: string
+  // status optional for compatibility; auto-handled by system
+  status?: 'scheduled' | 'completed' | 'cancelled' | 'confirmed' | 'in_progress'
+  reminder_minutes?: number | null
+  is_series_master?: boolean
+  parent_series_id?: string | null
+  recurrence_rule?: string | null
+  room_id?: string | null
+  label_color?: string | null
+}): Promise<{
+  success: boolean
+  message: string
+  lesson?: LessonRow
+}> {
+  const supabase = createSupabaseBrowserClient()
+
+  // Узнаем владельца из текущей сессии
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, message: 'Не авторизован' }
+  }
+
+  const row = {
+    title: input.title,
+    description: input.description ?? null,
+    start_time: (input.start_time instanceof Date ? input.start_time.toISOString() : input.start_time),
+    duration_minutes: input.duration_minutes,
+    student_id: input.student_id,
+    owner_id: user.id,
+    status: input.status ?? 'scheduled',
+    reminder_minutes: input.reminder_minutes ?? 30,
+    is_series_master: input.is_series_master ?? false,
+    parent_series_id: input.parent_series_id ?? null,
+    recurrence_rule: input.recurrence_rule ?? null,
+    room_id: input.room_id ?? null,
+    label_color: input.label_color ?? null
+  }
+
+  const { data, error } = await supabase
+    .from('lessons')
+    .insert(row)
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Error creating lesson:', error)
+    return { success: false, message: 'Ошибка при создании занятия' }
+  }
+
+  return { success: true, message: 'Занятие создано', lesson: data as LessonRow }
+}

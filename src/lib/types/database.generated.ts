@@ -149,6 +149,7 @@ export type Database = {
           duration_minutes: number
           id: string
           is_series_master: boolean
+          label_color: string | null
           owner_id: string
           parent_series_id: string | null
           price: number | null
@@ -168,6 +169,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           is_series_master?: boolean
+          label_color?: string | null
           owner_id: string
           parent_series_id?: string | null
           price?: number | null
@@ -187,6 +189,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           is_series_master?: boolean
+          label_color?: string | null
           owner_id?: string
           parent_series_id?: string | null
           price?: number | null
@@ -290,6 +293,29 @@ export type Database = {
           invite_type: string
           creator_name: string
           is_expired: boolean
+        }[]
+      }
+      get_lessons_for_period: {
+        Args: { p_start: string; p_end: string }
+        Returns: {
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_series_master: boolean
+          label_color: string | null
+          owner_id: string
+          parent_series_id: string | null
+          price: number | null
+          recurrence_rule: string | null
+          reminder_minutes: number
+          room_id: string | null
+          start_time: string
+          status: string
+          student_id: string
+          title: string
+          updated_at: string
         }[]
       }
       get_student_teachers: {
