@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react'
 import { formatDate } from './utils'
-import { UserAvatar } from '@/components/ui/user-avatar'
 import { Icon } from '@/components/ui/icon'
 import { Clock } from 'lucide-react'
 import type { PlannerWeek, Lesson } from './types'
