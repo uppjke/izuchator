@@ -36,6 +36,14 @@ const schema = z.object({
   repeat_end_type: z.enum(['never','until','count']).optional(),
   repeat_end_date: z.string().optional(),
   repeat_count: z.coerce.number().int().positive().max(100).optional()
+}).superRefine((val, ctx) => {
+  if (val.repeat_enabled && val.repeat_end_type === 'until') {
+    if (!val.repeat_end_date) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите дату окончания', path: ['repeat_end_date'] })
+    } else if (val.repeat_end_date < val.date) { // строки в формате YYYY-MM-DD сравнимы лексикографически
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Дата окончания раньше даты первого занятия', path: ['repeat_end_date'] })
+    }
+  }
 })
 
 type FormValues = z.infer<typeof schema>
@@ -142,7 +150,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
       duration_minutes: 60,
       label_color: '#3b82f6',
       repeat_enabled: false,
-      repeat_pattern: 'weekly',
+  repeat_pattern: 'custom_weekly',
       repeat_interval: 1,
       repeat_weekdays: [],
       repeat_end_type: 'never',
@@ -162,7 +170,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
         duration_minutes: 60,
         label_color: '#3b82f6',
         repeat_enabled: false,
-        repeat_pattern: 'weekly',
+  repeat_pattern: 'custom_weekly',
         repeat_interval: 1,
         repeat_weekdays: [],
         repeat_end_type: 'never',
@@ -319,6 +327,15 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
   const weekdays = watch('repeat_weekdays') || []
   const count = watch('repeat_count') || 10
   const endDate = watch('repeat_end_date')
+  const baseDateStr = watch('date')
+  const baseTimeStr = watch('time')
+  const [open, setOpen] = React.useState(false)
+  const [endPopoverOpen, setEndPopoverOpen] = React.useState<null | 'until' | 'count'>(null)
+
+  // Close popover automatically if recurrence becomes disabled (e.g., after reset)
+  React.useEffect(() => {
+    if (open && !enabled) setOpen(false)
+  }, [open, enabled])
 
   const toggleWeekday = (d: number) => {
     const current = new Set(weekdays)
@@ -327,136 +344,174 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
     } else {
       current.add(d)
     }
-    setValue('repeat_weekdays', Array.from(current).sort(), { shouldDirty: true })
+    const next = Array.from(current).sort()
+    setValue('repeat_weekdays', next, { shouldDirty: true })
+    if (next.length === 0) {
+      // Автоматически отключаем повторение, если дней нет
+      setValue('repeat_enabled', false, { shouldDirty: true })
+    } else if (!enabled) {
+      // Если пользователь начал выбирать дни при отключённом состоянии (например после выключения) — включим
+      setValue('repeat_enabled', true, { shouldDirty: true })
+    }
   }
 
   const summary = () => {
-    if (!enabled) return 'Однократно'
-    let base = ''
-    switch (pattern) {
-      case 'daily': base = `Каждые ${interval === 1 ? '' : interval + ' '}дн`; break
-      case 'weekly': base = `Каждую ${interval === 1 ? '' : interval + '-ю '}неделю`; break
-      case 'custom_weekly': base = weekdays.length ? `Дни: ${weekdays.map(w => 'ВС ПН ВТ СР ЧТ ПТ СБ'.split(' ')[w]).join(',')}` : 'Выбрать дни'; break
-      case 'monthly_date': base = `Ежемесячно ${interval>1? 'x'+interval:''}`; break
-      case 'monthly_weekday': base = `Ежемесячно (день недели)`; break
-      default: base = ''
-    }
+  if (!enabled || weekdays.length === 0) return 'Однократно'
+  const order = [1,2,3,4,5,6,0]
+  const labels: Record<number,string> = {0:'Вс',1:'Пн',2:'Вт',3:'Ср',4:'Чт',5:'Пт',6:'Сб'}
+  let base = ''
+  if (weekdays.length === 0) base = 'Выберите дни'
+  else if (weekdays.length === 7) base = 'Каждый день'
+  else if (weekdays.length === 5 && weekdays.every((d,i)=>[1,2,3,4,5][i]===d)) base = 'Будни'
+  else if (weekdays.length === 1) base = `Каждую неделю (${labels[weekdays[0]]})`
+  else base = order.filter(d => weekdays.includes(d)).map(d => labels[d]).join(',')
     let tail = ''
     if (endType === 'until' && endDate) tail = ` до ${endDate}`
     else if (endType === 'count') tail = ` (${count} раз)`
     return base + tail
   }
 
+  // Preview intentionally removed per UX simplification
+
   return (
     <div className="space-y-2">
-      <Popover onOpenChange={(o) => { if (o && !enabled) setValue('repeat_enabled', true, { shouldDirty: true }) }}>
+  <Popover onOpenChange={(o)=>{ setOpen(o) }}>
         <PopoverTrigger asChild>
           <div
             tabIndex={disabled ? -1 : 0}
             role="button"
             aria-disabled={disabled || undefined}
             aria-haspopup="dialog"
-            aria-expanded={enabled ? true : undefined}
+            aria-expanded={open || undefined}
             onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }}
-            className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm select-none outline-none ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${enabled ? 'border-blue-500 bg-blue-50/60 text-blue-700' : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50'} `}
+            className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm select-none outline-none ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${(enabled && weekdays.length>0) ? 'border-zinc-400 bg-zinc-50 text-zinc-700' : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50'} transition-colors`}
           >
             <span className="flex items-center gap-2">
-              <span className={`inline-block w-2.5 h-2.5 rounded-full ${enabled ? 'bg-blue-600' : 'bg-gray-300'}`} />
+              <span className={`inline-block w-2.5 h-2.5 rounded-full ${(enabled && weekdays.length>0) ? 'bg-zinc-600' : 'bg-gray-300'}`} />
               <span className="font-medium">Повторение</span>
             </span>
             <span className="truncate text-xs font-normal max-w-[55%]">{summary()}</span>
           </div>
-        </PopoverTrigger>
-        <PopoverContent className="w-80 p-4 space-y-4" align="end">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium">Повторение</p>
-              <p className="text-[11px] text-muted-foreground">Настройте параметры</p>
-            </div>
+    </PopoverTrigger>
+  <PopoverContent className="w-96 p-4 space-y-4" align="start" side="top" sameWidth={false}>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Повторение</p>
             {enabled && (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => setValue('repeat_enabled', false, { shouldDirty: true })}
-              >Отключить</button>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setValue('repeat_weekdays', [], { shouldDirty: true })
+                    setValue('repeat_end_type', 'never', { shouldDirty: true })
+                    setValue('repeat_end_date', undefined, { shouldDirty: true })
+                    setValue('repeat_count', 10, { shouldDirty: true })
+                    setValue('repeat_enabled', false, { shouldDirty: true })
+                    setOpen(false)
+                    setEndPopoverOpen(null)
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >Сброс</button>
+              </div>
             )}
           </div>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Шаблон</Label>
-                <select
-                  value={pattern}
-                  onChange={e => setValue('repeat_pattern', e.target.value as 'daily' | 'weekly' | 'custom_weekly' | 'monthly_date' | 'monthly_weekday', { shouldDirty: true })}
-                  className="w-full h-8 rounded-md border bg-background px-2 text-xs"
-                >
-                  <option value="daily">Каждый день</option>
-                  <option value="weekly">Каждую неделю</option>
-                  <option value="custom_weekly">Выбранные дни</option>
-                  <option value="monthly_date">Ежемесячно (дата)</option>
-                  <option value="monthly_weekday">Ежемесячно (день недели)</option>
-                </select>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Дни недели</span>
+                {enabled && weekdays.length === 0 && <span className="text-[10px] text-red-500">Выберите дни</span>}
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Интервал</Label>
-                <input
-                  type="number"
-                  min={1}
-                  max={52}
-                  value={interval}
-                  onChange={e => setValue('repeat_interval', Number(e.target.value || 1), { shouldDirty: true })}
-                  className="w-full h-8 rounded-md border bg-background px-2 text-xs"
-                />
+              <div className="grid grid-cols-7 gap-1">
+                {[1,2,3,4,5,6,0].map(day => {
+                  const label: Record<number,string> = {0:'Вс',1:'Пн',2:'Вт',3:'Ср',4:'Чт',5:'Пт',6:'Сб'}
+                  const activeDay = weekdays.includes(day)
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => toggleWeekday(day)}
+                      className={`h-7 text-[11px] rounded-md border flex items-center justify-center ${activeDay ? 'bg-zinc-800 text-white border-zinc-700' : 'bg-background hover:bg-muted'} ${!enabled && !activeDay ? 'opacity-70' : ''}`}
+                    >{label[day]}</button>
+                  )
+                })}
               </div>
             </div>
-            {pattern === 'custom_weekly' && (
+            {enabled && weekdays.length > 0 && (
               <div className="space-y-1">
-                <Label className="text-xs">Дни</Label>
-                <div className="grid grid-cols-7 gap-1">
-                  {['Вс','Пн','Вт','Ср','Чт','Пт','Сб'].map((l,idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => toggleWeekday(idx)}
-                      className={`h-7 text-[11px] rounded-md border flex items-center justify-center ${weekdays.includes(idx) ? 'bg-blue-600 text-white border-blue-600' : 'bg-background hover:bg-muted'}`}
-                    >{l}</button>
-                  ))}
+                <div className="flex gap-1 text-[11px]">
+                  {['never','until','count'].map(opt => {
+                    const active = endType === opt
+                    const commonBtn = (content: React.ReactNode) => (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (opt === 'never') {
+                            setValue('repeat_end_type', 'never', { shouldDirty: true });
+                            setEndPopoverOpen(null)
+                          } else if (opt === 'until') {
+                            setValue('repeat_end_type', 'until', { shouldDirty: true });
+                            setEndPopoverOpen('until')
+                          } else {
+                            setValue('repeat_end_type', 'count', { shouldDirty: true });
+                            setEndPopoverOpen('count')
+                          }
+                        }}
+                        className={`flex-1 px-2 py-1 rounded-md border transition ${active ? 'bg-zinc-800 text-white border-zinc-700' : 'bg-background hover:bg-muted'}`}
+                      >{content}</button>
+                    )
+                    if (opt === 'until') {
+                      return (
+                        <Popover key={opt} open={endPopoverOpen==='until'} onOpenChange={(o)=> setEndPopoverOpen(o? 'until': null)}>
+                          <PopoverTrigger asChild>
+                            {commonBtn('До')}
+                          </PopoverTrigger>
+                          <PopoverContent className="p-3 w-auto" align="start" side="top">
+                            <input
+                              type="date"
+                              autoFocus
+                              min={baseDateStr}
+                              value={endDate || ''}
+                              onChange={e => {
+                                const v = e.currentTarget.value
+                                if (!v) { setValue('repeat_end_date', undefined, { shouldDirty: true }); return }
+                                setValue('repeat_end_date', v, { shouldDirty: true })
+                              }}
+                              className="h-8 rounded-md border bg-background px-2 text-xs"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      )
+                    }
+                    if (opt === 'count') {
+                      return (
+                        <Popover key={opt} open={endPopoverOpen==='count'} onOpenChange={(o)=> setEndPopoverOpen(o? 'count': null)}>
+                          <PopoverTrigger asChild>
+                            {commonBtn('Кол-во')}
+                          </PopoverTrigger>
+                          <PopoverContent className="p-3 w-auto" align="start" side="top">
+                            <input
+                              type="number"
+                              autoFocus
+                              min={1}
+                              max={100}
+                              value={count}
+                              onChange={e => setValue('repeat_count', Number(e.target.value || 1), { shouldDirty: true })}
+                              className="h-8 w-20 rounded-md border bg-background px-2 text-xs text-center"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      )
+                    }
+                    return (
+                      <React.Fragment key={opt}>
+                        {commonBtn('Бессрочно')}
+                      </React.Fragment>
+                    )
+                  })}
                 </div>
+                {/* Inputs now integrated into popovers on the buttons above */}
               </div>
             )}
-            <div className="space-y-2">
-              <Label className="text-xs">Окончание</Label>
-              <div className="flex flex-wrap gap-2 text-[11px]">
-                {['never','until','count'].map(opt => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => setValue('repeat_end_type', opt as 'never' | 'until' | 'count', { shouldDirty: true })}
-                    className={`px-2 py-1 rounded-md border ${endType===opt ? 'bg-blue-600 text-white border-blue-600' : 'bg-background hover:bg-muted'}`}
-                  >
-                    {opt==='never'?'Бессрочно':opt==='until'?'До даты':'По количеству'}
-                  </button>
-                ))}
-              </div>
-              {endType === 'until' && (
-                <input
-                  type="date"
-                  value={endDate || ''}
-                  onChange={e => setValue('repeat_end_date', e.target.value || undefined, { shouldDirty: true })}
-                  className="w-full h-8 rounded-md border bg-background px-2 text-xs"
-                />
-              )}
-              {endType === 'count' && (
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={count}
-                  onChange={e => setValue('repeat_count', Number(e.target.value || 1), { shouldDirty: true })}
-                  className="w-full h-8 rounded-md border bg-background px-2 text-xs"
-                />
-              )}
-            </div>
           </div>
         </PopoverContent>
       </Popover>
@@ -522,19 +577,19 @@ function ColorSwatchPicker({ value, onChange, disabled }: ColorSwatchPickerProps
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+  <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
             disabled={disabled}
-          className="w-9 h-9 rounded-full border border-gray-300 shadow-sm flex items-center justify-center relative focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 transition hover:scale-105"
+          className="w-8 h-8 rounded-full border border-gray-300 shadow-sm flex items-center justify-center relative focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 transition hover:scale-105"
           aria-label={`Выбрать цвет ${COLOR_LABEL[current] || current}`}
           style={{ backgroundColor: current }}
         >
           <span className="sr-only">Цвет {current}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-4" align="end" sideOffset={6}>
+  <PopoverContent className="w-64 p-4" align="start" side="bottom" sameWidth={false}>
         <div className="mb-2 text-xs font-medium text-muted-foreground">Предустановленные</div>
         <div className="grid grid-cols-5 gap-2 mb-3" onKeyDown={handleKey}>
           {PRESET_COLORS.map((c,i) => {
