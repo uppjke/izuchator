@@ -5,6 +5,8 @@ import { formatDate } from './utils'
 import { Icon } from '@/components/ui/icon'
 import { Clock } from 'lucide-react'
 import type { PlannerWeek, Lesson } from './types'
+import { useAuth } from '@/lib/auth-context'
+import { useTeacherStudents } from '@/hooks/use-relations'
 
 interface WeekGridProps {
   week: PlannerWeek
@@ -13,6 +15,9 @@ interface WeekGridProps {
 }
 
 export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
+  const { user } = useAuth()
+  const { data: studentsData = [] } = useTeacherStudents(user?.id)
+  
   // Часы для отображения (00:00 - 23:00)
   const hours = Array.from({ length: 24 }, (_, i) => i)
   
@@ -22,19 +27,19 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
   // Реф для контейнера прокрутки
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   
-  // Тестовые данные студентов (те же что в agenda-view)
-  const testStudents = {
-    student1: { name: 'Анна Петрова', customName: 'Аня' },
-    student2: { name: 'Иван Сидоров', customName: null },
-    student3: { name: 'Мария Козлова', customName: 'Маша' },
-    student4: { name: 'Дмитрий Волков', customName: 'Дима' },
-    student5: { name: 'Елена Новикова', customName: null },
-    student6: { name: 'Алексей Морозов', customName: 'Леша' },
-    student7: { name: 'Софья Романова', customName: 'Соня' },
-    student8: { name: 'Николай Федоров', customName: 'Коля' },
-    student9: { name: 'Татьяна Лебедева', customName: null },
-    student10: { name: 'Максим Орлов', customName: 'Макс' }
-  }
+  // Создаем карту студентов по ID для быстрого поиска
+  const studentsMap = React.useMemo(() => {
+    const map = new Map()
+    studentsData.forEach(relation => {
+      if (relation.student?.id) {
+        map.set(relation.student.id, {
+          name: relation.student.full_name || relation.student.email || 'Ученик',
+          customName: relation.teacher_custom_name_for_student || null
+        })
+      }
+    })
+    return map
+  }, [studentsData])
   
   // Стиль статусов: белый фон, цветной бордер и текст
   const getStatusStyle = (status: string) => {
@@ -242,7 +247,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                   {/* Карточки уроков - отображаем только для первого часа каждого дня */}
                   {hourIndex === 0 && dayLessons.map((lesson) => {
                     const position = getLessonPosition(lesson)
-                    const student = testStudents[lesson.student_id as keyof typeof testStudents]
+                    const student = studentsMap.get(lesson.student_id)
                     const studentDisplayName = student?.customName || student?.name || 'Неизвестный студент'
                     const statusStyle = getStatusStyle(lesson.status)
                     const startTime = new Date(lesson.start_time)

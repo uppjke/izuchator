@@ -224,14 +224,15 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-md p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-semibold">Новый урок</DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">
             Заполните данные занятия
           </DialogDescription>
         </DialogHeader>
-  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* Скроллируемая область формы для маленьких экранов */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           <div className="space-y-2">
             <Label>Название *</Label>
             <Input placeholder="Напр. Математика" {...register('title')} disabled={isSubmitting} />
@@ -243,7 +244,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
               placeholder="Краткое примечание к занятию"
               {...register('description')}
               disabled={isSubmitting}
-              className="w-full min-h-[80px] text-sm rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="w-full min-h-[96px] text-sm rounded-2xl border border-input bg-transparent px-4 py-3 focus-visible:outline-none focus-visible:border-blue-500 transition"
               maxLength={300}
             />
             {errors.description && <p className="text-xs text-red-600">{errors.description.message}</p>}
@@ -251,7 +252,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
           <div className="space-y-2">
             <Label>Ученик *</Label>
             <Select onValueChange={(v) => setValue('student_id', v)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9 rounded-full">
                 <SelectValue placeholder={studentsLoading ? 'Загрузка...' : 'Выберите ученика'} />
               </SelectTrigger>
               <SelectContent>
@@ -262,17 +263,27 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
             </Select>
             {errors.student_id && <p className="text-xs text-red-600">{errors.student_id.message}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 grid-cols-1">
             <div className="space-y-2">
               <Label>Дата *</Label>
-              <Input type="date" {...register('date')} disabled={isSubmitting} />
+              <Input
+                type="date"
+                className="h-9 rounded-full px-3 [appearance:textfield] [&::-webkit-datetime-edit]:p-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0 [&::-webkit-datetime-edit]:text-sm [&::-webkit-calendar-picker-indicator]:opacity-60"
+                {...register('date')}
+                disabled={isSubmitting}
+              />
             </div>
             <div className="space-y-2">
               <Label>Время *</Label>
-              <Input type="time" {...register('time')} disabled={isSubmitting} />
+              <Input
+                type="time"
+                className="h-9 rounded-full px-3 [appearance:textfield] [&::-webkit-datetime-edit]:p-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0 [&::-webkit-datetime-edit]:text-sm [&::-webkit-clear-button]:hidden [&::-webkit-inner-spin-button]:hidden [&::-webkit-time-picker-indicator]:opacity-60"
+                {...register('time')}
+                disabled={isSubmitting}
+              />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 grid-cols-1">
             <div className="space-y-2">
               <Label>Длительность (мин)</Label>
               <Input type="number" {...register('duration_minutes', { valueAsNumber: true })} disabled={isSubmitting} />
@@ -384,16 +395,17 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
             aria-haspopup="dialog"
             aria-expanded={open || undefined}
             onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }}
-            className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm select-none outline-none ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${(enabled && weekdays.length>0) ? 'border-zinc-400 bg-zinc-50 text-zinc-700' : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50'} transition-colors`}
+            className={`w-full h-9 flex items-center justify-between rounded-full border border-input bg-transparent px-3 py-2 text-left text-sm select-none focus-visible:outline-none focus-visible:border-blue-500 transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${(!enabled || weekdays.length === 0) ? 'text-muted-foreground' : 'text-foreground'}`}
           >
             <span className="flex items-center gap-2">
               <span className={`inline-block w-2.5 h-2.5 rounded-full ${(enabled && weekdays.length>0) ? 'bg-zinc-600' : 'bg-gray-300'}`} />
               <span className="font-medium">Повторение</span>
             </span>
-            <span className="truncate text-xs font-normal max-w-[55%]">{summary()}</span>
+            <span className={`truncate text-xs font-normal max-w-[55%] ${(!enabled || weekdays.length===0) ? 'text-muted-foreground' : 'text-foreground/70'}`}>{summary()}</span>
           </div>
     </PopoverTrigger>
-  <PopoverContent className="w-96 p-4 space-y-4" align="start" side="top" sameWidth={false}>
+          {/* Ограничиваем ширину для мобильных устройств */}
+          <PopoverContent className="w-[calc(100vw-2rem)] max-w-md sm:w-96 p-4 space-y-4" align="start" side="top" sameWidth={false}>
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">Повторение</p>
             {enabled && (
@@ -589,7 +601,7 @@ function ColorSwatchPicker({ value, onChange, disabled }: ColorSwatchPickerProps
           <span className="sr-only">Цвет {current}</span>
         </button>
       </PopoverTrigger>
-  <PopoverContent className="w-64 p-4" align="start" side="bottom" sameWidth={false}>
+  <PopoverContent className="w-[calc(100vw-2rem)] max-w-xs sm:w-64 p-4" align="start" side="bottom" sameWidth={false}>
         <div className="mb-2 text-xs font-medium text-muted-foreground">Предустановленные</div>
         <div className="grid grid-cols-5 gap-2 mb-3" onKeyDown={handleKey}>
           {PRESET_COLORS.map((c,i) => {

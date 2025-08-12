@@ -7,6 +7,8 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { Icon } from '@/components/ui/icon'
 import { Clock, CheckCircle, XCircle } from 'lucide-react'
 import type { PlannerWeek, Lesson } from './types'
+import { useAuth } from '@/lib/auth-context'
+import { useTeacherStudents } from '@/hooks/use-relations'
 
 interface AgendaViewProps {
   week: PlannerWeek
@@ -22,23 +24,26 @@ export function AgendaView({
   onEditLesson,
   forceToday = false
 }: AgendaViewProps) {
+  const { user } = useAuth()
+  const { data: studentsData = [] } = useTeacherStudents(user?.id)
+  
   const [selectedDay, setSelectedDay] = useState(
     week.days.find(day => day.isToday) || week.days[0]
   )
   
-  // Тестовые данные студентов
-  const testStudents = {
-    student1: { name: 'Анна Петрова', customName: 'Аня' },
-    student2: { name: 'Иван Сидоров', customName: null },
-    student3: { name: 'Мария Козлова', customName: 'Маша' },
-    student4: { name: 'Дмитрий Волков', customName: 'Дима' },
-    student5: { name: 'Елена Новикова', customName: null },
-    student6: { name: 'Алексей Морозов', customName: 'Леша' },
-    student7: { name: 'Софья Романова', customName: 'Соня' },
-    student8: { name: 'Николай Федоров', customName: 'Коля' },
-    student9: { name: 'Татьяна Лебедева', customName: null },
-    student10: { name: 'Максим Орлов', customName: 'Макс' }
-  }
+  // Создаем карту студентов по ID для быстрого поиска
+  const studentsMap = React.useMemo(() => {
+    const map = new Map()
+    studentsData.forEach(relation => {
+      if (relation.student?.id) {
+        map.set(relation.student.id, {
+          name: relation.student.full_name || relation.student.email || 'Ученик',
+          customName: relation.teacher_custom_name_for_student || null
+        })
+      }
+    })
+    return map
+  }, [studentsData])
   
   // Отслеживаем изменения недели и автоматически выбираем сегодняшний день только при смене недели
   useEffect(() => {
@@ -122,7 +127,7 @@ export function AgendaView({
               {dayLessons.map((lesson) => {
                 const lessonDate = new Date(lesson.start_time)
                 const endTime = new Date(lessonDate.getTime() + lesson.duration_minutes * 60000)
-                const student = testStudents[lesson.student_id as keyof typeof testStudents]
+                const student = studentsMap.get(lesson.student_id)
                 const studentDisplayName = student?.customName || student?.name || 'Неизвестный студент'
                 
                 // Функция для получения статуса и цвета
