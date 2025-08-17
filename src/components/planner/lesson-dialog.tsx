@@ -180,12 +180,32 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
     }
   }, [open, defaultDate, defaultTime, reset])
 
+  // Функция для генерации recurrence_rule из данных формы
+  const generateRecurrenceRule = (values: FormValues): string | null => {
+    if (!values.repeat_enabled || !values.repeat_weekdays || values.repeat_weekdays.length === 0) {
+      return null
+    }
+    
+    const rule = {
+      pattern: 'custom_weekly',
+      weekdays: values.repeat_weekdays,
+      end_type: values.repeat_end_type || 'never',
+      end_date: values.repeat_end_date,
+      count: values.repeat_count
+    }
+    
+    return JSON.stringify(rule)
+  }
+
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
     try {
       const iso = new Date(`${values.date}T${values.time}:00`)
       const dates = generateRecurrenceDates(iso, values)
+      const recurrenceRule = generateRecurrenceRule(values)
 
       let successCount = 0
+      let firstLessonId: string | null = null
+      
       for (const d of dates) {
         const result = await createLesson({
           title: values.title.trim(),
@@ -194,9 +214,18 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
           start_time: d,
           duration_minutes: values.duration_minutes,
           label_color: values.label_color,
-          reminder_minutes: 30
+          reminder_minutes: 30,
+          recurrence_rule: recurrenceRule,
+          is_series_master: successCount === 0 && dates.length > 1, // Первое занятие в серии
+          parent_series_id: successCount > 0 && firstLessonId ? firstLessonId : null // Ссылка на мастер-занятие
         })
-        if (result.success) successCount++
+        
+        if (result.success) {
+          if (successCount === 0 && dates.length > 1) {
+            firstLessonId = result.lesson?.id || null
+          }
+          successCount++
+        }
       }
       if (successCount === dates.length) {
         toast.success(`Создано занятий: ${successCount}`)

@@ -6,6 +6,7 @@ import { WeekGrid } from './week-grid'
 import { AgendaView } from './agenda-view'
 import { getNextWeek, getPreviousWeek, getWeekData } from './utils'
 import { LessonDialog } from './lesson-dialog'
+import { LessonDetailsDialog } from './lesson-details-dialog'
 import type { PlannerProps, Lesson } from './types'
 import { useQuery } from '@tanstack/react-query'
 import { getLessonsForPeriod } from '@/lib/api'
@@ -21,6 +22,8 @@ export function Planner({
   const [forceTodayInAgenda, setForceTodayInAgenda] = useState(false)
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false)
   const [newLessonDate, setNewLessonDate] = useState<Date | null>(null)
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const queryClient = useQueryClient()
   
   // Расчет текущей недели и загрузка уроков
@@ -75,6 +78,11 @@ export function Planner({
   const handleViewModeChange = (mode: 'week' | 'month' | 'year') => {
     setViewMode(mode)
   }
+
+  const handleShowLessonDetails = (lesson: Lesson) => {
+    setSelectedLesson(lesson)
+    setIsDetailsOpen(true)
+  }
   
   return (
     <div className="h-full flex flex-col">
@@ -98,6 +106,14 @@ export function Planner({
           queryClient.invalidateQueries({ queryKey: ['lessons'] })
         }}
       />
+      <LessonDetailsDialog
+        lesson={selectedLesson}
+        open={isDetailsOpen}
+        onOpenChange={(o) => {
+          setIsDetailsOpen(o)
+          if (!o) setSelectedLesson(null)
+        }}
+      />
       
       {/* Содержимое планера */}
       <div className="flex-1 min-h-0">
@@ -105,7 +121,7 @@ export function Planner({
           <WeekGrid
             week={getWeekData(currentDate)}
       lessons={lessons}
-            onEditLesson={(lesson) => console.log('Редактировать урок:', lesson)}
+            onEditLesson={handleShowLessonDetails}
           />
         )}
         
@@ -114,7 +130,7 @@ export function Planner({
             week={getWeekData(currentDate)}
       lessons={lessons}
             onCreateLesson={(date) => handleCreateLesson(date)}
-            onEditLesson={(lesson) => console.log('Редактировать урок:', lesson)}
+            onEditLesson={handleShowLessonDetails}
             forceToday={forceTodayInAgenda}
           />
         )}
