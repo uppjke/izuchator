@@ -97,12 +97,33 @@ function generateRecurrenceDates(base: Date, values: FormValues): Date[] {
     const selected = new Set(weekdays)
     let cursor = new Date(base)
     let safety = 0
+    // Определяем начало базовой недели (понедельник)
+    const baseWeekStart = new Date(base)
+    baseWeekStart.setHours(0,0,0,0)
+    while (baseWeekStart.getDay() !== 1) {
+      baseWeekStart.setDate(baseWeekStart.getDate() - 1)
+    }
     while (safety < 370 && shouldContinue(cursor)) {
       safety++
       cursor = addDays(cursor, 1)
       if (!shouldContinue(cursor)) break
       if (selected.size === 0) continue
-      if (selected.has(cursor.getDay())) push(new Date(cursor))
+      if (selected.has(cursor.getDay())) {
+        if (interval <= 1) {
+          push(new Date(cursor))
+        } else {
+          // Считаем смещение недель от базовой недели
+            const candidateWeekStart = new Date(cursor)
+            candidateWeekStart.setHours(0,0,0,0)
+            while (candidateWeekStart.getDay() !== 1) {
+              candidateWeekStart.setDate(candidateWeekStart.getDate() - 1)
+            }
+            const weeksDiff = Math.floor((candidateWeekStart.getTime() - baseWeekStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
+            if (weeksDiff % interval === 0) {
+              push(new Date(cursor))
+            }
+        }
+      }
     }
   } else if (pattern === 'monthly_date') {
     let cursor = new Date(base)
@@ -189,6 +210,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
     const rule = {
       pattern: 'custom_weekly',
       weekdays: values.repeat_weekdays,
+  interval: values.repeat_interval || 1,
       end_type: values.repeat_end_type || 'never',
       end_date: values.repeat_end_date,
       count: values.repeat_count
@@ -366,6 +388,7 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
   const weekdays = watch('repeat_weekdays') || []
   const count = watch('repeat_count') || 10
   const endDate = watch('repeat_end_date')
+  const interval = watch('repeat_interval') || 1
   const baseDateStr = watch('date')
   // baseTimeStr не нужен для текущего резюме
   const [open, setOpen] = React.useState(false)
@@ -404,6 +427,7 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
   else if (weekdays.length === 5 && weekdays.every((d,i)=>[1,2,3,4,5][i]===d)) base = 'Будни'
   else if (weekdays.length === 1) base = `Каждую неделю (${labels[weekdays[0]]})`
   else base = order.filter(d => weekdays.includes(d)).map(d => labels[d]).join(',')
+  if (interval > 1) base = `Каждые ${interval} нед.: ` + base
     let tail = ''
     if (endType === 'until' && endDate) tail = ` до ${endDate}`
     else if (endType === 'count') tail = ` (${count} раз)`
@@ -550,6 +574,21 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
                   })}
                 </div>
                 {/* Inputs now integrated into popovers on the buttons above */}
+              </div>
+            )}
+            {enabled && weekdays.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Интервал (недели)</div>
+                <div className="flex gap-1">
+                  {[1,2,3,4].map(i => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setValue('repeat_interval', i, { shouldDirty: true })}
+                      className={`flex-1 h-8 rounded-full text-xs font-medium border transition ${interval === i ? 'bg-zinc-900 text-white border-zinc-700' : 'bg-background hover:bg-muted'}`}
+                    >{i}</button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
