@@ -332,14 +332,13 @@ interface RecurrenceControlProps {
 
 function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps) {
   const enabled = watch('repeat_enabled')
-  const pattern = watch('repeat_pattern')
-  const interval = watch('repeat_interval') || 1
+  // pattern & interval не используются в упрощённой версии UI
   const endType = watch('repeat_end_type')
   const weekdays = watch('repeat_weekdays') || []
   const count = watch('repeat_count') || 10
   const endDate = watch('repeat_end_date')
   const baseDateStr = watch('date')
-  const baseTimeStr = watch('time')
+  // baseTimeStr не нужен для текущего резюме
   const [open, setOpen] = React.useState(false)
   const [endPopoverOpen, setEndPopoverOpen] = React.useState<null | 'until' | 'count'>(null)
 
