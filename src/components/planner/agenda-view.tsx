@@ -179,16 +179,18 @@ export function AgendaView({
                     key={lesson.id} 
                     className="cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden"
                     onClick={() => onEditLesson(lesson)}
+                    style={lesson.label_color ? { borderColor: lesson.label_color, color: lesson.label_color } : undefined}
                   >
-                    {/* Цветной уголок справа сверху */}
+                    {/* Оставляем исходный уголок статуса */}
                     <div 
                       className={`absolute top-0 right-0 w-0 h-0 border-l-[20px] border-l-transparent border-t-[20px] ${statusInfo.cornerColor}`}
+                      aria-hidden="true"
                     />
                     
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between pr-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
-                          {lesson.title}
+                          <span className="truncate max-w-[160px] sm:max-w-none" style={lesson.label_color ? { color: lesson.label_color } : undefined}>{lesson.title}</span>
                         </CardTitle>
                         <div className="flex items-center text-sm text-gray-500">
                           <Icon icon={Clock} size="xs" />

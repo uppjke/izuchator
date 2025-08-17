@@ -260,7 +260,10 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                         style={{
                           top: `${position.top}px`,
                           height: `${position.height}px`,
-                          zIndex: 10
+                          zIndex: 10,
+                          borderColor: lesson.label_color || undefined,
+                          // Меняем цвет текста, если выбран пользовательский цвет
+                          color: lesson.label_color || undefined
                         }}
                         onClick={() => onEditLesson?.(lesson)}
                       >

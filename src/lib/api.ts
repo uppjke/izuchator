@@ -389,3 +389,220 @@ export async function createLesson(input: {
 
   return { success: true, message: 'Занятие создано', lesson: data as LessonRow }
 }
+
+// Получить занятие по ID с актуальными данными
+export async function getLessonById(lessonId: string): Promise<{
+  success: boolean
+  lesson?: LessonRow
+  message: string
+}> {
+  const supabase = createSupabaseBrowserClient()
+
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('id', lessonId)
+    .is('deleted_at', null)
+    .single()
+
+  if (error) {
+    console.error('Error fetching lesson:', error)
+    return { success: false, message: 'Занятие не найдено' }
+  }
+
+  return { success: true, lesson: data as LessonRow, message: 'Успешно' }
+}
+
+// Удалить занятие или серию занятий
+export async function deleteLesson(lessonId: string, deleteType: 'single' | 'series' | 'future' | 'weekday_future' | 'student_future_all'): Promise<{
+  success: boolean
+  message: string
+}> {
+  const supabase = createSupabaseBrowserClient()
+  const now = new Date().toISOString()
+
+  if (deleteType === 'single') {
+    // Удалить только одно занятие (soft delete)
+    const { error } = await supabase
+      .from('lessons')
+      .update({ deleted_at: now })
+      .eq('id', lessonId)
+      .is('deleted_at', null)
+
+    if (error) {
+      console.error('Error deleting lesson:', error)
+      return { success: false, message: 'Ошибка при удалении занятия' }
+    }
+
+    return { success: true, message: 'Занятие удалено' }
+  } else if (deleteType === 'student_future_all') {
+    // Удалить ВСЕ будущие занятия этого ученика (независимо от серии) начиная с текущего
+    const { data: lesson, error: fetchError } = await supabase
+      .from('lessons')
+      .select('*')
+      .eq('id', lessonId)
+      .is('deleted_at', null)
+      .single()
+
+    if (fetchError || !lesson) {
+      console.error('Error fetching lesson for student wide delete:', fetchError)
+      return { success: false, message: 'Занятие не найдено' }
+    }
+    const l = lesson as LessonRow
+    const { error: updErr } = await supabase
+      .from('lessons')
+      .update({ deleted_at: now })
+      .eq('student_id', l.student_id)
+      .gte('start_time', l.start_time)
+      .is('deleted_at', null)
+    if (updErr) {
+      console.error('Error deleting future student lessons:', updErr)
+      return { success: false, message: 'Ошибка при удалении будущих занятий ученика' }
+    }
+    return { success: true, message: 'Будущие занятия ученика удалены' }
+  } else if (deleteType === 'future' || deleteType === 'weekday_future') {
+    // Удалить только все последующие (без текущего) в серии
+    // Получаем текущее занятие для определения серии
+    const { data: lesson, error: fetchError } = await supabase
+      .from('lessons')
+      .select('*')
+      .eq('id', lessonId)
+      .is('deleted_at', null)
+      .single()
+
+    if (fetchError || !lesson) {
+      console.error('Error fetching lesson for future delete:', fetchError)
+      return { success: false, message: 'Занятие не найдено' }
+    }
+
+    const l = lesson as LessonRow
+    // Определяем корневой id серии
+    const seriesRootId = l.is_series_master ? l.id : l.parent_series_id
+    if (!seriesRootId) {
+      return { success: false, message: 'Это занятие не является частью серии' }
+    }
+
+    // Условия: если мастер — удаляем всех с parent_series_id = master.id (то есть все дочерние);
+    // если дочернее — удаляем только тех, у кого parent_series_id = root и start_time > текущего
+    let query = supabase
+      .from('lessons')
+      .update({ deleted_at: now })
+      .is('deleted_at', null)
+
+    const currentStart = new Date(l.start_time)
+    const currentWeekday = currentStart.getUTCDay() // Use UTC to avoid TZ edge
+
+    if (deleteType === 'future') {
+      if (l.is_series_master) {
+        query = query.eq('parent_series_id', seriesRootId)
+      } else {
+        query = query.eq('parent_series_id', seriesRootId).gt('start_time', l.start_time)
+      }
+    } else { // weekday_future
+      // Включаем также текущее занятие по этому дню недели (могут захотеть удалить и его)
+      // Выбираем все из серии (parent_series_id = root) с тем же weekday и start_time >= текущего (UTC сравнение)
+      // Для мастера включаем и его самого (id = seriesRootId) если его weekday совпадает
+      // Сначала формируем фильтр по parent_series_id
+      query = query.eq('parent_series_id', seriesRootId)
+        .gte('start_time', l.start_time)
+
+      // Фильтра по weekday напрямую в Supabase нет, добавим доп. фильтрацию через RPC? Упростим: выберем по диапазону и затем отдельным запросом update по ids.
+      // Чтобы избежать избыточных round-trips, fallback: получим ids кандидатов, затем второй запрос.
+      const { data: candidates, error: candErr } = await supabase
+        .from('lessons')
+        .select('id,start_time')
+        .eq('parent_series_id', seriesRootId)
+        .gte('start_time', l.start_time)
+        .is('deleted_at', null)
+
+      if (candErr || !candidates) {
+        console.error('Error fetching weekday candidates:', candErr)
+        return { success: false, message: 'Ошибка при поиске занятий' }
+      }
+      const targetIds = candidates.filter(c => {
+        const d = new Date(c.start_time as string)
+        return d.getUTCDay() === currentWeekday
+      }).map(c => c.id)
+
+      // Если мастер тоже нужно удалить (он не в parent_series_id списке), проверим условие и добавим
+      if (l.is_series_master) {
+        if (currentWeekday === currentWeekday) { // always true, left for clarity
+          targetIds.push(l.id)
+        }
+      }
+
+      if (targetIds.length === 0) {
+        return { success: true, message: 'Нет занятий для удаления по этому дню' }
+      }
+
+      const { error: updErr } = await supabase
+        .from('lessons')
+        .update({ deleted_at: now })
+        .in('id', targetIds)
+        .is('deleted_at', null)
+
+      if (updErr) {
+        console.error('Error deleting weekday future lessons:', updErr)
+        return { success: false, message: 'Ошибка при удалении занятий по дню недели' }
+      }
+      return { success: true, message: 'Удалены занятия по выбранному дню недели' }
+    }
+
+    const { error } = await query
+    if (error) {
+      console.error('Error deleting future lessons:', error)
+      return { success: false, message: 'Ошибка при удалении последующих занятий' }
+    }
+    return { success: true, message: 'Последующие занятия удалены' }
+  } else {
+    // Удалить всю серию (это занятие + все последующие в серии)
+    // Сначала получаем данные о занятии
+    const { data: lesson, error: fetchError } = await supabase
+      .from('lessons')
+      .select('*')
+      .eq('id', lessonId)
+      .is('deleted_at', null)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching lesson for series delete:', fetchError)
+      return { success: false, message: 'Занятие не найдено' }
+    }
+
+    const lessonData = lesson as LessonRow
+    let updateConditions
+
+    if (lessonData.is_series_master) {
+      // Если это мастер-занятие, удаляем его и все дочерние
+      updateConditions = supabase
+        .from('lessons')
+        .update({ deleted_at: now })
+        .or(`id.eq.${lessonId},parent_series_id.eq.${lessonId}`)
+        .is('deleted_at', null)
+    } else if (lessonData.parent_series_id) {
+      // Если это дочернее занятие, удаляем его и все последующие в серии
+      updateConditions = supabase
+        .from('lessons')
+        .update({ deleted_at: now })
+        .eq('parent_series_id', lessonData.parent_series_id)
+        .gte('start_time', lessonData.start_time)
+        .is('deleted_at', null)
+    } else {
+      // Обычное занятие - удаляем только его
+      updateConditions = supabase
+        .from('lessons')
+        .update({ deleted_at: now })
+        .eq('id', lessonId)
+        .is('deleted_at', null)
+    }
+
+    const { error } = await updateConditions
+
+    if (error) {
+      console.error('Error deleting lesson series:', error)
+      return { success: false, message: 'Ошибка при удалении серии занятий' }
+    }
+
+  return { success: true, message: 'Серия занятий удалена' }
+  }
+}

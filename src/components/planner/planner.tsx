@@ -113,6 +113,10 @@ export function Planner({
           setIsDetailsOpen(o)
           if (!o) setSelectedLesson(null)
         }}
+        onDeleted={() => {
+          refetchLessons()
+          queryClient.invalidateQueries({ queryKey: ['lessons'] })
+        }}
       />
       
       {/* Содержимое планера */}
