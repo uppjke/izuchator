@@ -25,8 +25,9 @@ export const relationKeys = {
 export function useTeacherStudents(teacherId: string | undefined) {
   return useQuery({
     queryKey: relationKeys.teacherStudents(teacherId || ''),
-    queryFn: () => getTeacherStudents(teacherId!),
-    enabled: !!teacherId,
+    // Новый API не принимает параметров – возвращает все связи текущего пользователя
+    queryFn: () => getTeacherStudents(),
+    enabled: !!teacherId, // Активируем, когда есть id для ключа кэша
     staleTime: 5 * 60 * 1000, // 5 минут
   })
 }
@@ -35,7 +36,7 @@ export function useTeacherStudents(teacherId: string | undefined) {
 export function useStudentTeachers(studentId: string | undefined) {
   return useQuery({
     queryKey: relationKeys.studentTeachers(studentId || ''),
-    queryFn: () => getStudentTeachers(studentId!),
+    queryFn: () => getStudentTeachers(),
     enabled: !!studentId,
     staleTime: 5 * 60 * 1000, // 5 минут
   })
@@ -46,19 +47,15 @@ export function useRemoveRelation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: removeTeacherStudentRelation,
-    onSuccess: (result) => {
-      if (result.success) {
-        // Инвалидируем все запросы связей для обновления
-        queryClient.invalidateQueries({ queryKey: relationKeys.all })
-        toast.success('Связь успешно удалена')
-      } else {
-        toast.error(result.message)
-      }
+    mutationFn: (relationId: string) => removeTeacherStudentRelation(relationId),
+    onSuccess: () => {
+      // Инвалидируем кэш связей
+      queryClient.invalidateQueries({ queryKey: relationKeys.all })
+      toast.success('Связь успешно удалена')
     },
-    onError: () => {
-      toast.error('Ошибка при удалении связи')
-    }
+    onError: (error: Error) => {
+      toast.error(error.message || 'Ошибка при удалении связи')
+    },
   })
 }
 
@@ -72,17 +69,13 @@ export function useUpdateCustomName() {
       customName: string
       isTeacherUpdating: boolean
     }) => updateCustomNameInRelation(relationId, customName, isTeacherUpdating),
-    onSuccess: (result) => {
-      if (result.success) {
-        // Инвалидируем все запросы связей для обновления
-        queryClient.invalidateQueries({ queryKey: relationKeys.all })
-        toast.success('Имя успешно обновлено')
-      } else {
-        toast.error(result.message)
-      }
+    onSuccess: () => {
+      // Инвалидируем все запросы связей для обновления
+      queryClient.invalidateQueries({ queryKey: relationKeys.all })
+      toast.success('Имя успешно обновлено')
     },
-    onError: () => {
-      toast.error('Ошибка при обновлении имени')
+    onError: (error: Error) => {
+      toast.error(error.message || 'Ошибка при обновлении имени')
     }
   })
 }
@@ -97,17 +90,13 @@ export function useUpdateNotes() {
       notes: string
       isTeacherUpdating: boolean
     }) => updateNotesInRelation(relationId, notes, isTeacherUpdating),
-    onSuccess: (result) => {
-      if (result.success) {
-        // Инвалидируем все запросы связей для обновления
-        queryClient.invalidateQueries({ queryKey: relationKeys.all })
-        toast.success('Заметка сохранена')
-      } else {
-        toast.error(result.message)
-      }
+    onSuccess: () => {
+      // Инвалидируем все запросы связей для обновления
+      queryClient.invalidateQueries({ queryKey: relationKeys.all })
+      toast.success('Заметка сохранена')
     },
-    onError: () => {
-      toast.error('Ошибка при сохранении заметки')
+    onError: (error: Error) => {
+      toast.error(error.message || 'Ошибка при сохранении заметки')
     }
   })
 }

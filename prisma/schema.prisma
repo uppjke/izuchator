@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Таблица пользователей (замена auth.users)
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  emailVerified     DateTime?
+  name              String?
+  role              UserRole @default(STUDENT)
+  image             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Связи
+  accounts          Account[]
+  sessions          Session[]
+  teacherRelations  TeacherStudentRelation[] @relation("TeacherRelations")
+  studentRelations  TeacherStudentRelation[] @relation("StudentRelations")
+  createdInvites    InviteLink[] @relation("InviteCreator")
+  lessons           Lesson[]
+  inviteUses        InviteUse[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+}
+
+// NextAuth таблицы
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Существующие таблицы проекта
+model TeacherStudentRelation {
+  id              String         @id @default(cuid())
+  teacherId       String         @map("teacher_user_id")
+  studentId       String         @map("student_user_id")
+  status          RelationStatus @default(PENDING)
+  teacherName     String?        @map("teacher_custom_name")
+  studentName     String?        @map("student_custom_name")
+  teacherNotes    String?        @map("teacher_notes")
+  studentNotes    String?        @map("student_notes")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  deletedAt       DateTime?      @map("deleted_at")
+
+  teacher User @relation("TeacherRelations", fields: [teacherId], references: [id])
+  student User @relation("StudentRelations", fields: [studentId], references: [id])
+
+  @@unique([teacherId, studentId])
+  @@map("teacher_student_relations")
+}
+
+enum RelationStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  BLOCKED
+}
+
+model Lesson {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime    @map("start_time")
+  endTime     DateTime    @map("end_time")
+  userId      String      @map("user_id")
+  relationId  String?     @map("relation_id")
+  isRecurring Boolean     @default(false) @map("is_recurring")
+  recurrence  Json?       @map("recurrence_pattern")
+  labelColor  String?     @map("label_color")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("lessons")
+}
+
+model InviteLink {
+  id          String      @id @default(cuid())
+  code        String      @unique
+  type        InviteType
+  message     String?
+  expiresAt   DateTime    @map("expires_at")
+  createdById String      @map("created_by")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  isActive    Boolean     @default(true) @map("is_active")
+
+  createdBy User        @relation("InviteCreator", fields: [createdById], references: [id])
+  uses      InviteUse[]
+
+  @@map("invite_links")
+}
+
+enum InviteType {
+  STUDENT_TO_TEACHER
+  TEACHER_TO_STUDENT
+}
+
+model InviteUse {
+  id         String   @id @default(cuid())
+  inviteId   String   @map("invite_link_id")
+  userId     String   @map("user_id")
+  usedAt     DateTime @default(now()) @map("used_at")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+
+  invite InviteLink @relation(fields: [inviteId], references: [id])
+  user   User       @relation(fields: [userId], references: [id])
+
+  @@map("invite_uses")
+}

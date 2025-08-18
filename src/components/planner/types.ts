@@ -1,8 +1,30 @@
 // Типы для планера
-import type { Database } from '@/lib/types/database.generated'
+// Убраны Supabase сгенерированные типы после миграции на Prisma
 
-// Экспортируем тип урока из БД
-export type Lesson = Database['public']['Tables']['lessons']['Row']
+// Экспортируем упрощённый тип урока (соответствует модели Prisma Lesson)
+export interface Lesson {
+  id: string
+  title: string
+  description: string | null
+  startTime: string // ISO
+  endTime: string // ISO
+  userId: string
+  relationId?: string | null
+  isRecurring: boolean
+  recurrence: any | null
+  labelColor: string | null
+  createdAt: string
+  updatedAt: string
+  // Legacy planner fields kept for compatibility until fully refactored
+  status?: string
+  duration_minutes?: number
+  student_id?: string | null
+  price?: number | string | null
+  recurrence_rule?: string | null
+  is_series_master?: boolean
+  parent_series_id?: string | null
+  label_color?: string | null
+}
 
 // Режимы отображения планера
 export type PlannerView = 'week' | 'agenda'

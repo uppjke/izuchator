@@ -24,24 +24,24 @@ const COLOR_REGEX = /^#([0-9A-Fa-f]{6})$/
 const schema = z.object({
   title: z.string().min(2, 'Минимум 2 символа'),
   description: z.string().max(300, 'Макс 300 символов').optional().or(z.literal('')),
-  student_id: z.string().uuid('Неверный формат ID ученика'),
+  relationId: z.string().uuid('Неверный формат ID связи'),
   date: z.string(),
   time: z.string(),
-  duration_minutes: z.coerce.number().int().positive('> 0').max(24 * 60, 'Слишком долго'),
-  label_color: z.string().regex(COLOR_REGEX, 'Неверный цвет'),
-  repeat_enabled: z.boolean().optional().default(false),
-  repeat_pattern: z.enum(['daily','weekly','custom_weekly','monthly_date','monthly_weekday']).optional(),
-  repeat_interval: z.coerce.number().int().positive().max(52).optional(),
-  repeat_weekdays: z.array(z.number().int().min(0).max(6)).optional(),
-  repeat_end_type: z.enum(['never','until','count']).optional(),
-  repeat_end_date: z.string().optional(),
-  repeat_count: z.coerce.number().int().positive().max(100).optional()
+  durationMinutes: z.coerce.number().int().positive('> 0').max(24 * 60, 'Слишком долго'),
+  labelColor: z.string().regex(COLOR_REGEX, 'Неверный цвет'),
+  repeatEnabled: z.boolean().optional().default(false),
+  repeatPattern: z.enum(['daily','weekly','custom_weekly','monthly_date','monthly_weekday']).optional(),
+  repeatInterval: z.coerce.number().int().positive().max(52).optional(),
+  repeatWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
+  repeatEndType: z.enum(['never','until','count']).optional(),
+  repeatEndDate: z.string().optional(),
+  repeatCount: z.coerce.number().int().positive().max(100).optional()
 }).superRefine((val, ctx) => {
-  if (val.repeat_enabled && val.repeat_end_type === 'until') {
-    if (!val.repeat_end_date) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите дату окончания', path: ['repeat_end_date'] })
-    } else if (val.repeat_end_date < val.date) { // строки в формате YYYY-MM-DD сравнимы лексикографически
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Дата окончания раньше даты первого занятия', path: ['repeat_end_date'] })
+  if (val.repeatEnabled && val.repeatEndType === 'until') {
+    if (!val.repeatEndDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите дату окончания', path: ['repeatEndDate'] })
+    } else if (val.repeatEndDate < val.date) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Дата окончания раньше даты первого занятия', path: ['repeatEndDate'] })
     }
   }
 })
@@ -57,15 +57,15 @@ interface LessonDialogProps {
 
 // Вынесенная функция генерации дат повторения
 function generateRecurrenceDates(base: Date, values: FormValues): Date[] {
-  if (!values.repeat_enabled) return [base]
-  const pattern = values.repeat_pattern || 'weekly'
-  const interval = values.repeat_interval || 1
-  const endType = values.repeat_end_type || 'never'
-  const endDate = endType === 'until' && values.repeat_end_date ? new Date(values.repeat_end_date + 'T23:59:59') : null
-  const targetCount = endType === 'count' ? (values.repeat_count || 1) : null
+  if (!values.repeatEnabled) return [base]
+  const pattern = values.repeatPattern || 'weekly'
+  const interval = values.repeatInterval || 1
+  const endType = values.repeatEndType || 'never'
+  const endDate = endType === 'until' && values.repeatEndDate ? new Date(values.repeatEndDate + 'T23:59:59') : null
+  const targetCount = endType === 'count' ? (values.repeatCount || 1) : null
   const maxCap = 50
   const dates: Date[] = []
-  const weekdays = (values.repeat_weekdays || []).sort()
+  const weekdays = (values.repeatWeekdays || []).sort()
   const push = (d: Date) => {
     if (dates.length === 0 || d.getTime() !== dates[dates.length - 1].getTime()) {
       dates.push(d)
@@ -165,18 +165,18 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
     defaultValues: {
       title: '',
       description: '',
-      student_id: '',
+      relationId: '',
       date: defaultDate,
       time: defaultTime,
-      duration_minutes: 60,
-      label_color: '#3b82f6',
-      repeat_enabled: false,
-  repeat_pattern: 'custom_weekly',
-      repeat_interval: 1,
-      repeat_weekdays: [],
-      repeat_end_type: 'never',
-      repeat_end_date: undefined,
-      repeat_count: 10
+      durationMinutes: 60,
+      labelColor: '#3b82f6',
+      repeatEnabled: false,
+      repeatPattern: 'custom_weekly',
+      repeatInterval: 1,
+      repeatWeekdays: [],
+      repeatEndType: 'never',
+      repeatEndDate: undefined,
+      repeatCount: 10
     } as FormValues
   })
 
@@ -185,35 +185,35 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
       reset({
         title: '',
         description: '',
-        student_id: '',
+  relationId: '',
         date: defaultDate,
         time: defaultTime,
-        duration_minutes: 60,
-        label_color: '#3b82f6',
-        repeat_enabled: false,
-  repeat_pattern: 'custom_weekly',
-        repeat_interval: 1,
-        repeat_weekdays: [],
-        repeat_end_type: 'never',
-        repeat_end_date: undefined,
-        repeat_count: 10
+  durationMinutes: 60,
+  labelColor: '#3b82f6',
+  repeatEnabled: false,
+  repeatPattern: 'custom_weekly',
+  repeatInterval: 1,
+  repeatWeekdays: [],
+  repeatEndType: 'never',
+  repeatEndDate: undefined,
+  repeatCount: 10
       })
     }
   }, [open, defaultDate, defaultTime, reset])
 
   // Функция для генерации recurrence_rule из данных формы
   const generateRecurrenceRule = (values: FormValues): string | null => {
-    if (!values.repeat_enabled || !values.repeat_weekdays || values.repeat_weekdays.length === 0) {
+    if (!values.repeatEnabled || !values.repeatWeekdays || values.repeatWeekdays.length === 0) {
       return null
     }
     
     const rule = {
       pattern: 'custom_weekly',
-      weekdays: values.repeat_weekdays,
-  interval: values.repeat_interval || 1,
-      end_type: values.repeat_end_type || 'never',
-      end_date: values.repeat_end_date,
-      count: values.repeat_count
+  weekdays: values.repeatWeekdays,
+  interval: values.repeatInterval || 1,
+  end_type: values.repeatEndType || 'never',
+  end_date: values.repeatEndDate,
+  count: values.repeatCount
     }
     
     return JSON.stringify(rule)
@@ -221,42 +221,33 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
     try {
-      const iso = new Date(`${values.date}T${values.time}:00`)
+  const iso = new Date(`${values.date}T${values.time}:00`)
       const dates = generateRecurrenceDates(iso, values)
       const recurrenceRule = generateRecurrenceRule(values)
 
       let successCount = 0
       let firstLessonId: string | null = null
       
+      // Подготовим карту studentId -> relationId (используем поле student_id как relationId для совместимости формы)
+  const relationId = values.relationId || undefined
+
       for (const d of dates) {
-        const result = await createLesson({
+        const startTime = d
+        const endTime = new Date(d.getTime() + values.durationMinutes * 60 * 1000)
+        await createLesson({
           title: values.title.trim(),
-          description: values.description?.trim() || null,
-          student_id: values.student_id,
-          start_time: d,
-          duration_minutes: values.duration_minutes,
-          label_color: values.label_color,
-          reminder_minutes: 30,
-          recurrence_rule: recurrenceRule,
-          is_series_master: successCount === 0 && dates.length > 1, // Первое занятие в серии
-          parent_series_id: successCount > 0 && firstLessonId ? firstLessonId : null // Ссылка на мастер-занятие
+          description: values.description?.trim() || undefined,
+          startTime,
+          endTime,
+          relationId,
+          labelColor: values.labelColor,
+          isRecurring: values.repeatEnabled && dates.length > 1,
+          recurrence: recurrenceRule ? JSON.parse(recurrenceRule) : undefined,
         })
-        
-        if (result.success) {
-          if (successCount === 0 && dates.length > 1) {
-            firstLessonId = result.lesson?.id || null
-          }
-          successCount++
-        }
+        successCount++
       }
-      if (successCount === dates.length) {
-        toast.success(`Создано занятий: ${successCount}`)
-      } else if (successCount > 0) {
-        toast.warning(`Создано ${successCount} из ${dates.length}`)
-      } else {
-        toast.error('Не удалось создать занятия')
-        return
-      }
+
+      toast.success(`Создано занятий: ${successCount}`)
       onOpenChange(false)
       onCreated?.()
     } catch (e) {
@@ -266,12 +257,13 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
   }
 
   type TeacherStudentRelation = Awaited<ReturnType<typeof getTeacherStudents>>[0]
-  const students = (studentsData || []).map((rel: TeacherStudentRelation) => {
+  const students: { id: string; name: string }[] = (studentsData || []).map((rel: TeacherStudentRelation) => {
     const student = rel.student as TeacherStudentRelation['student'] | undefined
     if (!student?.id) return null
     const name = student.full_name || student.email || 'Без имени'
-    return { id: student.id, name }
-  }).filter((s): s is { id: string; name: string } => Boolean(s))
+    // используем relation.id как value селекта (чтобы передать relationId в создание урока)
+    return { id: rel.id, name }
+  }).filter((s: { id: string; name: string } | null): s is { id: string; name: string } => Boolean(s))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -302,7 +294,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
           </div>
           <div className="space-y-2">
             <Label>Ученик *</Label>
-            <Select onValueChange={(v) => setValue('student_id', v)}>
+            <Select onValueChange={(v) => setValue('relationId', v)}>
               <SelectTrigger className="h-9 rounded-full">
                 <SelectValue placeholder={studentsLoading ? 'Загрузка...' : 'Выберите ученика'} />
               </SelectTrigger>
@@ -312,7 +304,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
                 ))}
               </SelectContent>
             </Select>
-            {errors.student_id && <p className="text-xs text-red-600">{errors.student_id.message}</p>}
+            {errors.relationId && <p className="text-xs text-red-600">{errors.relationId.message}</p>}
           </div>
           <div className="grid gap-4 sm:grid-cols-2 grid-cols-1">
             <div className="space-y-2">
@@ -337,17 +329,17 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
           <div className="grid gap-4 sm:grid-cols-2 grid-cols-1">
             <div className="space-y-2">
               <Label>Длительность (мин)</Label>
-              <Input type="number" {...register('duration_minutes', { valueAsNumber: true })} disabled={isSubmitting} />
-              {errors.duration_minutes && <p className="text-xs text-red-600">{errors.duration_minutes.message}</p>}
+              <Input type="number" {...register('durationMinutes', { valueAsNumber: true })} disabled={isSubmitting} />
+              {errors.durationMinutes && <p className="text-xs text-red-600">{(errors as any).durationMinutes?.message}</p>}
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-2">Цвет метки</Label>
               <ColorSwatchPicker
-                value={watch('label_color')}
+                value={watch('labelColor')}
                 disabled={isSubmitting}
-                onChange={(c) => setValue('label_color', c, { shouldDirty: true })}
+                onChange={(c) => setValue('labelColor', c, { shouldDirty: true })}
               />
-              {errors.label_color && <p className="text-xs text-red-600">{errors.label_color.message}</p>}
+              {errors.labelColor && <p className="text-xs text-red-600">{(errors as any).labelColor?.message}</p>}
             </div>
           </div>
           <RecurrenceControl
@@ -382,13 +374,13 @@ interface RecurrenceControlProps {
 }
 
 function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps) {
-  const enabled = watch('repeat_enabled')
+  const enabled = watch('repeatEnabled')
   // pattern & interval не используются в упрощённой версии UI
-  const endType = watch('repeat_end_type')
-  const weekdays = watch('repeat_weekdays') || []
-  const count = watch('repeat_count') || 10
-  const endDate = watch('repeat_end_date')
-  const interval = watch('repeat_interval') || 1
+  const endType = watch('repeatEndType')
+  const weekdays = watch('repeatWeekdays') || []
+  const count = watch('repeatCount') || 10
+  const endDate = watch('repeatEndDate')
+  const interval = watch('repeatInterval') || 1
   const baseDateStr = watch('date')
   // baseTimeStr не нужен для текущего резюме
   const [open, setOpen] = React.useState(false)
@@ -407,13 +399,13 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
       current.add(d)
     }
     const next = Array.from(current).sort()
-    setValue('repeat_weekdays', next, { shouldDirty: true })
+  setValue('repeatWeekdays', next, { shouldDirty: true })
     if (next.length === 0) {
       // Автоматически отключаем повторение, если дней нет
-      setValue('repeat_enabled', false, { shouldDirty: true })
+  setValue('repeatEnabled', false, { shouldDirty: true })
     } else if (!enabled) {
       // Если пользователь начал выбирать дни при отключённом состоянии (например после выключения) — включим
-      setValue('repeat_enabled', true, { shouldDirty: true })
+  setValue('repeatEnabled', true, { shouldDirty: true })
     }
   }
 
@@ -465,11 +457,11 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
                 <button
                   type="button"
                   onClick={() => {
-                    setValue('repeat_weekdays', [], { shouldDirty: true })
-                    setValue('repeat_end_type', 'never', { shouldDirty: true })
-                    setValue('repeat_end_date', undefined, { shouldDirty: true })
-                    setValue('repeat_count', 10, { shouldDirty: true })
-                    setValue('repeat_enabled', false, { shouldDirty: true })
+                    setValue('repeatWeekdays', [], { shouldDirty: true })
+                    setValue('repeatEndType', 'never', { shouldDirty: true })
+                    setValue('repeatEndDate', undefined, { shouldDirty: true })
+                    setValue('repeatCount', 10, { shouldDirty: true })
+                    setValue('repeatEnabled', false, { shouldDirty: true })
                     setOpen(false)
                     setEndPopoverOpen(null)
                   }}
@@ -510,13 +502,13 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
                         onClick={(e) => {
                           e.stopPropagation()
                           if (opt === 'never') {
-                            setValue('repeat_end_type', 'never', { shouldDirty: true });
+                            setValue('repeatEndType', 'never', { shouldDirty: true });
                             setEndPopoverOpen(null)
                           } else if (opt === 'until') {
-                            setValue('repeat_end_type', 'until', { shouldDirty: true });
+                            setValue('repeatEndType', 'until', { shouldDirty: true });
                             setEndPopoverOpen('until')
                           } else {
-                            setValue('repeat_end_type', 'count', { shouldDirty: true });
+                            setValue('repeatEndType', 'count', { shouldDirty: true });
                             setEndPopoverOpen('count')
                           }
                         }}
@@ -537,8 +529,8 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
                               value={endDate || ''}
                               onChange={e => {
                                 const v = e.currentTarget.value
-                                if (!v) { setValue('repeat_end_date', undefined, { shouldDirty: true }); return }
-                                setValue('repeat_end_date', v, { shouldDirty: true })
+                                if (!v) { setValue('repeatEndDate', undefined, { shouldDirty: true }); return }
+                                setValue('repeatEndDate', v, { shouldDirty: true })
                               }}
                               className="h-8 rounded-md border bg-background px-2 text-xs"
                             />
@@ -559,7 +551,7 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
                               min={1}
                               max={100}
                               value={count}
-                              onChange={e => setValue('repeat_count', Number(e.target.value || 1), { shouldDirty: true })}
+                              onChange={e => setValue('repeatCount', Number(e.target.value || 1), { shouldDirty: true })}
                               className="h-8 w-20 rounded-md border bg-background px-2 text-xs text-center"
                             />
                           </PopoverContent>
@@ -584,7 +576,7 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setValue('repeat_interval', i, { shouldDirty: true })}
+                      onClick={() => setValue('repeatInterval', i, { shouldDirty: true })}
                       className={`flex-1 h-8 rounded-full text-xs font-medium border transition ${interval === i ? 'bg-zinc-900 text-white border-zinc-700' : 'bg-background hover:bg-muted'}`}
                     >{i}</button>
                   ))}

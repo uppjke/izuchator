@@ -28,13 +28,23 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   
   // Создаем карту студентов по ID для быстрого поиска
+  // Минимальный тип для связи преподаватель-ученик (адаптирован под текущие данные API)
+  interface TeacherStudentRelationLite {
+    student?: {
+      id: string
+      full_name?: string | null
+      email?: string | null
+    }
+    teacher_custom_name_for_student?: string | null
+  }
+
   const studentsMap = React.useMemo(() => {
-    const map = new Map()
-    studentsData.forEach(relation => {
-      if (relation.student?.id) {
+    const map = new Map<string, { name: string; customName: string | null }>()
+    ;(studentsData as TeacherStudentRelationLite[]).forEach((relation) => {
+      if (relation?.student?.id) {
         map.set(relation.student.id, {
           name: relation.student.full_name || relation.student.email || 'Ученик',
-          customName: relation.teacher_custom_name_for_student || null
+          customName: relation.teacher_custom_name_for_student || null,
         })
       }
     })
@@ -62,7 +72,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
   // Функция для получения уроков в конкретный день
   const getLessonsForDay = (dayDate: Date) => {
     return lessons.filter(lesson => {
-      const lessonDate = new Date(lesson.start_time)
+      const lessonDate = new Date(lesson.startTime)
       return (
         lessonDate.getDate() === dayDate.getDate() &&
         lessonDate.getMonth() === dayDate.getMonth() &&
@@ -73,7 +83,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
 
   // Функция для вычисления позиции и размера карточки урока
   const getLessonPosition = (lesson: Lesson) => {
-    const startTime = new Date(lesson.start_time)
+  const startTime = new Date(lesson.startTime)
     const hours = startTime.getHours()
     const minutes = startTime.getMinutes()
     
@@ -83,7 +93,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
     
     // Максимальная длительность - 8 часов (480 минут)
     const maxDuration = 8 * 60
-    const duration = Math.min(lesson.duration_minutes, maxDuration)
+  const duration = Math.min(lesson.duration_minutes ?? 60, maxDuration)
     const height = (duration / 60) * hourHeight
     
     return { top, height }
@@ -247,11 +257,11 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                   {/* Карточки уроков - отображаем только для первого часа каждого дня */}
                   {hourIndex === 0 && dayLessons.map((lesson) => {
                     const position = getLessonPosition(lesson)
-                    const student = studentsMap.get(lesson.student_id)
+                    const student = studentsMap.get(lesson.student_id || '')
                     const studentDisplayName = student?.customName || student?.name || 'Неизвестный студент'
-                    const statusStyle = getStatusStyle(lesson.status)
-                    const startTime = new Date(lesson.start_time)
-                    const endTime = new Date(startTime.getTime() + lesson.duration_minutes * 60000)
+                    const statusStyle = getStatusStyle(lesson.status || 'scheduled')
+                    const startTime = new Date(lesson.startTime)
+                    const endTime = lesson.endTime ? new Date(lesson.endTime) : new Date(startTime.getTime() + (lesson.duration_minutes || 60) * 60000)
                     
                     return (
                       <div
@@ -286,9 +296,9 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                                       </div>
                                       <span className="truncate">{studentDisplayName}</span>
                                     </div>
-                                    <div className={`flex items-center justify-end ${statusStyle.dim} text-[8px] w-full`}>
+            <div className={`flex items-center justify-end ${statusStyle.dim} text-[8px] w-full`}>
                                       <span className="truncate font-medium">
-                                        {startTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} – {endTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+              {startTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} – {endTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                                       </span>
                                       <Icon icon={Clock} size="xs" className={`ml-1 scale-90 ${statusStyle.icon}`} />
                                     </div>

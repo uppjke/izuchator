@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { QueryProvider } from "@/lib/query-provider";
 import { ToastProvider } from "@/lib/toast-provider";
+import { SessionProvider } from "next-auth/react";
 import "sonner/dist/styles.css";
 import "./globals.css";
 
@@ -53,9 +54,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white`}
       >
         <QueryProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <SessionProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </SessionProvider>
         </QueryProvider>
         <ToastProvider />
       </body>

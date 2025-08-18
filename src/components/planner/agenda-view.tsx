@@ -34,7 +34,7 @@ export function AgendaView({
   // Создаем карту студентов по ID для быстрого поиска
   const studentsMap = React.useMemo(() => {
     const map = new Map()
-    studentsData.forEach(relation => {
+    studentsData.forEach((relation: any) => {
       if (relation.student?.id) {
         map.set(relation.student.id, {
           name: relation.student.full_name || relation.student.email || 'Ученик',
@@ -71,13 +71,13 @@ export function AgendaView({
   
   // Получаем уроки для выбранного дня
   const dayLessons = lessons.filter(lesson => {
-    const lessonDate = new Date(lesson.start_time)
+    const lessonDate = new Date(lesson.startTime)
     return (
       lessonDate.getDate() === selectedDay.date.getDate() &&
       lessonDate.getMonth() === selectedDay.date.getMonth() &&
       lessonDate.getFullYear() === selectedDay.date.getFullYear()
     )
-  }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+  }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
   
   // Сопоставление дней недели с двухбуквенными сокращениями
   const getDayAbbr = (date: Date): string => {
@@ -125,8 +125,8 @@ export function AgendaView({
         ) : (
           <div className="space-y-3">
               {dayLessons.map((lesson) => {
-                const lessonDate = new Date(lesson.start_time)
-                const endTime = new Date(lessonDate.getTime() + lesson.duration_minutes * 60000)
+                const lessonDate = new Date(lesson.startTime)
+                const endTime = lesson.endTime ? new Date(lesson.endTime) : new Date(lessonDate.getTime() + (lesson.duration_minutes || 60) * 60000)
                 const student = studentsMap.get(lesson.student_id)
                 const studentDisplayName = student?.customName || student?.name || 'Неизвестный студент'
                 
@@ -172,7 +172,7 @@ export function AgendaView({
                   }
                 }
                 
-                const statusInfo = getStatusInfo(lesson.status)
+                const statusInfo = getStatusInfo(lesson.status || 'scheduled')
                 
                 return (
                   <Card 

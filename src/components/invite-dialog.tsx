@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label'
 import { Copy, Check } from 'lucide-react'
 import { Icon } from '@/components/ui/icon'
 import { createInviteLink } from '@/lib/api'
-import { createSupabaseBrowserClient } from '@/lib/supabase'
 
 interface InviteDialogProps {
   open: boolean
@@ -28,19 +27,10 @@ export function InviteDialog({ open, onOpenChange, type }: InviteDialogProps) {
 
   const generateLink = useCallback(async () => {
     try {
-      // Получаем Supabase пользователя
-      const supabase = createSupabaseBrowserClient()
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+      // Конвертируем старые типы в новые
+      const inviteType = type === 'teacher' ? 'TEACHER_TO_STUDENT' : 'STUDENT_TO_TEACHER'
       
-      if (!supabaseUser) {
-        console.error('User not authenticated')
-        return
-      }
-      
-      const inviteCode = await createInviteLink({
-        createdBy: supabaseUser.id,
-        type: type
-      })
+      const inviteCode = await createInviteLink(inviteType)
       
       if (inviteCode) {
         const link = `${window.location.origin}/invite/${inviteCode}?type=${type}`

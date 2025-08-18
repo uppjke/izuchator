@@ -48,28 +48,11 @@ This is a Next.js 15 project with App Router using TypeScript. The project is de
 - **clsx** and **tailwind-merge** for conditional styling
 
 ## Authentication & Database
-- **Supabase SDK** for authentication, database, storage, and real-time features
-- **@supabase/ssr** helper for server-side rendering support
-- Email-based authentication with OTP verification
+Now uses NextAuth v5 + Prisma + PostgreSQL. Supabase fully removed (SDK, SSR helper, realtime). Presence feature temporarily stubbed pending new WebSocket implementation.
 
 ### Database Management & Type Generation
 
-**Connecting to Database:**
-```bash
-# Direct PostgreSQL connection to Supabase
-psql -h aws-0-eu-central-2.pooler.supabase.com -p 6543 -d postgres -U postgres.kurxrmzawghhxhwqyqbm
-
-# Execute SQL commands directly
-psql -h aws-0-eu-central-2.pooler.supabase.com -p 6543 -d postgres -U postgres.kurxrmzawghhxhwqyqbm -c "SQL_COMMAND_HERE"
-```
-
-**Updating TypeScript Types:**
-```bash
-# Generate fresh types from current database schema
-pnpm types:generate
-
-# This runs: supabase gen types typescript --project-id kurxrmzawghhxhwqyqbm > src/lib/types/database.generated.ts
-```
+**Connecting to Database (local PostgreSQL):** use `DATABASE_URL` in environment and Prisma CLI (`prisma migrate dev`, `prisma studio`).
 
 **Database Schema Notes:**
 - Table `teacher_student_relations` has status constraint: `'pending' | 'active' | 'rejected' | 'blocked'`
@@ -117,11 +100,7 @@ pnpm types:generate
 
 ## Authentication Flow
 
-The authentication uses Supabase's magic link OTP method:
-- Email-based authentication with OTP verification
-- Server-side rendering support with `@supabase/ssr`
-- Client-side auth with `@supabase/supabase-js` v2
-- LoginDialog and RegisterDialog components implemented
+Authentication via NextAuth (email magic link provider to be re-enabled soon). Session data accessed with `useSession` and wrapped by custom `AuthProvider`.
 
 ## Development Guidelines
 

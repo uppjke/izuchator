@@ -27,7 +27,7 @@ export function WeekView({
   // Получить уроки для конкретного дня и часа
   const getLessonsForSlot = (date: Date, hour: number): Lesson[] => {
     return lessons.filter(lesson => {
-      const lessonDate = new Date(lesson.start_time)
+          const lessonDate = new Date(lesson.startTime)
       return (
         lessonDate.getDate() === date.getDate() &&
         lessonDate.getMonth() === date.getMonth() &&
@@ -107,7 +107,7 @@ export function WeekView({
                       >
                         <div className="font-medium truncate">{lesson.title}</div>
                         <div className="text-xs opacity-75 mt-1">
-                          {formatTime(lesson.start_time)}
+                          {formatTime(lesson.startTime)}
                         </div>
                       </div>
                     ))}

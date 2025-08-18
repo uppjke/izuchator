@@ -7,7 +7,7 @@ interface User {
   id: string
   email: string
   name: string
-  role: 'student' | 'teacher'
+  role: string
 }
 
 interface AuthContextType {
@@ -26,16 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession()
 
   // Создание профиля пользователя из данных NextAuth
-  const createUserProfile = (session: Record<string, any> | null): User | null => {
+  const createUserProfile = (session: any): User | null => {
     if (!session?.user) return null
     
-    const rawRole = (session.user.role || 'STUDENT').toString()
-    const normalizedRole = rawRole.toLowerCase() === 'teacher' ? 'teacher' : 'student'
     return {
       id: session.user.id,
       email: session.user.email || '',
       name: session.user.name || session.user.email?.split('@')[0] || 'User',
-      role: normalizedRole
+      role: session.user.role || 'STUDENT'
     }
   }
 
@@ -46,14 +44,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Отправка OTP через NextAuth
   const sendOtp = async (email: string, isSignUp?: boolean, userData?: { name: string; role: string }) => {
     try {
-      const res = await fetch('/api/auth/otp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name: userData?.name, role: userData?.role })
+      const result = await signIn('email', { 
+        email, 
+        redirect: false,
+        // Можем передать дополнительные данные через callbackUrl
+        callbackUrl: isSignUp ? `/auth/verify?signup=true&role=${userData?.role}&name=${encodeURIComponent(userData?.name || '')}` : '/auth/verify'
       })
-      const data = await res.json()
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || 'Не удалось отправить код')
+      
+      if (result?.error) {
+        throw new Error(result.error)
       }
     } catch (error) {
       console.error('Send OTP error:', error)
@@ -63,8 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Для NextAuth проверка OTP происходит автоматически через magic link
   const verifyOtp = async (email: string, otp: string) => {
-    const result = await signIn('otp', { redirect: false, email, code: otp })
-    if (result?.error) throw new Error(result.error || 'Неверный код')
+    // В NextAuth с email provider проверка происходит через клик по ссылке
+    // Этот метод оставляем для совместимости, но он не используется
+    console.log('NextAuth handles OTP verification automatically via magic link')
   }
 
   const resendOtp = async (email: string) => {

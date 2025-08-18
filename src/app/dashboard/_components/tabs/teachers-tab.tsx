@@ -232,7 +232,7 @@ export function TeachersTab() {
       ) : (
         /* Список преподавателей */
         <div className="space-y-4 pt-16">
-          {teachers.map((relation) => (
+          {teachers.map((relation: any) => (
             <div key={relation.id}>
               <motion.div
                 className="flex flex-col bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 overflow-hidden"

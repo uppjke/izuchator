@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
 import { Clock } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 interface Props {
   children?: React.ReactNode
@@ -30,6 +32,8 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   const [canResend, setCanResend] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const { verifyOtp, resendOtp } = useAuth()
+  const router = useRouter()
+  const { update: updateSession } = useSession()
 
   // Утилита для очистки состояния
   const resetState = useCallback(() => {
@@ -73,13 +77,17 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
   }, [])
 
   // Обработка успешной верификации
-  const handleSuccess = useCallback(() => {
+  const handleSuccess = useCallback(async () => {
     setSuccess(true)
-    setTimeout(() => {
+    setTimeout(async () => {
       onOpenChange?.(false)
       resetState()
+      // Обновляем сессию NextAuth
+      await updateSession()
+    // Обновляем серверные компоненты без полной перезагрузки
+    router.refresh()
     }, SUCCESS_DELAY)
-  }, [onOpenChange, resetState])
+  }, [onOpenChange, resetState, updateSession, router])
 
   // Обработка ошибки верификации
   const handleVerificationError = useCallback((error: unknown) => {

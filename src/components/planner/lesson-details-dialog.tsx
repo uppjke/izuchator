@@ -37,16 +37,16 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
   const currentLesson = lessonData?.lesson || lesson
   if (!currentLesson) return null
 
-  const studentRelation = students.find(r => r.student?.id === currentLesson.student_id)
+  const studentRelation = students.find((r: any) => r.student?.id === (currentLesson as any).student_id)
   const studentName = studentRelation?.teacher_custom_name_for_student || studentRelation?.student?.full_name || studentRelation?.student?.email || 'Ученик'
 
-  const start = new Date(currentLesson.start_time)
-  const end = new Date(start.getTime() + currentLesson.duration_minutes * 60000)
+  const start = new Date(currentLesson.startTime)
+  const end = new Date(currentLesson.endTime)
 
   let recurrenceSummary: string | null = null
-  if (currentLesson.recurrence_rule) {
+  if ((currentLesson as any).recurrence_rule) {
     try {
-      const obj = JSON.parse(currentLesson.recurrence_rule)
+      const obj = JSON.parse((currentLesson as any).recurrence_rule)
       if (obj?.weekdays?.length) {
         const map: Record<number,string> = {0:'Вс',1:'Пн',2:'Вт',3:'Ср',4:'Чт',5:'Пт',6:'Сб'}
         const base = obj.weekdays.sort().map((d:number)=>map[d]).join(',')
@@ -57,19 +57,15 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
     } catch {}
   }
 
-  const isRecurring = !!(currentLesson.is_series_master || currentLesson.parent_series_id)
+  const isRecurring = !!((currentLesson as any).is_series_master || (currentLesson as any).parent_series_id)
 
   const handleDelete = async (deleteType: 'single' | 'series' | 'future' | 'weekday_future' | 'student_future_all') => {
     try {
-      const result = await deleteLesson(currentLesson.id, deleteType)
-      if (result.success) {
-        toast.success(result.message)
-        onDeleted?.()
-        onOpenChange(false)
-      } else {
-        toast.error(result.message)
-      }
-    } catch {
+      await deleteLesson(currentLesson.id)
+      toast.success('Урок удален')
+      onDeleted?.()
+      onOpenChange(false)
+    } catch (error) {
       toast.error('Ошибка при удалении занятия')
     }
     setShowDeleteConfirm(false)
@@ -155,16 +151,16 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
         <div className="space-y-5 py-2">
           {infoRow(User, 'Ученик', studentName)}
           {infoRow(Calendar, 'Дата', format(start, 'd MMMM yyyy (EEEE)', { locale: ru }))}
-          {infoRow(Clock, 'Время', `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')}  · ${currentLesson.duration_minutes} мин`)}
-          {infoRow(Palette, 'Цвет', (
+          {infoRow(Clock, 'Время', `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')}`)}
+      {infoRow(Palette, 'Цвет', (
             <div className="flex items-center gap-2">
-              {currentLesson.label_color && <span className="w-4 h-4 rounded-full border" style={{ background: currentLesson.label_color }} />}
-              <span>{currentLesson.label_color || 'По умолчанию'}</span>
+        {(currentLesson as any).label_color && <span className="w-4 h-4 rounded-full border" style={{ background: (currentLesson as any).label_color }} />}
+        <span>{(currentLesson as any).label_color || 'По умолчанию'}</span>
             </div>
           ))}
           {recurrenceSummary && infoRow(Repeat, 'Повтор', recurrenceSummary)}
-          {infoRow(X, 'Статус', currentLesson.status)}
-          {infoRow(Repeat, 'Серия', currentLesson.is_series_master ? 'Мастер занятие серии' : (currentLesson.parent_series_id ? 'Часть серии' : '—'))}
+          {infoRow(X, 'Статус', (currentLesson as any).status)}
+          {infoRow(Repeat, 'Серия', (currentLesson as any).is_series_master ? 'Мастер занятие серии' : ((currentLesson as any).parent_series_id ? 'Часть серии' : '—'))}
           {infoRow(X, 'Описание', currentLesson.description || '—')}
         </div>
         <DialogFooter>

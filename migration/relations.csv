@@ -1,0 +1,4 @@
+id,created_at,updated_at,teacher_id,student_id,status,invited_by,invite_message,rejected_reason,deleted_at,teacher_custom_name_for_student,student_custom_name_for_teacher,teacher_notes,student_notes
+1492e074-ce74-40b0-9579-b7d33bf6e6ca,2025-07-28 15:00:22.127825+00,2025-08-01 17:43:26.764891+00,8b8fd42a-aa5b-42b1-83ba-523e9f134d14,3c563dbe-f980-4f86-98c6-7a41c60f7699,active,3c563dbe-f980-4f86-98c6-7a41c60f7699,,,,,,Хых,Капэц какой-то
+6514da85-6251-40c8-90e7-0bef705cc43b,2025-07-31 13:05:32.029973+00,2025-08-01 19:23:55.920747+00,a098ec66-57b2-4945-8974-89a210a2a73b,3c563dbe-f980-4f86-98c6-7a41c60f7699,active,3c563dbe-f980-4f86-98c6-7a41c60f7699,,,,Пиздюк,,Пиздюк,"Тоже капэц какой-то
+Телефон мужа: 9800718830"
