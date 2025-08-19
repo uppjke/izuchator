@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/database'
 import nodemailer from 'nodemailer'
 import { createHash } from 'crypto'
+import { buildOtpEmail } from '@/lib/email-templates'
 
 // Simple in-memory rate limiting; replace with Redis in production
 const RATE: Record<string, { windowStart: number; count: number }> = {}
@@ -16,7 +17,7 @@ function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000))
 }
 
-async function sendMail(email: string, code: string) {
+async function sendMail(email: string, code: string, variant: 'login' | 'signup') {
   if (!process.env.EMAIL_SERVER_HOST) throw new Error('EMAIL_SERVER_HOST not set')
   const port = Number(process.env.EMAIL_SERVER_PORT || 587)
   
@@ -50,35 +51,35 @@ async function sendMail(email: string, code: string) {
   
   const from = process.env.EMAIL_FROM || 'no-reply@izuchator.ru'
   const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@izuchator.ru>`
-  const html = `<div style="font-family:system-ui,sans-serif;font-size:16px;padding:8px 0">
-  <p style="margin:0 0 12px">Ваш код входа:</p>
-  <p style="font-size:32px;font-weight:600;letter-spacing:4px;margin:0 0 16px">${code}</p>
-  <p style="margin:0;color:#555">Он действует 10 минут. Если вы не запрашивали код – просто удалите это письмо.</p>
-  </div>`
+  const template = buildOtpEmail({ code, variant })
   
   const result = await transporter.sendMail({
     to: email,
     from,
+    envelope: { from: (from.match(/<(.+)>/)?.[1]) || from, to: email }, // гарантируем MAIL FROM = no-reply@izuchator.ru
     replyTo: from,
-    subject: 'Код входа',
-    html,
-    text: `Ваш код: ${code}`,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
     messageId,
     headers: {
       'List-Unsubscribe': '<mailto:no-reply@izuchator.ru?subject=unsubscribe>',
       'X-Entity-Ref-ID': Date.now().toString(),
+      'X-Transactional': 'true'
     },
   })
   
   if (isDev) {
     console.log('Email sent successfully:', result.messageId || 'unknown')
     console.log('Response:', result.response || 'unknown')
+  console.log('Envelope used:', result.envelope)
+  console.log('Accepted:', result.accepted, 'Rejected:', result.rejected)
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, name, role } = await req.json()
+  const { email, name, role, isSignUp } = await req.json()
     if (typeof email !== 'string') {
       return NextResponse.json({ error: 'Email required' }, { status: 400 })
     }
@@ -121,7 +122,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    await sendMail(normEmail, code)
+  await sendMail(normEmail, code, isSignUp ? 'signup' : 'login')
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('OTP send error', e)

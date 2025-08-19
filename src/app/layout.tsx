@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { QueryProvider } from "@/lib/query-provider";
 import { ToastProvider } from "@/lib/toast-provider";
@@ -7,15 +6,10 @@ import { SessionProvider } from "next-auth/react";
 import "sonner/dist/styles.css";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// NOTE: Temporarily removed next/font/google Geist imports due to Turbopack
+// build error ("@vercel/turbopack-next/internal/font/google/font" not found)
+// which appears when fetching remote font files fails (TLS decode error in logs).
+// Using system font stack fallback until remote fetch issue is resolved.
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -50,9 +44,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="light">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white`}
-      >
+  <body className="antialiased bg-white">
         <QueryProvider>
           <SessionProvider>
             <AuthProvider>

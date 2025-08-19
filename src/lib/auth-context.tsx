@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch('/api/auth/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name: userData?.name, role: userData?.role })
+        body: JSON.stringify({ email, name: userData?.name, role: userData?.role, isSignUp })
       })
       const data = await res.json()
       if (!res.ok || !data.ok) {
