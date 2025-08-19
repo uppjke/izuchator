@@ -260,7 +260,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
   const students: { id: string; name: string }[] = (studentsData || []).map((rel: TeacherStudentRelation) => {
     const student = rel.student as TeacherStudentRelation['student'] | undefined
     if (!student?.id) return null
-    const name = student.full_name || student.email || 'Без имени'
+    const name = student.name || student.email || 'Без имени'
     // используем relation.id как value селекта (чтобы передать relationId в создание урока)
     return { id: rel.id, name }
   }).filter((s: { id: string; name: string } | null): s is { id: string; name: string } => Boolean(s))

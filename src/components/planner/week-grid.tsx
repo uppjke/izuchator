@@ -32,10 +32,10 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
   interface TeacherStudentRelationLite {
     student?: {
       id: string
-      full_name?: string | null
+      name?: string | null
       email?: string | null
     }
-    teacher_custom_name_for_student?: string | null
+    teacherName?: string | null
   }
 
   const studentsMap = React.useMemo(() => {
@@ -43,8 +43,8 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
     ;(studentsData as TeacherStudentRelationLite[]).forEach((relation) => {
       if (relation?.student?.id) {
         map.set(relation.student.id, {
-          name: relation.student.full_name || relation.student.email || 'Ученик',
-          customName: relation.teacher_custom_name_for_student || null,
+          name: relation.student.name || relation.student.email || 'Ученик',
+          customName: relation.teacherName || null,
         })
       }
     })

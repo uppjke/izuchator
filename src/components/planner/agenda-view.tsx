@@ -37,8 +37,8 @@ export function AgendaView({
     studentsData.forEach((relation: any) => {
       if (relation.student?.id) {
         map.set(relation.student.id, {
-          name: relation.student.full_name || relation.student.email || 'Ученик',
-          customName: relation.teacher_custom_name_for_student || null
+          name: relation.student.name || relation.student.email || 'Ученик',
+          customName: relation.teacherName || null
         })
       }
     })

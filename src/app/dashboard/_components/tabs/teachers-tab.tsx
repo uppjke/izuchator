@@ -57,25 +57,20 @@ export function TeachersTab() {
     }
   }
 
-  const getDisplayName = (teacher: TeacherRelation['teacher'], relation: TeacherRelation) => {
-    if (!teacher) return 'Неизвестный преподаватель'
-    
-    // Если есть пользовательское имя от ученика, используем его
-    if (relation.student_custom_name_for_teacher) {
-      return relation.student_custom_name_for_teacher
+    const getDisplayName = (teacher: any, relation?: any) => {
+    if (relation?.studentName) {
+      return relation.studentName
     }
-    
-    // Иначе показываем оригинальное имя
-    return teacher.full_name || 'Преподаватель'
+    return teacher?.name || 'Преподаватель'
   }
 
   const hasCustomName = (relation: TeacherRelation) => {
-    return !!relation.student_custom_name_for_teacher
+    return !!relation.studentName
   }
 
   const handleStartRename = (relation: TeacherRelation) => {
     setEditingNameId(relation.id)
-    setEditingName(relation.student_custom_name_for_teacher || relation.teacher?.full_name || '')
+    setEditingName(relation.studentName || relation.teacher?.name || '')
   }
 
   const handleSaveRename = async (relationId: string) => {
@@ -260,7 +255,7 @@ export function TeachersTab() {
                   >
                     <UserAvatar 
                       user={{
-                        name: relation.teacher?.full_name,
+                        name: relation.teacher?.name,
                         email: relation.teacher?.email,
                         avatar_url: null, // Пока null, потом добавим логику
                         id: relation.teacher?.id
@@ -391,7 +386,7 @@ export function TeachersTab() {
                                   whiteSpace: 'normal',
                                   hyphens: 'auto',
                                   lineBreak: 'anywhere'
-                                }}>{relation.teacher?.full_name || 'Преподаватель'}</p>
+                                }}>{relation.teacher?.name || 'Преподаватель'}</p>
                               </div>
                             </motion.div>
                           </PopoverContent>
@@ -525,10 +520,10 @@ export function TeachersTab() {
                     }}
                   >
                     <div className="px-4 py-3 bg-gray-50/80">
-                      {relation.student_notes ? (
+                      {relation.studentNotes ? (
                         <div className="text-sm text-gray-700">
                           <p className="font-medium text-gray-900 mb-1">Заметка:</p>
-                          <p className="whitespace-pre-wrap">{relation.student_notes}</p>
+                          <p className="whitespace-pre-wrap">{relation.studentNotes}</p>
                         </div>
                       ) : (
                         <p className="text-sm text-gray-500 text-center">
@@ -550,9 +545,9 @@ export function TeachersTab() {
         open={notesDialogOpen}
         onOpenChange={setNotesDialogOpen}
         relationId={currentNotesRelation?.id || ''}
-        currentNotes={currentNotesRelation?.student_notes || ''}
+        currentNotes={currentNotesRelation?.studentNotes || ''}
         isTeacherUpdating={false}
-        userName={currentNotesRelation?.teacher?.full_name || 'Учитель'}
+        userName={currentNotesRelation?.teacher?.name || 'Учитель'}
         onNotesUpdated={handleNotesUpdated}
       />
 

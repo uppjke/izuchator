@@ -5,10 +5,13 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-  "start": "next start",
-  "dev:all": "prisma migrate dev && next dev --turbopack",
-  "start:prod": "prisma migrate deploy && next start",
-  "lint": "next lint"
+    "start": "next start",
+    "dev:all": "prisma migrate dev && next dev --turbopack",
+    "start:prod": "prisma migrate deploy && next start",
+    "lint": "next lint",
+    "presence:dev": "tsx server/presence-server.ts",
+    "presence:build": "tsc server/presence-server.ts --outDir dist --target es2020",
+    "dev:with-presence": "concurrently \"pnpm presence:dev\" \"pnpm dev\""
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.10.0",
@@ -28,6 +31,7 @@
     "csv-parser": "^3.2.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.12",
+    "ioredis": "^5.7.0",
     "lucide-react": "^0.539.0",
     "nanoid": "^5.1.5",
     "next": "15.4.6",
@@ -39,6 +43,8 @@
     "react-dropzone": "^14.3.8",
     "react-hook-form": "^7.62.0",
     "recharts": "^3.1.2",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "zod": "^4.0.17"
@@ -57,10 +63,12 @@
     "@types/pg": "^8.15.5",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
+    "concurrently": "^9.2.0",
     "eslint": "^9.33.0",
     "eslint-config-next": "15.4.6",
-  "prisma": "^6.14.0",
+    "prisma": "^6.14.0",
     "tailwindcss": "^4.1.11",
+    "tsx": "^4.20.4",
     "typescript": "^5.9.2"
   }
 }

@@ -38,7 +38,7 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
   if (!currentLesson) return null
 
   const studentRelation = students.find((r: any) => r.student?.id === (currentLesson as any).student_id)
-  const studentName = studentRelation?.teacher_custom_name_for_student || studentRelation?.student?.full_name || studentRelation?.student?.email || 'Ученик'
+  const studentName = studentRelation?.teacherName || studentRelation?.student?.name || studentRelation?.student?.email || 'Ученик'
 
   const start = new Date(currentLesson.startTime)
   const end = new Date(currentLesson.endTime)
