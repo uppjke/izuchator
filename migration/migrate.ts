@@ -122,7 +122,7 @@ async function migrateLessons() {
   for (const lesson of lessons) {
     try {
       // Находим связь между учителем и студентом для получения relationId
-      let relationId = null
+  let relationId: string | null = null
       if (lesson.student_id) {
         const relation = await db.teacherStudentRelation.findFirst({
           where: {
