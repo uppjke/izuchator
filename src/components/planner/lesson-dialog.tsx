@@ -226,10 +226,9 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
       const recurrenceRule = generateRecurrenceRule(values)
 
       let successCount = 0
-      let firstLessonId: string | null = null
       
       // Подготовим карту studentId -> relationId (используем поле student_id как relationId для совместимости формы)
-  const relationId = values.relationId || undefined
+      const relationId = values.relationId || undefined
 
       for (const d of dates) {
         const startTime = d
@@ -330,7 +329,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
             <div className="space-y-2">
               <Label>Длительность (мин)</Label>
               <Input type="number" {...register('durationMinutes', { valueAsNumber: true })} disabled={isSubmitting} />
-              {errors.durationMinutes && <p className="text-xs text-red-600">{(errors as any).durationMinutes?.message}</p>}
+              {errors.durationMinutes && <p className="text-xs text-red-600">{(errors as { durationMinutes?: { message?: string } }).durationMinutes?.message}</p>}
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-2">Цвет метки</Label>
@@ -339,7 +338,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
                 disabled={isSubmitting}
                 onChange={(c) => setValue('labelColor', c, { shouldDirty: true })}
               />
-              {errors.labelColor && <p className="text-xs text-red-600">{(errors as any).labelColor?.message}</p>}
+              {errors.labelColor && <p className="text-xs text-red-600">{(errors as { labelColor?: { message?: string } }).labelColor?.message}</p>}
             </div>
           </div>
           <RecurrenceControl

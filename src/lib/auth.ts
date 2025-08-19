@@ -70,14 +70,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         // Первичный вход: переносим id/role в токен
         token.id = user.id
-  token.role = (user as any).role || 'STUDENT'
+        token.role = (user as { role?: string }).role || 'STUDENT'
       }
       return token
     },
     async session({ session, token }) {
       if (session.user && token) {
         session.user.id = token.id as string
-  ;(session.user as any).role = (token as any).role || 'STUDENT'
+        ;(session.user as { role?: string }).role = (token as { role?: string }).role || 'STUDENT'
       }
       return session
     },

@@ -52,7 +52,7 @@ export function usePresence(): PresenceState {
     socket.on('connect', () => {
       console.log('🚀 Connected to presence server')
       console.log('📱 User agent:', navigator.userAgent)
-      console.log('📶 Transport:', (socket as any).io?.engine?.transport?.name)
+      console.log('📶 Transport:', (socket as { io?: { engine?: { transport?: { name?: string } } } }).io?.engine?.transport?.name)
       setIsTracking(true)
       
       // Присоединяемся к presence tracking

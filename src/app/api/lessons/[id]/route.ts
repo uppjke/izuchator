@@ -19,13 +19,21 @@ export async function GET(
         id: id,
         userId: session.user.id,
       },
+      include: {
+        relation: {
+          include: {
+            teacher: true,
+            student: true,
+          },
+        },
+      },
     })
 
     if (!lesson) {
       return NextResponse.json({ error: 'Урок не найден' }, { status: 404 })
     }
 
-    return NextResponse.json(lesson)
+    return NextResponse.json({ lesson })
   } catch (error) {
     console.error('Error fetching lesson:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

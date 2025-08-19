@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-    const whereClause: Record<string, any> = {
+    const whereClause: Record<string, unknown> = {
       userId: session.user.id,
     }
 
@@ -27,6 +27,14 @@ export async function GET(request: NextRequest) {
 
     const lessons = await db.lesson.findMany({
       where: whereClause,
+      include: {
+        relation: {
+          include: {
+            teacher: true,
+            student: true,
+          },
+        },
+      },
       orderBy: {
         startTime: 'asc',
       },

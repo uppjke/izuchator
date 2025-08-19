@@ -2,6 +2,7 @@
 
 import { createContext, useContext, ReactNode } from 'react'
 import { useSession, signIn, signOut } from 'next-auth/react'
+import type { Session } from 'next-auth'
 
 interface User {
   id: string
@@ -26,13 +27,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession()
 
   // Создание профиля пользователя из данных NextAuth
-  const createUserProfile = (session: Record<string, any> | null): User | null => {
+  const createUserProfile = (session: Session | null): User | null => {
     if (!session?.user) return null
     
-    const rawRole = (session.user.role || 'STUDENT').toString()
+    const rawRole = ((session.user as { role?: string }).role || 'STUDENT').toString()
     const normalizedRole = rawRole.toLowerCase() === 'teacher' ? 'teacher' : 'student'
     return {
-      id: session.user.id,
+      id: session.user.id!,
       email: session.user.email || '',
       name: session.user.name || session.user.email?.split('@')[0] || 'User',
       role: normalizedRole

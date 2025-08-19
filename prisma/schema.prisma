@@ -91,6 +91,7 @@ model TeacherStudentRelation {
 
   teacher User @relation("TeacherRelations", fields: [teacherId], references: [id])
   student User @relation("StudentRelations", fields: [studentId], references: [id])
+  lessons Lesson[] @relation("LessonRelation")
 
   @@unique([teacherId, studentId])
   @@map("teacher_student_relations")
@@ -118,6 +119,7 @@ model Lesson {
   updatedAt   DateTime    @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
+  relation TeacherStudentRelation? @relation("LessonRelation", fields: [relationId], references: [id])
 
   @@map("lessons")
 }

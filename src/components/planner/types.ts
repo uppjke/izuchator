@@ -11,7 +11,7 @@ export interface Lesson {
   userId: string
   relationId?: string | null
   isRecurring: boolean
-  recurrence: any | null
+  recurrence: Record<string, unknown> | null
   labelColor: string | null
   createdAt: string
   updatedAt: string

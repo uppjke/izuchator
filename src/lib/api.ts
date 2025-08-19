@@ -11,7 +11,7 @@ export interface CreateLessonData {
   endTime: Date
   relationId?: string
   isRecurring?: boolean
-  recurrence?: any
+  recurrence?: Record<string, unknown>
   labelColor?: string
 }
 

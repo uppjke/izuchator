@@ -9,7 +9,6 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import type { LucideIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { useTeacherStudents } from '@/hooks/use-relations'
 import { useAuth } from '@/lib/auth-context'
 import { useQuery } from '@tanstack/react-query'
 import { getLessonById, deleteLesson } from '@/lib/api'
@@ -24,7 +23,6 @@ interface LessonDetailsDialogProps {
 
 export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: LessonDetailsDialogProps) {
   const { user } = useAuth()
-  const { data: students = [] } = useTeacherStudents(user?.id)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Получаем актуальные данные занятия из БД
@@ -37,16 +35,30 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
   const currentLesson = lessonData?.lesson || lesson
   if (!currentLesson) return null
 
-  const studentRelation = students.find((r: any) => r.student?.id === (currentLesson as any).student_id)
-  const studentName = studentRelation?.teacherName || studentRelation?.student?.name || studentRelation?.student?.email || 'Ученик'
+  // Получаем информацию об ученике из связи
+  const relation = (currentLesson as { relation?: { teacherId?: string; studentId?: string; teacherName?: string; studentName?: string; teacher?: { name?: string; email?: string }; student?: { name?: string; email?: string } } }).relation
+  let studentName = 'Ученик'
+  
+  if (relation) {
+    // Определяем, кто текущий пользователь - преподаватель или ученик
+    const isTeacher = relation.teacherId === user?.id
+    
+    if (isTeacher) {
+      // Если текущий пользователь - преподаватель, показываем ученика
+      studentName = relation.studentName || relation.student?.name || relation.student?.email || 'Ученик'
+    } else {
+      // Если текущий пользователь - ученик, показываем преподавателя
+      studentName = relation.teacherName || relation.teacher?.name || relation.teacher?.email || 'Преподаватель'
+    }
+  }
 
   const start = new Date(currentLesson.startTime)
   const end = new Date(currentLesson.endTime)
 
   let recurrenceSummary: string | null = null
-  if ((currentLesson as any).recurrence_rule) {
+  if ((currentLesson as { recurrence_rule?: string }).recurrence_rule) {
     try {
-      const obj = JSON.parse((currentLesson as any).recurrence_rule)
+      const obj = JSON.parse((currentLesson as { recurrence_rule?: string }).recurrence_rule!)
       if (obj?.weekdays?.length) {
         const map: Record<number,string> = {0:'Вс',1:'Пн',2:'Вт',3:'Ср',4:'Чт',5:'Пт',6:'Сб'}
         const base = obj.weekdays.sort().map((d:number)=>map[d]).join(',')
@@ -57,15 +69,15 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
     } catch {}
   }
 
-  const isRecurring = !!((currentLesson as any).is_series_master || (currentLesson as any).parent_series_id)
+  const isRecurring = !!((currentLesson as { is_series_master?: boolean; parent_series_id?: string }).is_series_master || (currentLesson as { is_series_master?: boolean; parent_series_id?: string }).parent_series_id)
 
-  const handleDelete = async (deleteType: 'single' | 'series' | 'future' | 'weekday_future' | 'student_future_all') => {
+  const handleDelete = async () => {
     try {
       await deleteLesson(currentLesson.id)
       toast.success('Урок удален')
       onDeleted?.()
       onOpenChange(false)
-    } catch (error) {
+    } catch {
       toast.error('Ошибка при удалении занятия')
     }
     setShowDeleteConfirm(false)
@@ -116,19 +128,19 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => handleDelete('single')} className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => handleDelete()} className="cursor-pointer">
                     Только это занятие
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDelete('weekday_future')} className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => handleDelete()} className="cursor-pointer">
                     Все по этому дню недели
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDelete('student_future_all')} className="cursor-pointer text-red-600 focus:text-red-600">
+                  <DropdownMenuItem onClick={() => handleDelete()} className="cursor-pointer text-red-600 focus:text-red-600">
                     Это и все последующие занятия ученика
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button variant="destructive" onClick={() => handleDelete('single')} className="w-full sm:w-auto">Удалить</Button>
+              <Button variant="destructive" onClick={() => handleDelete()} className="w-full sm:w-auto">Удалить</Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -154,13 +166,13 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
           {infoRow(Clock, 'Время', `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')}`)}
       {infoRow(Palette, 'Цвет', (
             <div className="flex items-center gap-2">
-        {(currentLesson as any).label_color && <span className="w-4 h-4 rounded-full border" style={{ background: (currentLesson as any).label_color }} />}
-        <span>{(currentLesson as any).label_color || 'По умолчанию'}</span>
+        {(currentLesson as { label_color?: string }).label_color && <span className="w-4 h-4 rounded-full border" style={{ background: (currentLesson as { label_color?: string }).label_color }} />}
+        <span>{(currentLesson as { label_color?: string }).label_color || 'По умолчанию'}</span>
             </div>
           ))}
           {recurrenceSummary && infoRow(Repeat, 'Повтор', recurrenceSummary)}
-          {infoRow(X, 'Статус', (currentLesson as any).status)}
-          {infoRow(Repeat, 'Серия', (currentLesson as any).is_series_master ? 'Мастер занятие серии' : ((currentLesson as any).parent_series_id ? 'Часть серии' : '—'))}
+          {infoRow(X, 'Статус', (currentLesson as { status?: string }).status)}
+          {infoRow(Repeat, 'Серия', (currentLesson as { is_series_master?: boolean; parent_series_id?: string }).is_series_master ? 'Мастер занятие серии' : ((currentLesson as { is_series_master?: boolean; parent_series_id?: string }).parent_series_id ? 'Часть серии' : '—'))}
           {infoRow(X, 'Описание', currentLesson.description || '—')}
         </div>
         <DialogFooter>

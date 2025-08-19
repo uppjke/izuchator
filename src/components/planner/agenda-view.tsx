@@ -8,7 +8,6 @@ import { Icon } from '@/components/ui/icon'
 import { Clock, CheckCircle, XCircle } from 'lucide-react'
 import type { PlannerWeek, Lesson } from './types'
 import { useAuth } from '@/lib/auth-context'
-import { useTeacherStudents } from '@/hooks/use-relations'
 
 interface AgendaViewProps {
   week: PlannerWeek
@@ -25,25 +24,10 @@ export function AgendaView({
   forceToday = false
 }: AgendaViewProps) {
   const { user } = useAuth()
-  const { data: studentsData = [] } = useTeacherStudents(user?.id)
   
   const [selectedDay, setSelectedDay] = useState(
     week.days.find(day => day.isToday) || week.days[0]
   )
-  
-  // Создаем карту студентов по ID для быстрого поиска
-  const studentsMap = React.useMemo(() => {
-    const map = new Map()
-    studentsData.forEach((relation: any) => {
-      if (relation.student?.id) {
-        map.set(relation.student.id, {
-          name: relation.student.name || relation.student.email || 'Ученик',
-          customName: relation.teacherName || null
-        })
-      }
-    })
-    return map
-  }, [studentsData])
   
   // Отслеживаем изменения недели и автоматически выбираем сегодняшний день только при смене недели
   useEffect(() => {
@@ -127,8 +111,23 @@ export function AgendaView({
               {dayLessons.map((lesson) => {
                 const lessonDate = new Date(lesson.startTime)
                 const endTime = lesson.endTime ? new Date(lesson.endTime) : new Date(lessonDate.getTime() + (lesson.duration_minutes || 60) * 60000)
-                const student = studentsMap.get(lesson.student_id)
-                const studentDisplayName = student?.customName || student?.name || 'Неизвестный студент'
+                
+                // Получаем информацию об ученике из связи
+                const relation = (lesson as { relation?: { teacherId?: string; studentId?: string; teacherName?: string; studentName?: string; teacher?: { name?: string; email?: string }; student?: { name?: string; email?: string } } }).relation
+                let studentDisplayName = 'Неизвестный ученик'
+                
+                if (relation) {
+                  // Определяем, кто текущий пользователь - преподаватель или ученик
+                  const isTeacher = relation.teacherId === user?.id
+                  
+                  if (isTeacher) {
+                    // Если текущий пользователь - преподаватель, показываем ученика
+                    studentDisplayName = relation.studentName || relation.student?.name || relation.student?.email || 'Ученик'
+                  } else {
+                    // Если текущий пользователь - ученик, показываем преподавателя
+                    studentDisplayName = relation.teacherName || relation.teacher?.name || relation.teacher?.email || 'Преподаватель'
+                  }
+                }
                 
                 // Функция для получения статуса и цвета
                 const getStatusInfo = (status: string) => {
@@ -179,7 +178,7 @@ export function AgendaView({
                     key={lesson.id} 
                     className="cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden"
                     onClick={() => onEditLesson(lesson)}
-                    style={lesson.label_color ? { borderColor: lesson.label_color, color: lesson.label_color } : undefined}
+                    style={lesson.labelColor ? { borderColor: lesson.labelColor, color: lesson.labelColor } : undefined}
                   >
                     {/* Оставляем исходный уголок статуса */}
                     <div 
@@ -190,7 +189,7 @@ export function AgendaView({
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between pr-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
-                          <span className="truncate max-w-[160px] sm:max-w-none" style={lesson.label_color ? { color: lesson.label_color } : undefined}>{lesson.title}</span>
+                          <span className="truncate max-w-[160px] sm:max-w-none" style={lesson.labelColor ? { color: lesson.labelColor } : undefined}>{lesson.title}</span>
                         </CardTitle>
                         <div className="flex items-center text-sm text-gray-500">
                           <Icon icon={Clock} size="xs" />
