@@ -100,7 +100,7 @@ export function Planner({
       <LessonDialog 
         open={isLessonDialogOpen} 
         onOpenChange={setIsLessonDialogOpen} 
-        date={newLessonDate}
+        selectedDate={newLessonDate}
         onCreated={() => {
           refetchLessons()
           queryClient.invalidateQueries({ queryKey: ['lessons'] })

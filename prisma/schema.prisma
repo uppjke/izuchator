@@ -117,6 +117,9 @@ model Lesson {
   isRecurring Boolean     @default(false) @map("is_recurring")
   recurrence  Json?       @map("recurrence_pattern")
   labelColor  String?     @map("label_color")
+  status      String      @default("scheduled") @map("status")
+  previousStartTime DateTime? @map("previous_start_time")
+  previousEndTime   DateTime? @map("previous_end_time")
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
 

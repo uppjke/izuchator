@@ -125,6 +125,21 @@ export async function PATCH(
       updateData.endTime = new Date(updateData.endTime)
     }
 
+    // Если переносим время (start/end изменены) — фиксируем предыдущие значения и статус
+    if (updateData.startTime || updateData.endTime) {
+      const rescheduleData: Record<string, unknown> = {}
+      if (updateData.startTime && lesson.startTime.getTime() !== updateData.startTime.getTime()) {
+        rescheduleData.previousStartTime = lesson.startTime
+      }
+      if (updateData.endTime && lesson.endTime.getTime() !== updateData.endTime.getTime()) {
+        rescheduleData.previousEndTime = lesson.endTime
+      }
+      if (rescheduleData.previousStartTime || rescheduleData.previousEndTime) {
+        rescheduleData.status = 'rescheduled'
+      }
+      Object.assign(updateData, rescheduleData)
+    }
+
     const updatedLesson = await db.lesson.update({
       where: { id: id },
       data: updateData,

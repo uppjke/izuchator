@@ -13,9 +13,8 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Icon } from '@/components/ui/icon'
 import { Check } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { useTeacherStudents } from '@/hooks/use-relations'
-import type { getTeacherStudents } from '@/lib/api'
-import { createLesson } from '@/lib/api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { createLesson, getTeacherStudents } from '@/lib/api'
 import { toast } from 'sonner'
 import { format, addDays, addWeeks, addMonths } from 'date-fns'
 
@@ -51,7 +50,7 @@ type FormValues = z.infer<typeof schema>
 interface LessonDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  date?: Date | null
+  selectedDate?: Date | null
   onCreated?: () => void
 }
 
@@ -154,17 +153,16 @@ function generateRecurrenceDates(base: Date, values: FormValues): Date[] {
   return dates
 }
 
-export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDialogProps) {
+export function LessonDialog({ open, onOpenChange, selectedDate }: LessonDialogProps) {
   const { user } = useAuth()
-  const { data: studentsData, isLoading: studentsLoading } = useTeacherStudents(user?.id)
-  
-  // Проверяем, является ли пользователь преподавателем
-  const isTeacher = user?.role === 'teacher'
-  
-  // Если пользователь не преподаватель, не показываем диалог
-  if (!isTeacher) {
-    return null
-  }
+  const queryClient = useQueryClient()
+  const { data: relations = [] } = useQuery({
+    queryKey: ['relations'],
+    queryFn: getTeacherStudents,
+    staleTime: 1000 * 60 * 5,
+  })
+
+  const date = selectedDate
   const defaultDate = date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
   const defaultTime = date ? format(date, 'HH:mm') : '09:00'
   const resolver = zodResolver(schema) as unknown as Resolver<FormValues>
@@ -193,21 +191,29 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
       reset({
         title: '',
         description: '',
-  relationId: '',
+        relationId: '',
         date: defaultDate,
         time: defaultTime,
-  durationMinutes: 60,
-  labelColor: '#3b82f6',
-  repeatEnabled: false,
-  repeatPattern: 'custom_weekly',
-  repeatInterval: 1,
-  repeatWeekdays: [],
-  repeatEndType: 'never',
-  repeatEndDate: undefined,
-  repeatCount: 10
-      })
+        durationMinutes: 60,
+        labelColor: '#3b82f6',
+        repeatEnabled: false,
+        repeatPattern: 'custom_weekly',
+        repeatInterval: 1,
+        repeatWeekdays: [],
+        repeatEndType: 'never',
+        repeatEndDate: undefined,
+        repeatCount: 10
+      } as FormValues)
     }
   }, [open, defaultDate, defaultTime, reset])
+
+  // Проверяем, является ли пользователь преподавателем
+  const isTeacher = user?.role === 'teacher'
+  
+  // Если пользователь не преподаватель, не показываем диалог
+  if (!isTeacher) {
+    return null
+  }
 
   // Функция для генерации recurrence_rule из данных формы
   const generateRecurrenceRule = (values: FormValues): string | null => {
@@ -254,9 +260,9 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
         successCount++
       }
 
+      await queryClient.invalidateQueries({ queryKey: ['lessons'] })
       toast.success(`Создано занятий: ${successCount}`)
       onOpenChange(false)
-      onCreated?.()
     } catch (e) {
       console.error(e)
       toast.error('Ошибка создания занятия')
@@ -264,7 +270,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
   }
 
   type TeacherStudentRelation = Awaited<ReturnType<typeof getTeacherStudents>>[0]
-  const students: { id: string; name: string }[] = (studentsData || []).map((rel: TeacherStudentRelation) => {
+  const students: { id: string; name: string }[] = (relations || []).map((rel: TeacherStudentRelation) => {
     const student = rel.student as TeacherStudentRelation['student'] | undefined
     if (!student?.id) return null
     const name = student.name || student.email || 'Без имени'
@@ -305,7 +311,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
             <Label>Ученик *</Label>
             <Select onValueChange={(v) => setValue('relationId', v)}>
               <SelectTrigger className="h-9 rounded-full">
-                <SelectValue placeholder={studentsLoading ? 'Загрузка...' : 'Выберите ученика'} />
+                <SelectValue placeholder="Выберите ученика" />
               </SelectTrigger>
               <SelectContent>
                 {students.map(s => (
@@ -365,7 +371,7 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
             type="submit" 
             form="lesson-form"
             className="w-full rounded-xl" 
-            disabled={isSubmitting || studentsLoading}
+            disabled={isSubmitting}
           >
             {isSubmitting ? 'Создание...' : 'Создать'}
           </Button>
