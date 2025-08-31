@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button'
 import type { Lesson } from './types'
 import { Icon } from '@/components/ui/icon'
-import { Clock, Calendar, User, Repeat, X, Palette, Trash2, AlertTriangle, ChevronDown } from 'lucide-react'
+import { Clock, Calendar, User, Repeat, X, Trash2, AlertTriangle, ChevronDown, CheckCircle, XCircle, BadgeInfo } from 'lucide-react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import type { LucideIcon } from 'lucide-react'
 import { format } from 'date-fns'
@@ -74,6 +74,27 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
 
   const isRecurring = !!((currentLesson as { is_series_master?: boolean; parent_series_id?: string }).is_series_master || (currentLesson as { is_series_master?: boolean; parent_series_id?: string }).parent_series_id)
 
+  // Маппинг статусов на человеко-понятные метки
+  const statusMap: Record<string, string> = {
+    scheduled: 'Запланировано',
+    completed: 'Проведено', // изменено с "Завершено" по требованию
+    cancelled: 'Отменено',
+    confirmed: 'Подтверждено',
+    in_progress: 'В процессе'
+  }
+  const rawStatus = (currentLesson as { status?: string }).status || 'scheduled'
+  const statusLabel = statusMap[rawStatus] || rawStatus
+
+  // Статус оплаты (по аналогии с agenda-view)
+  const isPaid = Boolean((currentLesson as { price?: number | string | null }).price)
+
+  // Ограниченное описание
+  const limitedDescription = currentLesson.description
+    ? (currentLesson.description.length > 250
+        ? currentLesson.description.slice(0, 247).trimEnd() + '…'
+        : currentLesson.description)
+    : null
+
   const handleDelete = async () => {
     try {
       await deleteLesson(currentLesson.id)
@@ -125,9 +146,9 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
             {isRecurring ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="destructive" className="w-full sm:w-auto flex items-center gap-1">
+                  <Button variant="destructive" className="w-full sm:w-auto flex items-center gap-1 text-white">
                     Удалить
-                    <Icon icon={ChevronDown} size="xs" />
+                    <Icon icon={ChevronDown} size="xs" className="text-white" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -143,7 +164,10 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button variant="destructive" onClick={() => handleDelete()} className="w-full sm:w-auto">Удалить</Button>
+              <Button variant="destructive" onClick={() => handleDelete()} className="w-full sm:w-auto text-white flex items-center gap-1">
+                <Icon icon={Trash2} size="xs" className="text-white" />
+                Удалить
+              </Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -164,28 +188,26 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5 py-2">
-          {infoRow(User, 'Ученик', studentName)}
+          {infoRow(User, 'Участник', studentName)}
           {infoRow(Calendar, 'Дата', format(start, 'd MMMM yyyy (EEEE)', { locale: ru }))}
           {infoRow(Clock, 'Время', `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')}`)}
-      {infoRow(Palette, 'Цвет', (
-            <div className="flex items-center gap-2">
-        {(currentLesson as { label_color?: string }).label_color && <span className="w-4 h-4 rounded-full border" style={{ background: (currentLesson as { label_color?: string }).label_color }} />}
-        <span>{(currentLesson as { label_color?: string }).label_color || 'По умолчанию'}</span>
-            </div>
-          ))}
           {recurrenceSummary && infoRow(Repeat, 'Повтор', recurrenceSummary)}
-          {infoRow(X, 'Статус', (currentLesson as { status?: string }).status)}
-          {infoRow(Repeat, 'Серия', (currentLesson as { is_series_master?: boolean; parent_series_id?: string }).is_series_master ? 'Мастер занятие серии' : ((currentLesson as { is_series_master?: boolean; parent_series_id?: string }).parent_series_id ? 'Часть серии' : '—'))}
-          {infoRow(X, 'Описание', currentLesson.description || '—')}
+          {infoRow(BadgeInfo, 'Статус', statusLabel)}
+          {infoRow(isPaid ? CheckCircle : XCircle, 'Оплата', (
+            <span className={isPaid ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+              {isPaid ? 'Оплачено' : 'Не оплачено'}
+            </span>
+          ))}
+          {infoRow(X, 'Описание', limitedDescription || '—')}
         </div>
         <DialogFooter>
           {isTeacher && (
             <Button
               variant="destructive"
               onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-white"
             >
-              <Icon icon={Trash2} size="xs" />
+              <Icon icon={Trash2} size="xs" className="text-white" />
               Удалить
             </Button>
           )}
