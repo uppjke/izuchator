@@ -33,6 +33,12 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+const getFileExtension = (filename: string): string => {
+  const lastDot = filename.lastIndexOf('.')
+  if (lastDot === -1) return ''
+  return filename.slice(lastDot + 1).toUpperCase()
+}
+
 interface FileManagerProps {
   relationId?: string
   className?: string
@@ -235,6 +241,8 @@ export function FileManager({ relationId, className }: FileManagerProps) {
                     </h3>
                     <div className="flex items-center gap-2 text-xs text-zinc-500">
                       <span>{formatFileSize(file.size)}</span>
+                      <span>•</span>
+                      <span>{getFileExtension(file.originalName)}</span>
                       <span>•</span>
                       <span>{format(new Date(file.createdAt), 'd MMM', { locale: ru })}</span>
                     </div>

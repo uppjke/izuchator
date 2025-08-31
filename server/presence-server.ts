@@ -37,13 +37,7 @@ class PresenceServer {
       cors: {
         origin: process.env.NODE_ENV === 'production' 
           ? ['https://izuchator.ru', 'https://www.izuchator.ru']
-          : [
-              'http://localhost:3000', 
-              'http://localhost:3001',
-              'http://192.168.1.14:3000',
-              'http://192.168.1.14:3001',
-              '*' // Для development разрешаем все origins
-            ],
+          : true, // В development разрешаем все origins
         methods: ['GET', 'POST'],
         credentials: true,
         allowedHeaders: ['*']
@@ -70,6 +64,19 @@ class PresenceServer {
       console.log(`📍 Available at:`)
       console.log(`   - http://localhost:${port}`)
       console.log(`   - http://127.0.0.1:${port}`)
+      
+      // Показываем все сетевые интерфейсы
+      const { networkInterfaces } = require('os')
+      const nets = networkInterfaces()
+      
+      for (const name of Object.keys(nets)) {
+        for (const net of nets[name]!) {
+          // Показываем только IPv4 адреса, исключая internal
+          if (net.family === 'IPv4' && !net.internal) {
+            console.log(`   - http://${net.address}:${port}`)
+          }
+        }
+      }
     })
   }
 

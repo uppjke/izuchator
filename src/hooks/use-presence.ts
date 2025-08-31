@@ -34,7 +34,22 @@ export function usePresence(): PresenceState {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
     
     // Создаем Socket.io подключение с учетом мобильных устройств
-    const socket = io(process.env.NEXT_PUBLIC_PRESENCE_SERVER || 'http://192.168.1.14:3002', {
+    // Для мобильных устройств используем IP хоста, для локального - localhost
+    const getPresenceServerUrl = () => {
+      if (process.env.NEXT_PUBLIC_PRESENCE_SERVER) {
+        return process.env.NEXT_PUBLIC_PRESENCE_SERVER
+      }
+      
+      // Если мы на localhost, используем localhost
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:3002'
+      }
+      
+      // Иначе используем хост текущей страницы с портом 3002
+      return `http://${window.location.hostname}:3002`
+    }
+    
+    const socket = io(getPresenceServerUrl(), {
       transports: isMobile ? ['polling', 'websocket'] : ['websocket', 'polling'], // Для мобильных prioritize polling
       timeout: 15000,
       forceNew: false,
