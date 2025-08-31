@@ -27,7 +27,7 @@ const schema = z.object({
   relationId: z.string().uuid('Неверный формат ID связи'),
   date: z.string(),
   time: z.string(),
-  durationMinutes: z.coerce.number().int().positive('> 0').max(24 * 60, 'Слишком долго'),
+  durationMinutes: z.coerce.number().int().positive('> 0').max(12 * 60, 'Максимум 12 часов'),
   labelColor: z.string().regex(COLOR_REGEX, 'Неверный цвет'),
   repeatEnabled: z.boolean().optional().default(false),
   repeatPattern: z.enum(['daily','weekly','custom_weekly','monthly_date','monthly_weekday']).optional(),

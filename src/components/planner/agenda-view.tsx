@@ -110,7 +110,7 @@ export function AgendaView({
           <div className="space-y-3">
               {dayLessons.map((lesson) => {
                 const lessonDate = new Date(lesson.startTime)
-                const endTime = lesson.endTime ? new Date(lesson.endTime) : new Date(lessonDate.getTime() + (lesson.duration_minutes || 60) * 60000)
+                const endTime = new Date(lesson.endTime)
                 
                 // Получаем информацию об ученике из связи
                 const relation = (lesson as { relation?: { teacherId?: string; studentId?: string; teacherName?: string; studentName?: string; teacher?: { name?: string; email?: string }; student?: { name?: string; email?: string } } }).relation

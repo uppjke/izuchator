@@ -57,7 +57,8 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
 
   // Функция для вычисления позиции и размера карточки урока
   const getLessonPosition = (lesson: Lesson) => {
-  const startTime = new Date(lesson.startTime)
+    const startTime = new Date(lesson.startTime)
+    const endTime = new Date(lesson.endTime)
     const hours = startTime.getHours()
     const minutes = startTime.getMinutes()
     
@@ -65,9 +66,13 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
     const hourHeight = 64
     const top = (hours * hourHeight) + (minutes / 60) * hourHeight
     
-    // Максимальная длительность - 8 часов (480 минут)
-    const maxDuration = 8 * 60
-  const duration = Math.min(lesson.duration_minutes ?? 60, maxDuration)
+    // Вычисляем длительность урока в минутах из startTime и endTime
+    const durationMs = endTime.getTime() - startTime.getTime()
+    const durationMinutes = Math.max(1, Math.floor(durationMs / (1000 * 60))) // Минимум 1 минута
+    
+    // Максимальная длительность - 12 часов (720 минут)
+    const maxDuration = 12 * 60
+    const duration = Math.min(durationMinutes, maxDuration)
     const height = (duration / 60) * hourHeight
     
     return { top, height }
@@ -251,7 +256,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                     
                     const statusStyle = getStatusStyle(lesson.status || 'scheduled')
                     const startTime = new Date(lesson.startTime)
-                    const endTime = lesson.endTime ? new Date(lesson.endTime) : new Date(startTime.getTime() + (lesson.duration_minutes || 60) * 60000)
+                    const endTime = new Date(lesson.endTime)
                     
                     return (
                       <div
