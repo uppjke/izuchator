@@ -223,3 +223,83 @@ export async function updateNotesInRelation(
 
   return await response.json()
 }
+
+// Работа с файлами
+
+export interface FileData {
+  id: string
+  name: string
+  originalName: string
+  size: number
+  mimeType: string
+  fileType: 'DOCUMENT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'ARCHIVE' | 'OTHER'
+  path: string
+  url?: string
+  userId: string
+  relationId?: string
+  isPublic: boolean
+  createdAt: string
+  updatedAt: string
+  user?: {
+    name?: string
+    email?: string
+  }
+  relation?: {
+    teacherName?: string
+    studentName?: string
+    teacher?: { name?: string; email?: string }
+    student?: { name?: string; email?: string }
+  }
+}
+
+export async function uploadFile(file: File, relationId?: string): Promise<FileData> {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (relationId) {
+    formData.append('relationId', relationId)
+  }
+
+  const response = await fetch('/api/files', {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Upload failed')
+  }
+
+  const data = await response.json()
+  return data.file
+}
+
+export async function getFiles(params?: {
+  relationId?: string
+  type?: string
+}): Promise<FileData[]> {
+  const searchParams = new URLSearchParams()
+  if (params?.relationId) searchParams.set('relationId', params.relationId)
+  if (params?.type) searchParams.set('type', params.type)
+
+  const response = await fetch(`/api/files?${searchParams.toString()}`)
+  if (!response.ok) {
+    throw new Error('Failed to fetch files')
+  }
+
+  const data = await response.json()
+  return data.files
+}
+
+export async function deleteFile(fileId: string): Promise<void> {
+  const response = await fetch(`/api/files/${fileId}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to delete file')
+  }
+}
+
+export function getFileDownloadUrl(fileId: string): string {
+  return `/api/files/${fileId}`
+}

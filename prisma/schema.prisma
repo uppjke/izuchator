@@ -26,6 +26,7 @@ model User {
   createdInvites    InviteLink[] @relation("InviteCreator")
   lessons           Lesson[]
   inviteUses        InviteUse[]
+  files             File[]
 
   @@map("users")
 }
@@ -92,6 +93,7 @@ model TeacherStudentRelation {
   teacher User @relation("TeacherRelations", fields: [teacherId], references: [id])
   student User @relation("StudentRelations", fields: [studentId], references: [id])
   lessons Lesson[] @relation("LessonRelation")
+  files   File[]
 
   @@unique([teacherId, studentId])
   @@map("teacher_student_relations")
@@ -157,4 +159,34 @@ model InviteUse {
   user   User       @relation(fields: [userId], references: [id])
 
   @@map("invite_uses")
+}
+
+model File {
+  id           String   @id @default(cuid())
+  name         String
+  originalName String   @map("original_name")
+  size         Int
+  mimeType     String   @map("mime_type")
+  fileType     FileType @map("file_type")
+  path         String
+  url          String?
+  userId       String   @map("user_id")
+  relationId   String?  @map("relation_id")
+  isPublic     Boolean  @default(false) @map("is_public")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relation TeacherStudentRelation?    @relation(fields: [relationId], references: [id], onDelete: SetNull)
+
+  @@map("files")
+}
+
+enum FileType {
+  DOCUMENT
+  IMAGE
+  VIDEO
+  AUDIO
+  ARCHIVE
+  OTHER
 }

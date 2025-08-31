@@ -136,6 +136,39 @@ import { Plus, Mail, Trash2 } from 'lucide-react'
 
 **Icon sizes available:** `xs`, `sm`, `md`, `lg`, `xl` - use these instead of manual className sizing.
 
+## File Management System
+
+The project includes a complete file management system in the "Мои материалы" section:
+
+### File Storage
+- **Local Development:** Files stored in `uploads/{userId}/` directory
+- **Production Ready:** Configured for Selectel Object Storage (S3-compatible)
+- **Security:** Private file access with user authorization
+- **File Types:** Images, PDF, Office documents, text files, archives (max 10MB)
+
+### Database Schema
+- **Files table** with metadata: name, size, type, path, user relations
+- **File types:** `DOCUMENT`, `IMAGE`, `VIDEO`, `AUDIO`, `ARCHIVE`, `OTHER`
+- **Relations:** Files can be linked to teacher-student relationships
+
+### API Endpoints
+- `POST /api/files` - Upload files with validation
+- `GET /api/files` - List files with filtering
+- `GET /api/files/[id]` - Download files (authorized access only)
+- `DELETE /api/files/[id]` - Delete files
+
+### UI Components
+- **FileManager component** with grid/list views
+- **File upload** via native file input (no drag-and-drop zone)
+- **File filtering** by type using shadcn/ui Select component
+- **File actions:** download, delete with confirmation
+- **File type icons** and metadata display
+
+### Database Migrations
+- Use `prisma migrate dev --name change_description` for schema changes
+- Never use `prisma db push` in production
+- Mark manual schema changes with `prisma migrate resolve --applied migration_name`
+
 ---
 
 ## Apple Human Interface Guidelines

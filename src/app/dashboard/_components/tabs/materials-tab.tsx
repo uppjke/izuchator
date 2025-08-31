@@ -1,11 +1,9 @@
-import { PlaceholderTab } from '../common'
+import { FileManager } from '@/components/file-manager'
 
 export function MaterialsTab() {
   return (
-    <PlaceholderTab
-      title="Мои материалы"
-      description="Учебные материалы, файлы и документы."
-      cardTitle="Библиотека материалов"
-    />
+    <div className="container mx-auto px-4 py-6">
+      <FileManager />
+    </div>
   )
 }
