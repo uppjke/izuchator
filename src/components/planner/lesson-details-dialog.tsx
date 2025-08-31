@@ -25,6 +25,9 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
   const { user } = useAuth()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
+  // Проверяем, является ли пользователь преподавателем
+  const isTeacher = user?.role === 'teacher'
+
   // Получаем актуальные данные занятия из БД
   const { data: lessonData, isLoading } = useQuery({
     queryKey: ['lesson', lesson?.id],
@@ -176,14 +179,16 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
           {infoRow(X, 'Описание', currentLesson.description || '—')}
         </div>
         <DialogFooter>
-          <Button
-            variant="destructive"
-            onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center gap-2"
-          >
-            <Icon icon={Trash2} size="xs" />
-            Удалить
-          </Button>
+          {isTeacher && (
+            <Button
+              variant="destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2"
+            >
+              <Icon icon={Trash2} size="xs" />
+              Удалить
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

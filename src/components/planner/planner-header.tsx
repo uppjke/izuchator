@@ -6,6 +6,7 @@ import { Icon } from '@/components/ui/icon'
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
+import { useAuth } from '@/lib/auth-context'
 
 interface PlannerHeaderProps {
   currentDate: Date
@@ -28,6 +29,8 @@ export function PlannerHeader({
   onCreateLesson,
   isWideScreen = false
 }: PlannerHeaderProps) {
+  const { user } = useAuth()
+  
   // Форматируем дату с заглавной буквы
   const monthYear = format(currentDate, 'LLLL yyyy', { locale: ru })
   const capitalizedMonthYear = monthYear.charAt(0).toUpperCase() + monthYear.slice(1)
@@ -40,6 +43,9 @@ export function PlannerHeader({
       case 'year': return 'Год'
     }
   }
+
+  // Проверяем, является ли пользователь преподавателем
+  const isTeacher = user?.role === 'teacher'
 
   return (
     <div className="sticky top-0 z-10 bg-white">
@@ -63,14 +69,16 @@ export function PlannerHeader({
           </Button>
         </div>
 
-        {/* Правая часть - кнопка добавления */}
-        <Button 
-          onClick={onCreateLesson}
-          className="flex items-center gap-2"
-        >
-          <Icon icon={Plus} size="sm" />
-          <span className="hidden sm:inline">Добавить</span>
-        </Button>
+        {/* Правая часть - кнопка добавления (только для преподавателей) */}
+        {isTeacher && (
+          <Button 
+            onClick={onCreateLesson}
+            className="flex items-center gap-2"
+          >
+            <Icon icon={Plus} size="sm" />
+            <span className="hidden sm:inline">Добавить</span>
+          </Button>
+        )}
       </div>
 
       {/* Второй уровень - навигация по датам */}

@@ -157,6 +157,14 @@ function generateRecurrenceDates(base: Date, values: FormValues): Date[] {
 export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDialogProps) {
   const { user } = useAuth()
   const { data: studentsData, isLoading: studentsLoading } = useTeacherStudents(user?.id)
+  
+  // Проверяем, является ли пользователь преподавателем
+  const isTeacher = user?.role === 'teacher'
+  
+  // Если пользователь не преподаватель, не показываем диалог
+  if (!isTeacher) {
+    return null
+  }
   const defaultDate = date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
   const defaultTime = date ? format(date, 'HH:mm') : '09:00'
   const resolver = zodResolver(schema) as unknown as Resolver<FormValues>

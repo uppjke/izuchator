@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/icon'
 import { Plus } from 'lucide-react'
 import { formatDate, formatTime, getLessonStatusClasses } from './utils'
 import type { PlannerWeek, Lesson } from './types'
+import { useAuth } from '@/lib/auth-context'
 
 interface WeekViewProps {
   week: PlannerWeek
@@ -21,8 +22,13 @@ export function WeekView({
   onCreateLesson, 
   onEditLesson 
 }: WeekViewProps) {
+  const { user } = useAuth()
+  
   // Часы для отображения (8:00 - 22:00)
   const hours = Array.from({ length: 15 }, (_, i) => i + 8)
+  
+  // Проверяем, является ли пользователь преподавателем
+  const isTeacher = user?.role === 'teacher'
   
   // Получить уроки для конкретного дня и часа
   const getLessonsForSlot = (date: Date, hour: number): Lesson[] => {
@@ -78,11 +84,13 @@ export function WeekView({
               return (
                 <div
                   key={`${day.date.toISOString()}-${hour}`}
-                  className="bg-white min-h-[60px] relative hover:bg-gray-50 cursor-pointer group border-r last:border-r-0"
-                  onClick={() => onCreateLesson(day.date, hour)}
+                  className={`bg-white min-h-[60px] relative border-r last:border-r-0 ${
+                    isTeacher ? 'hover:bg-gray-50 cursor-pointer group' : ''
+                  }`}
+                  onClick={isTeacher ? () => onCreateLesson(day.date, hour) : undefined}
                 >
-                  {/* Кнопка добавления урока */}
-                  {slotLessons.length === 0 && (
+                  {/* Кнопка добавления урока (только для преподавателей) */}
+                  {slotLessons.length === 0 && isTeacher && (
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2">
                       <Button 
                         size="sm" 
