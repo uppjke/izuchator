@@ -58,10 +58,12 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
   const start = new Date(currentLesson.startTime)
   const end = new Date(currentLesson.endTime)
 
+  // Recurrence summary (current schema uses JSON field `recurrence`)
   let recurrenceSummary: string | null = null
-  if ((currentLesson as { recurrence_rule?: string }).recurrence_rule) {
+  const rawRecurrence: any = (currentLesson as any).recurrence
+  if (rawRecurrence) {
     try {
-      const obj = JSON.parse((currentLesson as { recurrence_rule?: string }).recurrence_rule!)
+      const obj = typeof rawRecurrence === 'string' ? JSON.parse(rawRecurrence) : rawRecurrence
       if (obj?.weekdays?.length) {
         const map: Record<number,string> = {0:'Вс',1:'Пн',2:'Вт',3:'Ср',4:'Чт',5:'Пт',6:'Сб'}
         const base = obj.weekdays.sort().map((d:number)=>map[d]).join(',')
@@ -69,10 +71,11 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
         else if (obj.end_type === 'count' && obj.count) recurrenceSummary = base + ` (${obj.count} раз)`
         else recurrenceSummary = base
       }
-    } catch {}
+    } catch { /* ignore parse errors */ }
   }
 
-  const isRecurring = !!((currentLesson as { is_series_master?: boolean; parent_series_id?: string }).is_series_master || (currentLesson as { is_series_master?: boolean; parent_series_id?: string }).parent_series_id)
+  // Correct recurring detection for current Prisma schema
+  const isRecurring = Boolean((currentLesson as any).isRecurring || rawRecurrence)
 
   // Маппинг статусов на человеко-понятные метки
   const statusMap: Record<string, string> = {
@@ -162,8 +165,8 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
           <DropdownMenuItem onClick={() => handleDelete('weekday')} className="cursor-pointer">
                     Все по этому дню недели
                   </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleDelete('all_future_student')} className="cursor-pointer text-red-600 focus:text-red-600">
-                    Это и все последующие занятия ученика
+                  <DropdownMenuItem onClick={() => handleDelete('all_future_student')} className="cursor-pointer text-red-600 focus:text-red-600">
+                    Все занятия этого ученика
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
