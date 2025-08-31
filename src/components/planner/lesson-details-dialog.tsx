@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button'
 import type { Lesson } from './types'
 import { Icon } from '@/components/ui/icon'
-import { Clock, Calendar, User, Repeat, X, Trash2, AlertTriangle, ChevronDown, CheckCircle, XCircle, BadgeInfo } from 'lucide-react'
+import { Clock, Calendar, User, Repeat, X, Trash2, AlertTriangle, ChevronDown, BadgeInfo, FileText, Coins } from 'lucide-react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import type { LucideIcon } from 'lucide-react'
 import { format } from 'date-fns'
@@ -200,12 +200,12 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
           {infoRow(Clock, 'Время', `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')}`)}
           {recurrenceSummary && infoRow(Repeat, 'Повтор', recurrenceSummary)}
           {infoRow(BadgeInfo, 'Статус', statusLabel)}
-          {infoRow(isPaid ? CheckCircle : XCircle, 'Оплата', (
+          {infoRow(Coins, 'Оплата', (
             <span className={isPaid ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
               {isPaid ? 'Оплачено' : 'Не оплачено'}
             </span>
           ))}
-          {infoRow(X, 'Описание', limitedDescription || '—')}
+          {infoRow(FileText, 'Описание', limitedDescription || '—')}
         </div>
         <DialogFooter>
           {isTeacher && (
