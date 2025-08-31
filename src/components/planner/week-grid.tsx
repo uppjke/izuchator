@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { formatDate } from './utils'
 import { Icon } from '@/components/ui/icon'
 import { Clock } from 'lucide-react'
@@ -77,6 +77,90 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
     
     return { top, height }
   }
+
+  // Элегантная раскладка перекрывающихся занятий (по дням)
+  // Идея: для каждого дня вычисляем кластеры пересекающихся интервалов и распределяем их по колонкам,
+  // как только интервал завершается — колонка освобождается и может быть переиспользована.
+  // Это даёт плотную, но «воздушную» сетку без взаимного наложения.
+  const dayLayouts = useMemo(() => {
+    const layouts: Record<string, Record<string, { leftPct: number; widthPct: number }>> = {}
+
+    interface EventItem {
+      lesson: Lesson
+      start: number
+      end: number
+      pos: { top: number; height: number }
+      column: number
+      clusterId: number
+    }
+
+    week.days.forEach(day => {
+      const dayKey = day.date.toISOString().split('T')[0]
+      const dayLessons = getLessonsForDay(day.date)
+      if (!dayLessons.length) return
+
+      // Подготовим структуру с позициями
+      const items: EventItem[] = dayLessons.map(lesson => {
+        const pos = getLessonPosition(lesson)
+        const start = pos.top
+        const end = pos.top + pos.height
+        return { lesson, start, end, pos, column: -1, clusterId: -1 }
+      })
+
+      // Сортировка по времени начала
+      const sorted: EventItem[] = [...items].sort((a,b) => a.start - b.start)
+      let active: EventItem[] = []
+      let clusterId = 0
+      interface Cluster { id: number; events: EventItem[]; maxCols: number }
+      const clusters: Cluster[] = []
+
+      sorted.forEach(ev => {
+        // Удаляем завершившиеся из active
+        active = active.filter(a => a.end > ev.start)
+        // Если active пуст – новый кластер
+        if (!active.length) {
+          clusterId++
+          clusters.push({ id: clusterId, events: [], maxCols: 0 })
+        }
+        const cluster = clusters[clusters.length - 1]
+        // Определяем занятые колонки
+        const used = new Set(active.map(a => a.column))
+        let col = 0
+        while (used.has(col)) col++
+        ev.column = col
+        ev.clusterId = cluster.id
+        active.push(ev)
+        cluster.events.push(ev)
+        if (col + 1 > cluster.maxCols) cluster.maxCols = col + 1
+      })
+
+      // Вычисляем проценты ширины/позиции для каждого события
+      const map: Record<string, { leftPct: number; widthPct: number }> = {}
+      clusters.forEach(cluster => {
+        const totalCols = cluster.maxCols
+        // Минимальная ширина колонки — если много пересечений, ограничим до 20% и разрешим лёгкое перекрытие через внутренний отступ
+        const baseWidth = 100 / totalCols
+        cluster.events.forEach(ev => {
+          let widthPct = baseWidth
+          let leftPct = ev.column * baseWidth
+          // Адаптивное «сжатие» при очень широких кластерах (>4 колонки) – оставляем небольшой визуальный зазор
+            if (totalCols >= 4) {
+            const shrink = 2 // % от ширины колонки
+            widthPct = baseWidth - shrink
+            leftPct = ev.column * baseWidth + shrink/2
+          }
+          // Гарантируем границы [0,100]
+          if (leftPct + widthPct > 100) widthPct = 100 - leftPct
+          map[ev.lesson.id] = { leftPct, widthPct }
+        })
+      })
+
+      layouts[dayKey] = map
+    })
+
+    return layouts
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessons, week])
 
   // Обновляем время каждую секунду для точной синхронизации
   useEffect(() => {
@@ -236,6 +320,8 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                   {/* Карточки уроков - отображаем только для первого часа каждого дня */}
                   {hourIndex === 0 && dayLessons.map((lesson) => {
                     const position = getLessonPosition(lesson)
+                    const dayKey = day.date.toISOString().split('T')[0]
+                    const layoutInfo = dayLayouts[dayKey]?.[lesson.id]
                     
                     // Получаем информацию об ученике из связи
                     const relation = (lesson as { relation?: { teacherId?: string; studentId?: string; teacherName?: string; studentName?: string; teacher?: { name?: string; email?: string }; student?: { name?: string; email?: string } } }).relation
@@ -261,14 +347,16 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                     return (
                       <div
                         key={lesson.id}
-                        className={`absolute left-1 right-1 rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-[1.015] overflow-hidden ${statusStyle.card}`}
+                        className={`absolute rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-[1.015] overflow-hidden ${statusStyle.card}`}
                         style={{
                           top: `${position.top}px`,
                           height: `${position.height}px`,
+                          // Если есть данные раскладки – используем их, иначе fallback на полную ширину
+                          left: layoutInfo ? `${layoutInfo.leftPct}%` : '4px',
+                          width: layoutInfo ? `${layoutInfo.widthPct}%` : 'calc(100% - 8px)',
                           zIndex: 10,
                           borderColor: lesson.labelColor || undefined,
-                          // Меняем цвет текста, если выбран пользовательский цвет
-                          color: lesson.labelColor || undefined
+                          backgroundClip: 'padding-box'
                         }}
                         onClick={() => onEditLesson?.(lesson)}
                       >
