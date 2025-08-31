@@ -196,14 +196,6 @@ export function FileManager({ relationId, className }: FileManagerProps) {
             <p className="text-muted-foreground/70 mb-6 max-w-sm mx-auto">
               Загрузите первый файл, чтобы начать работу с материалами
             </p>
-            <Button
-              onClick={() => document.getElementById('file-upload')?.click()}
-              className="h-9 px-6 bg-foreground text-background hover:bg-foreground/90"
-              size="sm"
-            >
-              <Icon icon={Upload} size="xs" />
-              <span className="ml-2">Загрузить файл</span>
-            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
