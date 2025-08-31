@@ -23,7 +23,7 @@ const COLOR_REGEX = /^#([0-9A-Fa-f]{6})$/
 const schema = z.object({
   title: z.string().min(2, 'Минимум 2 символа'),
   description: z.string().max(300, 'Макс 300 символов').optional().or(z.literal('')),
-  relationId: z.string().uuid('Неверный формат ID связи'),
+  relationId: z.string().min(1, 'Выберите ученика'),
   date: z.string(),
   time: z.string(),
   durationMinutes: z.coerce.number().int().positive('> 0').max(12 * 60, 'Максимум 12 часов'),

@@ -25,21 +25,21 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
   // Реф для контейнера прокрутки
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   
-  // Стиль статусов: белый фон + цветной бордер; цвет текста больше не фиксируем (будет от labelColor)
+  // Стиль статусов: белый фон + цветной бордер; цвет текста будет от labelColor
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'scheduled':
-        return { card: 'bg-white border border-blue-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-blue-600/70', icon: 'text-blue-500' }
+        return { card: 'bg-white border border-blue-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'opacity-70', icon: 'opacity-80' }
       case 'completed':
-        return { card: 'bg-white border border-green-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-green-600/70', icon: 'text-green-500' }
+        return { card: 'bg-white border border-green-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'opacity-70', icon: 'opacity-80' }
       case 'cancelled':
-        return { card: 'bg-white border border-red-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-red-600/70', icon: 'text-red-500' }
+        return { card: 'bg-white border border-red-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'opacity-70', icon: 'opacity-80' }
       case 'confirmed':
-        return { card: 'bg-white border border-emerald-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-emerald-600/70', icon: 'text-emerald-500' }
+        return { card: 'bg-white border border-emerald-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'opacity-70', icon: 'opacity-80' }
       case 'in_progress':
-        return { card: 'bg-white border border-orange-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-orange-600/70', icon: 'text-orange-500' }
+        return { card: 'bg-white border border-orange-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'opacity-70', icon: 'opacity-80' }
       default:
-        return { card: 'bg-white border border-gray-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-gray-600/70', icon: 'text-gray-500' }
+        return { card: 'bg-white border border-gray-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'opacity-70', icon: 'opacity-80' }
     }
   }
 
