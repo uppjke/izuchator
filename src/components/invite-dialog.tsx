@@ -27,8 +27,10 @@ export function InviteDialog({ open, onOpenChange, type }: InviteDialogProps) {
 
   const generateLink = useCallback(async () => {
     try {
-      // Конвертируем старые типы в новые
-      const inviteType = type === 'teacher' ? 'TEACHER_TO_STUDENT' : 'STUDENT_TO_TEACHER'
+      // type указывает, кого мы приглашаем:
+      // Если приглашаем student - создаем TEACHER_TO_STUDENT
+      // Если приглашаем teacher - создаем STUDENT_TO_TEACHER
+      const inviteType = type === 'student' ? 'TEACHER_TO_STUDENT' : 'STUDENT_TO_TEACHER'
       
       const inviteCode = await createInviteLink(inviteType)
       

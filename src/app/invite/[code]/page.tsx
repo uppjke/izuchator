@@ -138,14 +138,11 @@ export default function InvitePage() {
   const roleIcon = inviteData.type === 'student' ? GraduationCap : Users
   const roleText = inviteData.type === 'student' ? 'учеником' : 'преподавателем'
   
-  // Проверяем совместимость ролей
-  const isRoleCompatible = !user || !user.role || 
-    (inviteData.type === 'student' && user.role === 'student') ||
-    (inviteData.type === 'teacher' && user.role === 'teacher')
+  // Приглашения могут принимать все авторизованные пользователи
+  // Роль в системе не имеет значения для принятия приглашений
+  const isRoleCompatible = true
     
-  const roleWarning = userAuthenticated && !isRoleCompatible
-    ? `Это приглашение предназначено для ${inviteData.type === 'student' ? 'студентов' : 'преподавателей'}, а вы зарегистрированы как ${user?.role === 'student' ? 'студент' : 'преподаватель'}.`
-    : null
+  const roleWarning = null
 
   return (
     <div className="min-h-[calc(100dvh-4.5rem)] bg-white flex items-center justify-center px-4">

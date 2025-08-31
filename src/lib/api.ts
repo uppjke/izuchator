@@ -61,28 +61,62 @@ export async function createInviteLink(
 }
 
 export async function acceptInviteLink(inviteCode: string) {
-  const response = await fetch('/api/invites/accept', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ code: inviteCode }),
-  })
+  try {
+    const response = await fetch('/api/invites/accept', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code: inviteCode }),
+    })
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to accept invite')
+    if (!response.ok) {
+      const error = await response.json()
+      return {
+        success: false,
+        message: error.error || 'Ошибка при принятии приглашения'
+      }
+    }
+
+    const data = await response.json()
+    return {
+      success: true,
+      data
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Ошибка при принятии приглашения'
+    }
   }
-
-  return await response.json()
 }
 
 export async function getInviteByCode(code: string) {
-  const response = await fetch(`/api/invites/${code}`)
-  if (!response.ok) {
-    return null
+  try {
+    const response = await fetch(`/api/invites/${code}`)
+    
+    if (!response.ok) {
+      const error = await response.json()
+      return {
+        success: false,
+        message: error.error || 'Приглашение не найдено'
+      }
+    }
+    
+    const invite = await response.json()
+    return {
+      success: true,
+      invite: {
+        invite_type: invite.type === 'TEACHER_TO_STUDENT' ? 'teacher_to_student' : 'student_to_teacher',
+        creator_name: invite.createdBy?.name || 'Неизвестный пользователь'
+      }
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Ошибка при проверке приглашения'
+    }
   }
-  return await response.json()
 }
 
 // Работа с уроками
