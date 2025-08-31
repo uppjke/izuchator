@@ -2,7 +2,7 @@ import { FileManager } from '@/components/file-manager'
 
 export function MaterialsTab() {
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="w-full max-w-full overflow-x-auto">
       <FileManager />
     </div>
   )

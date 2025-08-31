@@ -204,7 +204,7 @@ export function StudentsTab() {
       <div className="absolute top-0 right-0">
         <Button onClick={handleInvite} className="flex items-center gap-2">
           <Icon icon={Plus} size="sm" />
-          Пригласить
+          <span className="hidden sm:inline">Пригласить</span>
         </Button>
       </div>
 

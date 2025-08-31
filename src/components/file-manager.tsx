@@ -1,11 +1,9 @@
 'use client'
 
 import React, { useState, useCallback } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Upload, File, Image, Video, Music, Archive, FileText, Download, Trash2, Grid, List, Filter } from 'lucide-react'
+import { Upload, File, Image, Video, Music, Archive, FileText, Download, Trash2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFiles, uploadFile, deleteFile, getFileDownloadUrl, type FileData } from '@/lib/api'
 import { toast } from 'sonner'
@@ -41,19 +39,14 @@ interface FileManagerProps {
 }
 
 export function FileManager({ relationId, className }: FileManagerProps) {
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [fileToDelete, setFileToDelete] = useState<FileData | null>(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [fileTypeFilter, setFileTypeFilter] = useState<string>('all')
   
   const queryClient = useQueryClient()
 
   const { data: files = [], isLoading } = useQuery({
-    queryKey: ['files', relationId, fileTypeFilter],
-    queryFn: () => getFiles({ 
-      relationId, 
-      type: fileTypeFilter === 'all' ? undefined : fileTypeFilter 
-    }),
+    queryKey: ['files', relationId],
+    queryFn: () => getFiles({ relationId }),
   })
 
   const uploadMutation = useMutation({
@@ -149,7 +142,29 @@ export function FileManager({ relationId, className }: FileManagerProps) {
   }
 
   return (
-    <div className={className}>
+    <div className={`relative ${className || ''}`}>
+      {/* Счетчик файлов в левом верхнем углу */}
+      <div className="absolute top-0 left-0">
+        <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
+          Файлов: {files.length}
+        </div>
+      </div>
+
+      {/* Кнопка добавить в правом углу */}
+      <div className="absolute top-0 right-0">
+        <Button
+          onClick={() => document.getElementById('file-upload')?.click()}
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Icon icon={Upload} size="sm" />
+          )}
+          <span className="hidden sm:inline">Добавить</span>
+        </Button>
+      </div>
+
       {/* Скрытый input для выбора файлов */}
       <input
         type="file"
@@ -159,200 +174,77 @@ export function FileManager({ relationId, className }: FileManagerProps) {
         id="file-upload"
         onChange={handleFileInput}
       />
-      
-      {/* Панель управления */}
-      <div className="flex items-center justify-between mb-6">
-        {/* Левая сторона - фильтры и вид */}
-        <div className="flex items-center gap-3">
-          {/* Фильтр по типам файлов */}
-          <Select value={fileTypeFilter} onValueChange={setFileTypeFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Выберите тип" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                <div className="flex items-center gap-2">
-                  <Icon icon={Filter} size="xs" />
-                  Все файлы
-                </div>
-              </SelectItem>
-              <SelectItem value="IMAGE">
-                <div className="flex items-center gap-2">
-                  <Icon icon={Image} size="xs" />
-                  Изображения
-                </div>
-              </SelectItem>
-              <SelectItem value="DOCUMENT">
-                <div className="flex items-center gap-2">
-                  <Icon icon={FileText} size="xs" />
-                  Документы
-                </div>
-              </SelectItem>
-              <SelectItem value="VIDEO">
-                <div className="flex items-center gap-2">
-                  <Icon icon={Video} size="xs" />
-                  Видео
-                </div>
-              </SelectItem>
-              <SelectItem value="AUDIO">
-                <div className="flex items-center gap-2">
-                  <Icon icon={Music} size="xs" />
-                  Аудио
-                </div>
-              </SelectItem>
-              <SelectItem value="ARCHIVE">
-                <div className="flex items-center gap-2">
-                  <Icon icon={Archive} size="xs" />
-                  Архивы
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          
-          {/* Количество файлов */}
-          {!isLoading && (
-            <span className="text-sm text-muted-foreground">
-              {files.length} {files.length === 1 ? 'файл' : files.length < 5 ? 'файла' : 'файлов'}
-            </span>
-          )}
-          
-          {/* Разделитель */}
-          <div className="w-px h-6 bg-border" />
-          
-          {/* Переключатель вида */}
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('grid')}
-          >
-            <Icon icon={Grid} size="xs" />
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('list')}
-          >
-            <Icon icon={List} size="xs" />
-          </Button>
-        </div>
 
-        {/* Правая сторона - кнопка добавления */}
-        <Button
-          onClick={() => document.getElementById('file-upload')?.click()}
-          disabled={isUploading}
-          className="flex items-center gap-2"
-        >
-          {isUploading ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Загружаем...
-            </>
-          ) : (
-            <>
-              <Icon icon={Upload} size="xs" />
-              Добавить
-            </>
-          )}
-        </Button>
-      </div>
-
-      {/* Список файлов */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : files.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <Icon icon={File} size="lg" className="mx-auto mb-4 text-gray-400" />
-            <p className="text-lg font-medium mb-2">Файлов пока нет</p>
-            <p className="text-muted-foreground">
-              Загрузите первый файл, перетащив его в область выше
+      {/* Список файлов с отступом сверху */}
+      <div className="pt-16">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
+          </div>
+        ) : files.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="mb-6">
+              <Icon icon={File} size="lg" className="mx-auto text-muted-foreground/40" />
+            </div>
+            <h3 className="text-lg font-medium mb-2 text-foreground/80">Файлов пока нет</h3>
+            <p className="text-muted-foreground/70 mb-6 max-w-sm mx-auto">
+              Загрузите первый файл, чтобы начать работу с материалами
             </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-2'}>
-          {files.map((file) => {
-            const FileIcon = getFileIcon(file.fileType, file.mimeType)
-            
-            if (viewMode === 'grid') {
+            <Button
+              onClick={() => document.getElementById('file-upload')?.click()}
+              className="h-9 px-6 bg-foreground text-background hover:bg-foreground/90"
+              size="sm"
+            >
+              <Icon icon={Upload} size="xs" />
+              <span className="ml-2">Загрузить файл</span>
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {files.map((file) => {
+              const FileIcon = getFileIcon(file.fileType, file.mimeType)
+              
               return (
-                <Card key={file.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <Icon icon={FileIcon} size="md" className="text-blue-500" />
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDownload(file)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Icon icon={Download} size="xs" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(file)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
-                        >
-                          <Icon icon={Trash2} size="xs" />
-                        </Button>
-                      </div>
+                <div key={file.id} className="group relative bg-zinc-50/80 rounded-xl border border-zinc-200/50 p-4 hover:bg-zinc-50 transition-all duration-200">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-2 rounded-lg bg-white/60 border border-zinc-200/30">
+                      <Icon icon={FileIcon} size="md" className="text-zinc-600" />
                     </div>
-                    <h3 className="font-medium text-sm mb-1 truncate" title={file.originalName}>
+                    <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDownload(file)}
+                        className="h-7 w-7 p-0 hover:bg-white/80 border border-transparent hover:border-zinc-200/50"
+                      >
+                        <Icon icon={Download} size="xs" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(file)}
+                        className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/80 border border-transparent hover:border-red-200/50"
+                      >
+                        <Icon icon={Trash2} size="xs" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-medium text-sm leading-tight truncate text-zinc-900" title={file.originalName}>
                       {file.originalName}
                     </h3>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {formatFileSize(file.size)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(file.createdAt), 'd MMM yyyy', { locale: ru })}
-                    </p>
-                  </CardContent>
-                </Card>
-              )
-            } else {
-              return (
-                <Card key={file.id} className="hover:shadow-sm transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <Icon icon={FileIcon} size="sm" className="text-blue-500 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm truncate" title={file.originalName}>
-                          {file.originalName}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {formatFileSize(file.size)} • {format(new Date(file.createdAt), 'd MMM yyyy', { locale: ru })}
-                        </p>
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDownload(file)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Icon icon={Download} size="xs" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(file)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
-                        >
-                          <Icon icon={Trash2} size="xs" />
-                        </Button>
-                      </div>
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <span>{formatFileSize(file.size)}</span>
+                      <span>•</span>
+                      <span>{format(new Date(file.createdAt), 'd MMM', { locale: ru })}</span>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )
-            }
-          })}
-        </div>
-      )}
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Диалог подтверждения удаления */}
       <ConfirmationDialog
