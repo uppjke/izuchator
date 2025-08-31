@@ -266,20 +266,22 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-[95vw] sm:max-w-md p-4 sm:p-6">
-        <DialogHeader>
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-md p-0 flex flex-col max-h-[90vh] focus:outline-none">
+        <DialogHeader className="p-4 sm:p-6 pb-2">
           <DialogTitle className="text-center text-2xl font-semibold">Новый урок</DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">
             Заполните данные занятия
           </DialogDescription>
         </DialogHeader>
-        {/* Скроллируемая область формы для маленьких экранов */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-          <div className="space-y-2">
-            <Label>Название *</Label>
-            <Input placeholder="Напр. Математика" {...register('title')} disabled={isSubmitting} />
-            {errors.title && <p className="text-xs text-red-600">{errors.title.message}</p>}
-          </div>
+        
+        {/* Скроллируемая область формы */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 focus:outline-none" tabIndex={-1}>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pb-4 focus:outline-none" id="lesson-form">
+            <div className="space-y-2">
+              <Label>Название *</Label>
+              <Input placeholder="Напр. Математика" {...register('title')} disabled={isSubmitting} />
+              {errors.title && <p className="text-xs text-red-600">{errors.title.message}</p>}
+            </div>
           <div className="space-y-2">
             <Label>Краткое описание</Label>
             <textarea
@@ -346,12 +348,20 @@ export function LessonDialog({ open, onOpenChange, date, onCreated }: LessonDial
             setValue={setValue}
             disabled={isSubmitting}
           />
-          <div className="pt-2">
-            <Button type="submit" className="w-full" disabled={isSubmitting || studentsLoading}>
-              {isSubmitting ? 'Создание...' : 'Создать'}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </div>
+        
+        {/* Зафиксированная кнопка внизу */}
+        <div className="p-4 sm:p-6 pt-4">
+          <Button 
+            type="submit" 
+            form="lesson-form"
+            className="w-full rounded-xl" 
+            disabled={isSubmitting || studentsLoading}
+          >
+            {isSubmitting ? 'Создание...' : 'Создать'}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )
