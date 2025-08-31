@@ -135,38 +135,32 @@ export function AgendaView({
                     case 'scheduled':
                       return { 
                         label: 'Запланировано', 
-                        color: 'bg-blue-100 text-blue-700 border-blue-200',
-                        cornerColor: 'border-t-blue-500'
+                        color: 'bg-blue-100 text-blue-700 border-blue-200'
                       }
                     case 'completed':
                       return { 
                         label: 'Завершено', 
-                        color: 'bg-green-100 text-green-700 border-green-200',
-                        cornerColor: 'border-t-green-500'
+                        color: 'bg-green-100 text-green-700 border-green-200'
                       }
                     case 'cancelled':
                       return { 
                         label: 'Отменено', 
-                        color: 'bg-red-100 text-red-700 border-red-200',
-                        cornerColor: 'border-t-red-500'
+                        color: 'bg-red-100 text-red-700 border-red-200'
                       }
                     case 'confirmed':
                       return { 
                         label: 'Подтверждено', 
-                        color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-                        cornerColor: 'border-t-emerald-500'
+                        color: 'bg-emerald-100 text-emerald-700 border-emerald-200'
                       }
                     case 'in_progress':
                       return { 
                         label: 'В процессе', 
-                        color: 'bg-orange-100 text-orange-700 border-orange-200',
-                        cornerColor: 'border-t-orange-500'
+                        color: 'bg-orange-100 text-orange-700 border-orange-200'
                       }
                     default:
                       return { 
                         label: status, 
-                        color: 'bg-gray-100 text-gray-700 border-gray-200',
-                        cornerColor: 'border-t-gray-500'
+                        color: 'bg-gray-100 text-gray-700 border-gray-200'
                       }
                   }
                 }
@@ -180,12 +174,6 @@ export function AgendaView({
                     onClick={() => onEditLesson(lesson)}
                     style={lesson.labelColor ? { borderColor: lesson.labelColor, color: lesson.labelColor } : undefined}
                   >
-                    {/* Оставляем исходный уголок статуса */}
-                    <div 
-                      className={`absolute top-0 right-0 w-0 h-0 border-l-[20px] border-l-transparent border-t-[20px] ${statusInfo.cornerColor}`}
-                      aria-hidden="true"
-                    />
-                    
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between pr-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
@@ -227,14 +215,14 @@ export function AgendaView({
                           <div className="flex items-center">
                             {lesson.price ? (
                               <>
-                                <Icon icon={CheckCircle} size="xs" />
+                                <Icon icon={CheckCircle} size="xs" className="text-green-600" />
                                 <span className="ml-1 text-sm text-green-600 font-medium">
                                   Оплачено
                                 </span>
                               </>
                             ) : (
                               <>
-                                <Icon icon={XCircle} size="xs" />
+                                <Icon icon={XCircle} size="xs" className="text-red-600" />
                                 <span className="ml-1 text-sm text-red-600 font-medium">
                                   Не оплачено
                                 </span>
