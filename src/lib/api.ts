@@ -142,8 +142,14 @@ export async function updateLesson(data: UpdateLessonData) {
   return await response.json()
 }
 
-export async function deleteLesson(lessonId: string) {
-  const response = await fetch(`/api/lessons/${lessonId}`, {
+export type DeleteLessonScope = 'single' | 'weekday' | 'all_future_student'
+
+export async function deleteLesson(lessonId: string, scope: DeleteLessonScope = 'single') {
+  const url = new URL(`/api/lessons/${lessonId}`, window.location.origin)
+  if (scope && scope !== 'single') {
+    url.searchParams.set('scope', scope)
+  }
+  const response = await fetch(url.toString().replace(window.location.origin, ''), {
     method: 'DELETE',
   })
 

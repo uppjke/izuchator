@@ -11,7 +11,7 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useAuth } from '@/lib/auth-context'
 import { useQuery } from '@tanstack/react-query'
-import { getLessonById, deleteLesson } from '@/lib/api'
+import { getLessonById, deleteLesson, type DeleteLessonScope } from '@/lib/api'
 import { toast } from 'sonner'
 
 interface LessonDetailsDialogProps {
@@ -95,10 +95,14 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
         : currentLesson.description)
     : null
 
-  const handleDelete = async () => {
+  const handleDelete = async (scope: DeleteLessonScope = 'single') => {
     try {
-      await deleteLesson(currentLesson.id)
-      toast.success('Урок удален')
+      const res = await deleteLesson(currentLesson.id, scope)
+      let msg = 'Урок удален'
+      if (res?.deleted && res.deleted > 1) {
+        msg = `${res.deleted} занятий удалено`
+      }
+      toast.success(msg)
       onDeleted?.()
       onOpenChange(false)
     } catch {
@@ -152,19 +156,19 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => handleDelete()} className="cursor-pointer">
+          <DropdownMenuItem onClick={() => handleDelete('single')} className="cursor-pointer">
                     Только это занятие
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDelete()} className="cursor-pointer">
+          <DropdownMenuItem onClick={() => handleDelete('weekday')} className="cursor-pointer">
                     Все по этому дню недели
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDelete()} className="cursor-pointer text-red-600 focus:text-red-600">
+          <DropdownMenuItem onClick={() => handleDelete('all_future_student')} className="cursor-pointer text-red-600 focus:text-red-600">
                     Это и все последующие занятия ученика
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button variant="destructive" onClick={() => handleDelete()} className="w-full sm:w-auto text-white flex items-center gap-1">
+        <Button variant="destructive" onClick={() => handleDelete('single')} className="w-full sm:w-auto text-white flex items-center gap-1">
                 <Icon icon={Trash2} size="xs" className="text-white" />
                 Удалить
               </Button>

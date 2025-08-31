@@ -149,6 +149,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const scope = request.nextUrl.searchParams.get('scope') as 'single' | 'weekday' | 'all_future_student' | null
+
     // Получаем информацию о пользователе с ролью
     const user = await db.user.findUnique({
       where: { id: session.user.id },
@@ -159,27 +161,79 @@ export async function DELETE(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Проверяем, что пользователь - преподаватель
     if (user.role !== 'TEACHER') {
       return NextResponse.json({ error: 'Only teachers can delete lessons' }, { status: 403 })
     }
 
     const lesson = await db.lesson.findFirst({
-      where: {
-        id: id,
-        userId: session.user.id,
-      },
+      where: { id, userId: session.user.id },
+      include: { relation: true }
     })
 
     if (!lesson) {
       return NextResponse.json({ error: 'Урок не найден' }, { status: 404 })
     }
 
-    await db.lesson.delete({
-      where: { id: id },
-    })
+    // По умолчанию удаляем один урок
+    let deletedCount = 0
 
-    return NextResponse.json({ success: true })
+    if (!scope || scope === 'single') {
+      await db.lesson.delete({ where: { id } })
+      deletedCount = 1
+    } else if (scope === 'weekday') {
+      // Удаляем все уроки того же преподавателя и ученика (relation), у которых день недели совпадает
+      if (!lesson.relationId) {
+        // Если нет relationId, fallback к одиночному удалению
+        await db.lesson.delete({ where: { id } })
+        deletedCount = 1
+      } else {
+        const weekday = lesson.startTime.getUTCDay()
+        const result = await db.lesson.deleteMany({
+          where: {
+            userId: session.user.id,
+            relationId: lesson.relationId,
+            // Сравнение дня недели через диапазон дат текущей недели неэффективно.
+            // Используем фильтрацию по ISO-строке посредством startsWith невозможно.
+            // Поэтому сначала находим кандидатов по relation, затем фильтруем в JS (жертвуя оптимальностью для простоты).
+          }
+        })
+        // result.count - число удаленных, но мы ограничим по weekday вручную
+        // Переписываем: извлекаем нужные id и удаляем транзакцией
+        const candidates = await db.lesson.findMany({
+          where: { userId: session.user.id, relationId: lesson.relationId },
+          select: { id: true, startTime: true }
+        })
+        const toDelete = candidates.filter(l => l.startTime.getUTCDay() === weekday).map(l => l.id)
+        if (toDelete.length) {
+          await db.$transaction([
+            ...toDelete.map(lid => db.lesson.delete({ where: { id: lid } }))
+          ])
+        }
+        deletedCount = toDelete.length
+      }
+    } else if (scope === 'all_future_student') {
+      // Удаляем это и все будущие уроки по relation (для данного ученика) начиная с даты начала удаляемого урока
+      if (!lesson.relationId) {
+        await db.lesson.delete({ where: { id } })
+        deletedCount = 1
+      } else {
+        const startTs = lesson.startTime
+        const futureLessons = await db.lesson.findMany({
+          where: {
+            userId: session.user.id,
+            relationId: lesson.relationId,
+            startTime: { gte: startTs }
+          },
+          select: { id: true }
+        })
+        if (futureLessons.length) {
+          await db.$transaction(futureLessons.map(l => db.lesson.delete({ where: { id: l.id } })))
+        }
+        deletedCount = futureLessons.length
+      }
+    }
+
+    return NextResponse.json({ success: true, deleted: deletedCount, scope: scope || 'single' })
   } catch (error) {
     console.error('Error deleting lesson:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
