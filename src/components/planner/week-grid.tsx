@@ -25,21 +25,21 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
   // Реф для контейнера прокрутки
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   
-  // Стиль статусов: белый фон, цветной бордер и текст
+  // Стиль статусов: белый фон + цветной бордер; цвет текста больше не фиксируем (будет от labelColor)
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'scheduled':
-        return { card: 'bg-white border border-blue-500 text-blue-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-blue-600/70', icon: 'text-blue-500' }
+        return { card: 'bg-white border border-blue-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-blue-600/70', icon: 'text-blue-500' }
       case 'completed':
-        return { card: 'bg-white border border-green-500 text-green-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-green-600/70', icon: 'text-green-500' }
+        return { card: 'bg-white border border-green-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-green-600/70', icon: 'text-green-500' }
       case 'cancelled':
-        return { card: 'bg-white border border-red-500 text-red-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-red-600/70', icon: 'text-red-500' }
+        return { card: 'bg-white border border-red-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-red-600/70', icon: 'text-red-500' }
       case 'confirmed':
-        return { card: 'bg-white border border-emerald-500 text-emerald-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-emerald-600/70', icon: 'text-emerald-500' }
+        return { card: 'bg-white border border-emerald-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-emerald-600/70', icon: 'text-emerald-500' }
       case 'in_progress':
-        return { card: 'bg-white border border-orange-500 text-orange-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-orange-600/70', icon: 'text-orange-500' }
+        return { card: 'bg-white border border-orange-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-orange-600/70', icon: 'text-orange-500' }
       default:
-        return { card: 'bg-white border border-gray-500 text-gray-700 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-gray-600/70', icon: 'text-gray-500' }
+        return { card: 'bg-white border border-gray-500 shadow-sm', avatar: 'bg-zinc-900 text-white', dim: 'text-gray-600/70', icon: 'text-gray-500' }
     }
   }
 
@@ -347,7 +347,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                     return (
                       <div
                         key={lesson.id}
-                        className={`absolute rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-[1.015] overflow-hidden ${statusStyle.card}`}
+                        className={`absolute rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-[1.015] overflow-hidden ${statusStyle.card} ${!lesson.labelColor ? 'text-gray-800' : ''}`}
                         style={{
                           top: `${position.top}px`,
                           height: `${position.height}px`,
@@ -356,7 +356,8 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                           width: layoutInfo ? `${layoutInfo.widthPct}%` : 'calc(100% - 8px)',
                           zIndex: 10,
                           borderColor: lesson.labelColor || undefined,
-                          backgroundClip: 'padding-box'
+                          backgroundClip: 'padding-box',
+                          color: lesson.labelColor || undefined
                         }}
                         onClick={() => onEditLesson?.(lesson)}
                       >
