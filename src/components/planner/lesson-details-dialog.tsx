@@ -61,6 +61,7 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
   // Получаем информацию об ученике из связи
   const relation = (currentLesson as { relation?: { teacherId?: string; studentId?: string; teacherName?: string; studentName?: string; teacher?: { name?: string; email?: string }; student?: { name?: string; email?: string } } }).relation
   let studentName = 'Ученик'
+  let participantRole = 'Участник'
   
   if (relation) {
     // Определяем, кто текущий пользователь - преподаватель или ученик
@@ -69,9 +70,11 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
     if (isTeacher) {
       // Если текущий пользователь - преподаватель, показываем ученика
       studentName = relation.studentName || relation.student?.name || relation.student?.email || 'Ученик'
+      participantRole = 'Ученик'
     } else {
       // Если текущий пользователь - ученик, показываем преподавателя
       studentName = relation.teacherName || relation.teacher?.name || relation.teacher?.email || 'Преподаватель'
+      participantRole = 'Преподаватель'
     }
   }
 
@@ -205,18 +208,18 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-w-[95vw]">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold flex items-center justify-between gap-4">
+      <DialogContent className="sm:max-w-lg max-w-[95vw] focus:outline-none">
+        <DialogHeader className="text-center">
+          <DialogTitle className="text-xl font-semibold text-center">
             <span className="truncate">{currentLesson.title}</span>
-            {isLoading && <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
+            {isLoading && <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mt-2" />}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-center">
             Полная информация о занятии
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5 py-2">
-          {infoRow(User, 'Участник', studentName)}
+          {infoRow(User, participantRole, studentName)}
           <div className="flex items-start gap-3 text-sm">
             <div className="mt-0.5 text-muted-foreground"><Icon icon={Calendar} size="xs" /></div>
             <div className="flex-1 min-w-0">
