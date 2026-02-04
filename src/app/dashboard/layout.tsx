@@ -2,24 +2,35 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useAuth } from "@/lib/auth-context";
 import { usePresence } from "@/hooks/use-presence";
 import { PresenceProvider } from "@/lib/presence-context";
-import { Sidebar } from "./_components/sidebar";
-import { DashboardHeader } from "./_components/header";
+
+// Новые компоненты навигации (Mobile-first)
+import { BottomTabBar, type TabId } from "@/components/ui/bottom-tab-bar";
+import { MobileHeader } from "@/components/ui/mobile-header";
+import { TabletSidebar } from "@/components/ui/tablet-sidebar";
+import { DesktopSidebar } from "@/components/ui/desktop-sidebar";
+import { DesktopHeader } from "@/components/ui/desktop-header";
+
+// Tab компоненты
 import { DashboardTab } from "./_components/tabs/dashboard-tab";
 import { PlannerTab } from "./_components/tabs/planner-tab";
 import { StudentsTab } from "./_components/tabs/students-tab";
 import { TeachersTab } from "./_components/tabs/teachers-tab";
 import { MaterialsTab } from "./_components/tabs/materials-tab";
 
-type TabType = "dashboard" | "planner" | "students" | "teachers" | "materials";
 type UserRole = "student" | "teacher";
 
-// Константы стилей
-const CONTAINER_CLASSES =
-  "bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-zinc-200/50 h-full overflow-auto";
-const MAIN_PADDING = "p-4 lg:p-6";
+// Названия страниц для header
+const tabNames: Record<TabId, string> = {
+  dashboard: 'Дашборд',
+  planner: 'Планер',
+  students: 'Мои ученики',
+  teachers: 'Мои учителя',
+  materials: 'Материалы',
+}
 
 // Компоненты табов
 const tabComponents = {
@@ -33,72 +44,58 @@ const tabComponents = {
 export default function DashboardLayout() {
   const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
-  const userRole = (user?.role as UserRole) || "student";
+  const userRole = (user?.role?.toLowerCase() as UserRole) || "student";
 
-  // Инициализируем отслеживание присутствия на уровне дашборда
+  // Инициализируем отслеживание присутствия
   const presenceData = usePresence();
 
-  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
+  const [tabletSidebarOpen, setTabletSidebarOpen] = useState(false);
 
-  // Восстановление активного таба из localStorage при монтировании
+  // Восстановление активного таба из localStorage
   useEffect(() => {
-    const savedTab = localStorage.getItem("dashboardActiveTab") as TabType;
-    if (
-      savedTab &&
-      ["dashboard", "planner", "students", "teachers", "materials"].includes(
-        savedTab
-      )
-    ) {
+    const savedTab = localStorage.getItem("dashboardActiveTab") as TabId;
+    if (savedTab && Object.keys(tabComponents).includes(savedTab)) {
       // Проверяем права доступа к табу
       if (
         (savedTab === "students" && userRole !== "teacher") ||
         (savedTab === "teachers" && userRole !== "student")
       ) {
-        return; // Не восстанавливаем таб, если нет доступа
+        return;
       }
       setActiveTab(savedTab);
     }
   }, [userRole]);
 
   const changeTab = useCallback(
-    (newTab: TabType) => {
+    (newTab: TabId) => {
       // Валидация доступа к табам по роли
       if (
         (newTab === "students" && userRole !== "teacher") ||
         (newTab === "teachers" && userRole !== "student")
-      )
+      ) {
         return;
+      }
 
       setActiveTab(newTab);
-      localStorage.setItem("dashboardActiveTab", newTab); // Сохраняем в localStorage
-      setSidebarOpen(false); // Закрываем мобильное меню при смене таба
+      localStorage.setItem("dashboardActiveTab", newTab);
     },
     [userRole]
   );
 
-  const toggleSidebar = useCallback(() => {
-    setSidebarOpen((prev) => !prev);
+  const handleLogout = useCallback(async () => {
+    await signOut({ redirect: true, callbackUrl: "/" });
   }, []);
 
-  const closeSidebar = useCallback(() => {
-    setSidebarOpen(false);
-  }, []);
-
-  // Логика выбора активного компонента таба
+  // Активный компонент таба
   const ActiveTabComponent = useMemo(() => {
-    // Валидация доступа к табам по роли
     if (
       (activeTab === "students" && userRole !== "teacher") ||
       (activeTab === "teachers" && userRole !== "student")
     ) {
       return tabComponents.dashboard;
     }
-
-    return (
-      tabComponents[activeTab as keyof typeof tabComponents] ||
-      tabComponents.dashboard
-    );
+    return tabComponents[activeTab] || tabComponents.dashboard;
   }, [activeTab, userRole]);
 
   // iOS Safari viewport height fix
@@ -108,13 +105,9 @@ export default function DashboardLayout() {
       document.documentElement.style.setProperty("--vh", `${vh}px`);
     }
 
-    // Set initial value
     setVH();
-
-    // Update on resize and orientation change
     window.addEventListener("resize", setVH);
     window.addEventListener("orientationchange", () => {
-      // Delay to ensure the viewport has updated
       setTimeout(setVH, 100);
     });
 
@@ -124,19 +117,20 @@ export default function DashboardLayout() {
     };
   }, []);
 
+  // Redirect if not authenticated
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push("/");
     }
   }, [isAuthenticated, loading, router]);
 
-  // Early returns для состояний загрузки и авторизации
+  // Loading state
   if (loading) {
     return (
-      <div className="flex dashboard-container items-center justify-center bg-gray-50">
+      <div className="flex h-dvh items-center justify-center bg-zinc-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-zinc-900 border-t-transparent mx-auto mb-4" />
+          <p className="text-zinc-600 text-sm">Загрузка...</p>
         </div>
       </div>
     );
@@ -146,33 +140,61 @@ export default function DashboardLayout() {
     return null;
   }
 
+  const currentPageTitle = tabNames[activeTab];
+
   return (
     <PresenceProvider value={presenceData}>
-      <div className="flex dashboard-container bg-zinc-50/50">
-        {/* Sidebar */}
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={closeSidebar}
+      <div className="flex h-dvh bg-zinc-50 overflow-hidden">
+        {/* Desktop Sidebar - только на lg+ */}
+        <DesktopSidebar
           userRole={userRole}
           user={user}
           activeTab={activeTab}
           onTabChange={changeTab}
+          onLogout={handleLogout}
         />
 
-        {/* Main content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Header */}
-          <DashboardHeader onMenuClick={toggleSidebar} activeTab={activeTab} />
+        {/* Tablet Sidebar (Sheet drawer) - для md экранов */}
+        <TabletSidebar
+          isOpen={tabletSidebarOpen}
+          onClose={() => setTabletSidebarOpen(false)}
+          userRole={userRole}
+          user={user}
+          activeTab={activeTab}
+          onTabChange={changeTab}
+          onLogout={handleLogout}
+        />
+
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Mobile Header - только на мобилах и планшетах */}
+          <div className="lg:hidden">
+            <MobileHeader
+              title={currentPageTitle}
+              showMenuButton={true}
+              onMenuClick={() => setTabletSidebarOpen(true)}
+            />
+          </div>
+
+          {/* Desktop Header - только на lg+ */}
+          <DesktopHeader title={currentPageTitle} />
 
           {/* Page content */}
-          <main className={`flex-1 overflow-hidden ${MAIN_PADDING}`}>
-            <div className={CONTAINER_CLASSES}>
-              <div className={`${MAIN_PADDING} h-full`}>
+          <main className="flex-1 overflow-auto p-4 lg:p-6 pb-20 md:pb-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-zinc-200/50 h-full overflow-auto">
+              <div className="p-4 lg:p-6 h-full">
                 <ActiveTabComponent />
               </div>
             </div>
           </main>
         </div>
+
+        {/* Bottom Tab Bar - только на мобилах (до md) */}
+        <BottomTabBar
+          activeTab={activeTab}
+          onTabChange={changeTab}
+          userRole={userRole}
+        />
       </div>
     </PresenceProvider>
   );

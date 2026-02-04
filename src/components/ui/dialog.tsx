@@ -38,7 +38,9 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50",
+        "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out",
+        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className
       )}
       {...props}
@@ -46,6 +48,11 @@ function DialogOverlay({
   )
 }
 
+/**
+ * ResponsiveDialogContent - Mobile-first dialog that becomes a bottom sheet on mobile
+ * On mobile (< 640px): slides up from bottom as a sheet
+ * On desktop (>= 640px): centered modal dialog
+ */
 function DialogContent({
   className,
   children,
@@ -60,20 +67,48 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-background fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-4xl border p-6 shadow-lg duration-200 sm:max-w-lg",
+          // Base styles
+          "bg-background fixed z-50 grid gap-4 border shadow-lg",
+          "duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out",
+          
+          // Mobile: Bottom sheet style (default)
+          "inset-x-0 bottom-0 rounded-t-3xl p-6 pt-4",
+          "max-h-[90dvh] overflow-y-auto",
+          "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          
+          // Desktop: Centered modal
+          "sm:inset-auto sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]",
+          "sm:max-w-lg sm:w-full sm:max-h-[85vh] sm:rounded-2xl sm:p-6",
+          "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
+          "sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%]",
+          "sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]",
+          
           className
         )}
         onOpenAutoFocus={(e) => e.preventDefault()}
         {...props}
       >
+        {/* Mobile drag indicator */}
+        <div className="mx-auto w-12 h-1.5 rounded-full bg-zinc-300 sm:hidden" />
+        
         {children}
+        
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-full opacity-70 transition-all duration-200 ease-out hover:opacity-100 hover:bg-accent active:scale-95 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 p-1"
+            className={cn(
+              "absolute top-4 right-4 rounded-full p-2",
+              "opacity-70 transition-all duration-200 ease-out",
+              "hover:opacity-100 hover:bg-zinc-100 active:scale-95",
+              "focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2",
+              "disabled:pointer-events-none",
+              // Larger touch target for mobile (44px minimum per HIG)
+              "min-h-[44px] min-w-[44px] flex items-center justify-center",
+              "sm:min-h-[36px] sm:min-w-[36px] sm:p-1.5"
+            )}
           >
-            <XIcon />
-            <span className="sr-only">Close</span>
+            <XIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="sr-only">Закрыть</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
@@ -96,7 +131,10 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-2",
+        // Mobile: stack buttons vertically with larger touch targets
+        "[&>button]:w-full sm:[&>button]:w-auto",
+        "[&>button]:min-h-[48px] sm:[&>button]:min-h-[40px]",
         className
       )}
       {...props}

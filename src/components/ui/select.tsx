@@ -38,24 +38,51 @@ function SelectTrigger({
       data-size={size}
       tabIndex={0}
       className={cn(
-        "border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground",
-        /* ── focus-styles ─────────────────────── */
-        "focus:border-blue-500 focus-visible:border-blue-500 data-[state=open]:border-blue-500",
+        // Base styles
+        "border-input bg-white",
+        "data-[placeholder]:text-muted-foreground",
+        "[&_svg:not([class*='text-'])]:text-muted-foreground",
+        
+        // Mobile-first sizing (48px mobile, 40px desktop - HIG compliant)
+        "h-12 sm:h-10",
+        "data-[size=sm]:h-10 data-[size=sm]:sm:h-8",
+        
+        // Layout
+        "flex w-full items-center justify-between gap-2",
+        "rounded-xl sm:rounded-full",
+        "border px-4 sm:px-3 py-2",
+        "text-base sm:text-sm", // 16px on mobile to prevent iOS zoom
+        "whitespace-nowrap",
+        "shadow-xs transition-all duration-200",
+        
+        // Touch optimization
+        "touch-manipulation select-none",
+        
+        // Focus styles
+        "focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900",
+        "focus-visible:border-zinc-900 focus-visible:ring-1 focus-visible:ring-zinc-900",
+        "data-[state=open]:border-zinc-900",
         "focus:outline-none focus-visible:outline-none",
-        /* остальное без изменений */
-        "aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50",
-        "flex w-full items-center justify-between gap-2 rounded-full border bg-transparent px-3 py-2 text-sm",
-        "whitespace-nowrap shadow-xs transition-[color,box-shadow]",
-        "disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8",
+        
+        // States
+        "aria-invalid:border-destructive",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        
+        // SVG handling
+        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5 sm:[&_svg:not([class*='size-'])]:size-4",
+        
+        // Value truncation
         "*:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2",
-        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 active:scale-100 group",
+        
+        // Animation
+        "group",
         className
       )}
       {...props}
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="size-4 opacity-50 transition-transform duration-200 group-aria-expanded:rotate-180" />
+        <ChevronDownIcon className="size-5 sm:size-4 opacity-50 transition-transform duration-200 group-aria-expanded:rotate-180" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
@@ -118,14 +145,38 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        // Base styles
+        "relative flex w-full cursor-default items-center gap-2",
+        "text-base sm:text-sm", // 16px on mobile
+        "outline-hidden select-none",
+        
+        // Sizing - touch-friendly (44px minimum on mobile)
+        "min-h-[44px] sm:min-h-[36px]",
+        "py-3 sm:py-1.5 pr-10 sm:pr-8 pl-3 sm:pl-2",
+        "rounded-lg sm:rounded-md",
+        
+        // Touch optimization
+        "touch-manipulation",
+        
+        // Hover/Focus states
+        "focus:bg-zinc-100 focus:text-zinc-900",
+        "active:bg-zinc-200 sm:active:bg-zinc-100",
+        
+        // Disabled state
+        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        
+        // SVG handling
+        "[&_svg:not([class*='text-'])]:text-muted-foreground",
+        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5 sm:[&_svg:not([class*='size-'])]:size-4",
+        
+        "*:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className
       )}
       {...props}
     >
-      <span className="absolute right-2 flex size-3.5 items-center justify-center">
+      <span className="absolute right-3 sm:right-2 flex size-5 sm:size-4 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <CheckIcon className="size-4" />
+          <CheckIcon className="size-5 sm:size-4 text-zinc-900" />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
