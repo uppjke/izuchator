@@ -18,11 +18,22 @@ function generateCode() {
 }
 
 async function sendMail(email: string, code: string, variant: 'login' | 'signup') {
-  if (!process.env.EMAIL_SERVER_HOST) throw new Error('EMAIL_SERVER_HOST not set')
+  const isDev = process.env.NODE_ENV === 'development'
+  
+  // В режиме разработки без настроенного SMTP — просто логируем код
+  if (!process.env.EMAIL_SERVER_HOST || process.env.EMAIL_SERVER_HOST === 'smtp.example.com') {
+    console.log('========================================')
+    console.log('📧 DEV MODE: Email not sent, code logged')
+    console.log(`   To: ${email}`)
+    console.log(`   Code: ${code}`)
+    console.log(`   Variant: ${variant}`)
+    console.log('========================================')
+    return
+  }
+  
   const port = Number(process.env.EMAIL_SERVER_PORT || 587)
   
   // Логи только в dev режиме
-  const isDev = process.env.NODE_ENV === 'development'
   if (isDev) {
     console.log('=== EMAIL DEBUG ===')
     console.log('Host:', process.env.EMAIL_SERVER_HOST)

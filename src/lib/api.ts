@@ -17,6 +17,7 @@ export interface CreateLessonData {
 
 export interface UpdateLessonData extends Partial<CreateLessonData> {
   id: string
+  status?: string
 }
 
 // Работа со связями
@@ -83,7 +84,7 @@ export async function acceptInviteLink(inviteCode: string) {
       success: true,
       data
     }
-  } catch (error) {
+  } catch {
     return {
       success: false,
       message: 'Ошибка при принятии приглашения'
@@ -96,10 +97,10 @@ export async function getInviteByCode(code: string) {
     const response = await fetch(`/api/invites/${code}`)
     
     if (!response.ok) {
-      const error = await response.json()
+      const errorData = await response.json()
       return {
         success: false,
-        message: error.error || 'Приглашение не найдено'
+        message: errorData.error || 'Приглашение не найдено'
       }
     }
     
@@ -111,7 +112,7 @@ export async function getInviteByCode(code: string) {
         creator_name: invite.createdBy?.name || 'Неизвестный пользователь'
       }
     }
-  } catch (error) {
+  } catch {
     return {
       success: false,
       message: 'Ошибка при проверке приглашения'

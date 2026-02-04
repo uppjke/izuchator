@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 
 // GET /api/lessons/[id] - получить урок по ID
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -211,9 +211,9 @@ export async function DELETE(
           },
           select: { id: true, startTime: true }
         })
-        const toDelete = candidates.filter(l => l.startTime.getUTCDay() === weekday).map(l => l.id)
+        const toDelete = candidates.filter((l: { startTime: Date }) => l.startTime.getUTCDay() === weekday).map((l: { id: string }) => l.id)
         if (toDelete.length) {
-          await db.$transaction(toDelete.map(lid => db.lesson.delete({ where: { id: lid } })))
+          await db.$transaction(toDelete.map((lid: string) => db.lesson.delete({ where: { id: lid } })))
         }
         deletedCount = toDelete.length
       }
@@ -233,7 +233,7 @@ export async function DELETE(
           select: { id: true }
         })
         if (futureLessons.length) {
-          await db.$transaction(futureLessons.map(l => db.lesson.delete({ where: { id: l.id } })))
+          await db.$transaction(futureLessons.map((l: { id: string }) => db.lesson.delete({ where: { id: l.id } })))
         }
         deletedCount = futureLessons.length
       }

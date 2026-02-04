@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/database'
 import { auth } from '@/lib/auth'
+import { createInviteSchema, validateRequest } from '@/lib/validations'
 
 // GET /api/relations - получить связи пользователя
 export async function GET() {
@@ -57,7 +58,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { type, message, expiresInHours } = await request.json()
+    // Validate request body
+    const body = await request.json()
+    const validation = validateRequest(createInviteSchema, body)
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation error', details: validation.error },
+        { status: 400 }
+      )
+    }
+
+    const { type, message, expiresInHours } = validation.data
 
     // Генерируем уникальный код
     const code = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)

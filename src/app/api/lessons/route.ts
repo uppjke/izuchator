@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { db } from '@/lib/database'
 import { auth } from '@/lib/auth'
+import { 
+  createLessonSchema, 
+  getLessonsQuerySchema, 
+  validateRequest,
+  validationErrorResponse 
+} from '@/lib/validations'
 
 // GET /api/lessons - получить уроки пользователя
 export async function GET(request: NextRequest) {
@@ -11,8 +18,18 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
+    
+    // Валидация query параметров
+    const queryValidation = validateRequest(getLessonsQuerySchema, {
+      startDate: searchParams.get('startDate') || undefined,
+      endDate: searchParams.get('endDate') || undefined,
+    })
+    
+    if (!queryValidation.success) {
+      return validationErrorResponse(queryValidation.error)
+    }
+    
+    const { startDate, endDate } = queryValidation.data
 
     // Получаем информацию о пользователе с ролью
     const user = await db.user.findUnique({
@@ -94,14 +111,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only teachers can create lessons' }, { status: 403 })
     }
 
-    const data = await request.json()
+    const rawData = await request.json()
+    
+    // Валидация входных данных
+    const validation = validateRequest(createLessonSchema, rawData)
+    if (!validation.success) {
+      return validationErrorResponse(validation.error)
+    }
+    
+    const data = validation.data
     
     const lesson = await db.lesson.create({
       data: {
-        ...data,
-        userId: session.user.id,
+        title: data.title,
+        description: data.description,
         startTime: new Date(data.startTime),
         endTime: new Date(data.endTime),
+        relationId: data.relationId,
+        isRecurring: data.isRecurring ?? false,
+        recurrence: data.recurrence as Prisma.InputJsonValue ?? Prisma.JsonNull,
+        labelColor: data.labelColor,
+        userId: session.user.id,
       },
     })
 

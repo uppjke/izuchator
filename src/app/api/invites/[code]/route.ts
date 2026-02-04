@@ -3,7 +3,7 @@ import { db } from '@/lib/database'
 
 // GET /api/invites/[code] - получить приглашение по коду
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {

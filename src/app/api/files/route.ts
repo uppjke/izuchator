@@ -4,6 +4,7 @@ import { db } from '@/lib/database'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { nanoid } from 'nanoid'
+import { fileQuerySchema } from '@/lib/validations'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = [
@@ -99,8 +100,21 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const relationId = searchParams.get('relationId')
-    const fileType = searchParams.get('type') as 'DOCUMENT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'ARCHIVE' | 'OTHER' | null
+    
+    // Validate query params
+    const queryValidation = fileQuerySchema.safeParse({
+      relationId: searchParams.get('relationId'),
+      type: searchParams.get('type')
+    })
+    
+    if (!queryValidation.success) {
+      return NextResponse.json(
+        { error: 'Validation error', details: queryValidation.error.flatten() },
+        { status: 400 }
+      )
+    }
+    
+    const { relationId, type: fileType } = queryValidation.data
 
     const files = await db.file.findMany({
       where: {
