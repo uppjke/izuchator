@@ -85,7 +85,7 @@ export function LoginDialog({ children, open, onOpenChange, onSwitchToRegister }
               />
               
               {serverError && (
-                <div className="text-center text-sm text-red-600 bg-red-50 p-2 rounded-full">
+                <div className="text-center text-sm text-red-600 bg-red-50 p-3 rounded-lg">
                   {serverError}
                 </div>
               )}

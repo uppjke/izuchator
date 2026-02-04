@@ -9,13 +9,20 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ConsentCheckbox, AgeConsentCheckbox } from '@/components/consent-checkboxes'
 import { useAuth } from '@/lib/auth-context'
 import { OtpDialog } from './otp-dialog'
 
 const registerSchema = z.object({
   name: z.string().min(1, 'Имя обязательно'),
   email: z.string().email('Неверный формат email'),
-  role: z.string().min(1, 'Выберите роль')
+  role: z.string().min(1, 'Выберите роль'),
+  consent: z.boolean().refine(val => val === true, {
+    message: 'Необходимо согласие на обработку данных'
+  }),
+  ageConsent: z.boolean().refine(val => val === true, {
+    message: 'Необходимо подтверждение возраста'
+  })
 })
 
 type FormData = z.infer<typeof registerSchema>
@@ -40,7 +47,7 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
   
   const form = useForm<FormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { name: '', email: '', role: 'student' }
+    defaultValues: { name: '', email: '', role: 'student', consent: false, ageConsent: false }
   })
 
   const { formState: { isSubmitting } } = form
@@ -62,11 +69,11 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogTrigger asChild>{children}</DialogTrigger>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center text-2xl font-semibold">Создание аккаунта</DialogTitle>
             <DialogDescription className="text-center text-sm text-muted-foreground">
-              Заполните все поля для создания аккаунта.
+              Заполните все поля для создания аккаунта
             </DialogDescription>
           </DialogHeader>
           
@@ -111,7 +118,7 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
               />
               
               {serverError && (
-                <div className="text-center text-sm text-red-600 bg-red-50 p-2 rounded-full">
+                <div className="text-center text-sm text-red-600 bg-red-50 p-3 rounded-lg">
                   {serverError}
                 </div>
               )}
@@ -144,6 +151,43 @@ export function RegisterDialog({ children, open, onOpenChange, onSwitchToLogin }
                   </FormItem>
                 )}
               />
+              
+              {/* Legal Consent Checkboxes - ФЗ-152 Compliance */}
+              <div className="space-y-3 pt-2">
+                <FormField
+                  control={form.control}
+                  name="consent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <ConsentCheckbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="ageConsent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <AgeConsentCheckbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               
               <Button 
                 type="submit" 

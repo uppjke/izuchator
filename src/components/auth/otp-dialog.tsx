@@ -84,8 +84,8 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
       resetState()
       // Обновляем сессию NextAuth
       await updateSession()
-    // Обновляем серверные компоненты без полной перезагрузки
-    router.refresh()
+      // Редирект на дашборд после успешного входа
+      router.push('/dashboard')
     }, SUCCESS_DELAY)
   }, [onOpenChange, resetState, updateSession, router])
 
@@ -166,7 +166,7 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
     const newOtp = [...otp]
     
     for (let i = 0; i < pastedData.length && i < OTP_LENGTH; i++) {
-      newOtp[i] = pastedData[i]
+      newOtp[i] = pastedData[i] ?? ''
     }
     
     setOtp(newOtp)
@@ -230,13 +230,13 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
           </div>
           
           {error && (
-            <div className="text-center text-sm text-red-600 bg-red-50 p-2 rounded-full">
+            <div className="text-center text-sm text-red-600 bg-red-50 p-3 rounded-lg">
               {error}
             </div>
           )}
           
           {success && (
-            <div className="text-center text-sm text-green-600 bg-green-50 p-2 rounded-full">
+            <div className="text-center text-sm text-green-600 bg-green-50 p-3 rounded-lg">
               ✓ Код подтвержден успешно!
             </div>
           )}
