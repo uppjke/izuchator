@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/lib/auth-context";
 import { QueryProvider } from "@/lib/query-provider";
 import { ToastProvider } from "@/lib/toast-provider";
+import { CookieBanner } from "@/components/cookie-banner";
 import { SessionProvider } from "next-auth/react";
 import "sonner/dist/styles.css";
 import "./globals.css";
@@ -14,12 +15,32 @@ import "./globals.css";
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1, // Предотвращает zoom при фокусе на input на iOS
+  userScalable: false,
   viewportFit: 'cover',
 }
 
 export const metadata: Metadata = {
   title: "Изучатор",
   description: "Учи, Учись, Твори с Изучатором!",
+  keywords: ["образование", "обучение", "репетитор", "уроки", "планирование занятий"],
+  authors: [{ name: "Изучатор" }],
+  creator: "Изучатор",
+  publisher: "Изучатор",
+  robots: "index, follow",
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    url: "https://izuchator.ru",
+    siteName: "Изучатор",
+    title: "Изучатор - Учи, Учись, Твори!",
+    description: "Образовательная платформа для учеников и преподавателей",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Изучатор",
+    description: "Учи, Учись, Твори с Изучатором!",
+  },
   icons: {
     icon: "/logo.svg",
     shortcut: "/logo.svg",
@@ -35,6 +56,7 @@ export const metadata: Metadata = {
       },
     ],
   },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -43,8 +65,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="light">
-  <body className="antialiased bg-white">
+    <html lang="ru" className="light">
+      <body className="antialiased bg-white">
         <QueryProvider>
           <SessionProvider>
             <AuthProvider>
@@ -53,6 +75,7 @@ export default function RootLayout({
           </SessionProvider>
         </QueryProvider>
         <ToastProvider />
+        <CookieBanner />
       </body>
     </html>
   );

@@ -18,7 +18,7 @@ const ANIMATION_CONFIG = {
 export default function InvitePage() {
   const params = useParams()
   const router = useRouter()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [inviteData, setInviteData] = useState<{
@@ -137,10 +137,6 @@ export default function InvitePage() {
 
   const roleIcon = inviteData.type === 'student' ? GraduationCap : Users
   const roleText = inviteData.type === 'student' ? 'учеником' : 'преподавателем'
-  
-  // Приглашения могут принимать все авторизованные пользователи
-  // Роль в системе не имеет значения для принятия приглашений
-  const isRoleCompatible = true
     
   const roleWarning = null
 

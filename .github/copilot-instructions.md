@@ -48,7 +48,7 @@ This is a Next.js 15 project with App Router using TypeScript. The project is de
 - **clsx** and **tailwind-merge** for conditional styling
 
 ## Authentication & Database
-Now uses NextAuth v5 + Prisma + PostgreSQL. Supabase fully removed (SDK, SSR helper, realtime). Presence feature temporarily stubbed pending new WebSocket implementation.
+Uses NextAuth v5 + Prisma + PostgreSQL. Presence feature uses Socket.io with Redis adapter for real-time status updates.
 
 ### Database Management & Type Generation
 
@@ -95,7 +95,8 @@ Now uses NextAuth v5 + Prisma + PostgreSQL. Supabase fully removed (SDK, SSR hel
   - `src/components/auth/` - Authentication components
   - `src/components/dashboard/` - Dashboard-specific components
 - `src/lib/` - Utility functions and configurations
-  - Supabase client setup (browser, server, SSR)
+  - Database client (`database.ts`) - Prisma setup
+  - Auth configuration (`auth.ts`) - NextAuth v5
   - Utility functions (`utils.ts`)
 
 ## Authentication Flow

@@ -22,6 +22,11 @@ export function usePresence(): PresenceState {
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
+    // Presence отключён если не задан NEXT_PUBLIC_PRESENCE_SERVER
+    if (!process.env.NEXT_PUBLIC_PRESENCE_SERVER) {
+      return
+    }
+
     // Подключаемся только если пользователь аутентифицирован
     if (!session?.user?.id) {
       setIsTracking(false)
@@ -33,32 +38,19 @@ export function usePresence(): PresenceState {
     // Определяем является ли устройство мобильным
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
     
-    // Создаем Socket.io подключение с учетом мобильных устройств
-    // Для мобильных устройств используем IP хоста, для локального - localhost
-    const getPresenceServerUrl = () => {
-      if (process.env.NEXT_PUBLIC_PRESENCE_SERVER) {
-        return process.env.NEXT_PUBLIC_PRESENCE_SERVER
-      }
-      
-      // Если мы на localhost, используем localhost
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'http://localhost:3002'
-      }
-      
-      // Иначе используем хост текущей страницы с портом 3002
-      return `http://${window.location.hostname}:3002`
-    }
+    // Используем NEXT_PUBLIC_PRESENCE_SERVER
+    const presenceServerUrl = process.env.NEXT_PUBLIC_PRESENCE_SERVER
     
-    const socket = io(getPresenceServerUrl(), {
+    const socket = io(presenceServerUrl, {
       transports: isMobile ? ['polling', 'websocket'] : ['websocket', 'polling'], // Для мобильных prioritize polling
-      timeout: 15000,
+      timeout: 5000, // Быстрый таймаут
       forceNew: false,
       autoConnect: true,
       upgrade: !isMobile, // Отключаем upgrade для мобильных
       rememberUpgrade: false,
       reconnection: true,
-      reconnectionAttempts: 3,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 1, // Минимум попыток - presence опционален
+      reconnectionDelay: 5000,
       withCredentials: false // Для мобильных устройств
     })
 
@@ -99,11 +91,10 @@ export function usePresence(): PresenceState {
     })
 
     socket.on('connect_error', (error) => {
-      console.error('🔴 Presence connection error:', error)
-      console.error('🔴 Error details:', {
-        message: error.message,
-        name: error.name
-      })
+      // Тихо обрабатываем ошибку - presence сервер опционален
+      if (process.env.NODE_ENV === 'development') {
+        console.log('ℹ️ Presence server unavailable (optional):', error.message)
+      }
       setIsTracking(false)
     })
 

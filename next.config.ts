@@ -38,6 +38,38 @@ function getAllowedOrigins(): string[] {
 const nextConfig: NextConfig = {
   // Автоматически определяем разрешённые origins
   allowedDevOrigins: getAllowedOrigins(),
+  
+  // Standalone output для Docker
+  output: 'standalone',
+  
+  // Оптимизация изображений
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
+  
+  // Экспериментальные фичи
+  experimental: {
+    // Улучшенная оптимизация пакетов
+    optimizePackageImports: [
+      'lucide-react',
+      'framer-motion',
+      'recharts',
+      'date-fns',
+    ],
+  },
+  
+  // Логирование
+  logging: {
+    fetches: {
+      fullUrl: process.env.NODE_ENV === 'development',
+    },
+  },
 };
 
 export default nextConfig;

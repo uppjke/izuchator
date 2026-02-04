@@ -65,7 +65,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Для NextAuth проверка OTP происходит автоматически через magic link
   const verifyOtp = async (email: string, otp: string) => {
     const result = await signIn('otp', { redirect: false, email, code: otp })
-    if (result?.error) throw new Error(result.error || 'Неверный код')
+    if (result?.error) {
+      // Преобразуем технические ошибки NextAuth в понятные сообщения
+      const errorMessages: Record<string, string> = {
+        'CredentialsSignin': 'Неверный или просроченный код',
+        'Configuration': 'Ошибка конфигурации сервера',
+        'AccessDenied': 'Доступ запрещён',
+      }
+      const message = errorMessages[result.error] || 'Неверный код. Попробуйте ещё раз'
+      throw new Error(message)
+    }
   }
 
   const resendOtp = async (email: string) => {

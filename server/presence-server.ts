@@ -10,12 +10,6 @@ interface UserPresence {
   roomId: string
 }
 
-interface PresenceMessage {
-  type: 'join' | 'leave' | 'heartbeat'
-  userId: string
-  timestamp: number
-}
-
 /**
  * Современный Socket.io + Redis сервер для presence tracking
  * Enterprise-grade решение для российских платформ
