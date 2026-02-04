@@ -1,7 +1,9 @@
 // Типы для планера
-// Убраны Supabase сгенерированные типы после миграции на Prisma
 
-// Экспортируем упрощённый тип урока (соответствует модели Prisma Lesson)
+// Статусы уроков
+export type LessonStatus = 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'rescheduled'
+
+// Экспортируем тип урока (соответствует модели Prisma Lesson)
 export interface Lesson {
   id: string
   title: string
@@ -13,17 +15,21 @@ export interface Lesson {
   isRecurring: boolean
   recurrence: Record<string, unknown> | null
   labelColor: string | null
+  status: LessonStatus
+  previousStartTime?: string | null
+  previousEndTime?: string | null
   createdAt: string
   updatedAt: string
-  // Legacy planner fields kept for compatibility until fully refactored
-  status?: string
-  duration_minutes?: number
-  student_id?: string | null
-  price?: number | string | null
-  recurrence_rule?: string | null
-  is_series_master?: boolean
-  parent_series_id?: string | null
-  label_color?: string | null
+  // Связь с отношением teacher-student (опционально загружается)
+  relation?: {
+    id: string
+    teacherId: string
+    studentId: string
+    teacherName?: string | null
+    studentName?: string | null
+    teacher?: { id: string; name?: string | null; email?: string | null }
+    student?: { id: string; name?: string | null; email?: string | null }
+  } | null
 }
 
 // Режимы отображения планера

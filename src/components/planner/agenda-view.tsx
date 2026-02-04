@@ -1,13 +1,53 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { formatDate } from './utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { Icon } from '@/components/ui/icon'
-import { Clock, CheckCircle, XCircle } from 'lucide-react'
+import { Clock, CalendarOff } from 'lucide-react'
 import type { PlannerWeek, Lesson } from './types'
 import { useAuth } from '@/lib/auth-context'
+
+// Варианты анимаций
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.95 },
+  show: { 
+    opacity: 1, 
+    y: 0, 
+    scale: 1,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 300,
+      damping: 24,
+    },
+  },
+}
+
+const emptyStateVariants = {
+  hidden: { opacity: 0, scale: 0.9 },
+  show: { 
+    opacity: 1, 
+    scale: 1,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 200,
+      damping: 20,
+    },
+  },
+}
 
 interface AgendaViewProps {
   week: PlannerWeek
@@ -26,14 +66,14 @@ export function AgendaView({
   const { user } = useAuth()
   
   const [selectedDay, setSelectedDay] = useState(
-    week.days.find(day => day.isToday) || week.days[0]
+    week.days.find(day => day.isToday) ?? week.days[0]
   )
   
   // Отслеживаем изменения недели и автоматически выбираем сегодняшний день только при смене недели
   useEffect(() => {
     const todayInWeek = week.days.find(day => day.isToday)
     // Проверяем, что выбранный день не входит в текущую неделю (значит, сменилась неделя)
-    const isSelectedDayInCurrentWeek = week.days.some(day => 
+    const isSelectedDayInCurrentWeek = selectedDay && week.days.some(day => 
       day.date.getTime() === selectedDay.date.getTime()
     )
     
@@ -48,26 +88,30 @@ export function AgendaView({
       setSelectedDay(todayInWeek)
     }
     // Если выбранный день не входит в новую неделю, но сегодня тоже нет, выбираем первый день
-    else if (!isSelectedDayInCurrentWeek && !todayInWeek) {
+    else if (!isSelectedDayInCurrentWeek && !todayInWeek && week.days[0]) {
       setSelectedDay(week.days[0])
     }
   }, [week, selectedDay, forceToday])
   
   // Получаем уроки для выбранного дня
-  const dayLessons = lessons.filter(lesson => {
+  const dayLessons = selectedDay ? lessons.filter(lesson => {
     const lessonDate = new Date(lesson.startTime)
     return (
       lessonDate.getDate() === selectedDay.date.getDate() &&
       lessonDate.getMonth() === selectedDay.date.getMonth() &&
       lessonDate.getFullYear() === selectedDay.date.getFullYear()
     )
-  }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+  }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()) : []
   
   // Сопоставление дней недели с двухбуквенными сокращениями
   const getDayAbbr = (date: Date): string => {
     const dayIndex = date.getDay()
     const dayAbbrs = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ']
-    return dayAbbrs[dayIndex]
+    return dayAbbrs[dayIndex] ?? ''
+  }
+
+  if (!selectedDay) {
+    return <div className="h-full flex items-center justify-center">Загрузка...</div>
   }
 
   return (
@@ -98,16 +142,34 @@ export function AgendaView({
 
       {/* Контент выбранного дня - прокручиваемый */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
-        {dayLessons.length === 0 ? (
-          <div className="flex items-center justify-center min-h-[200px]">
-            <div className="text-center text-gray-500">
-              <div className="text-md font-medium mb-2">
-                Занятий не запланировано
+        <AnimatePresence mode="wait">
+          {dayLessons.length === 0 ? (
+            <motion.div 
+              key="empty"
+              variants={emptyStateVariants}
+              initial="hidden"
+              animate="show"
+              exit="hidden"
+              className="flex items-center justify-center min-h-[200px]"
+            >
+              <div className="text-center text-gray-500">
+                <Icon icon={CalendarOff} size="xl" className="mx-auto mb-3 text-gray-300" />
+                <div className="text-md font-medium mb-1">
+                  Занятий не запланировано
+                </div>
+                <div className="text-sm text-gray-400">
+                  На этот день нет уроков
+                </div>
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
+            </motion.div>
+          ) : (
+            <motion.div 
+              key={selectedDay?.date.toISOString()}
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-3"
+            >
               {dayLessons.map((lesson) => {
                 const lessonDate = new Date(lesson.startTime)
                 const endTime = new Date(lesson.endTime)
@@ -168,12 +230,17 @@ export function AgendaView({
                 const statusInfo = getStatusInfo(lesson.status || 'scheduled')
                 
                 return (
-                  <Card 
-                    key={lesson.id} 
-                    className="cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden"
-                    onClick={() => onEditLesson(lesson)}
-                    style={lesson.labelColor ? { borderColor: lesson.labelColor, color: lesson.labelColor } : undefined}
+                  <motion.div
+                    key={lesson.id}
+                    variants={itemVariants}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
+                    <Card 
+                      className="cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden"
+                      onClick={() => onEditLesson(lesson)}
+                      style={lesson.labelColor ? { borderColor: lesson.labelColor, color: lesson.labelColor } : undefined}
+                    >
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between pr-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
@@ -210,26 +277,7 @@ export function AgendaView({
                           </span>
                         </div>
                         
-                        <div className="flex items-center justify-between">
-                          {/* Оплата - только статус */}
-                          <div className="flex items-center">
-                            {lesson.price ? (
-                              <>
-                                <Icon icon={CheckCircle} size="xs" className="text-green-600" />
-                                <span className="ml-1 text-sm text-green-600 font-medium">
-                                  Оплачено
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <Icon icon={XCircle} size="xs" className="text-red-600" />
-                                <span className="ml-1 text-sm text-red-600 font-medium">
-                                  Не оплачено
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          
+                        <div className="flex items-center justify-end">
                           {/* Статус */}
                           <div className={`text-xs px-2 py-1 rounded-full border ${statusInfo.color}`}>
                             {statusInfo.label}
@@ -238,10 +286,12 @@ export function AgendaView({
                       </div>
                     </CardContent>
                   </Card>
+                </motion.div>
                 )
               })}
-            </div>
+            </motion.div>
           )}
+        </AnimatePresence>
         </div>
       </div>
   )

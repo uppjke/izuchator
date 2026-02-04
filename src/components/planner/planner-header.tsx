@@ -61,7 +61,10 @@ export function PlannerHeader({
               const modes: ('week' | 'month' | 'year')[] = ['week', 'month', 'year']
               const currentIndex = modes.indexOf(viewMode)
               const nextIndex = (currentIndex + 1) % modes.length
-              onViewModeChange(modes[nextIndex])
+              const nextMode = modes[nextIndex]
+              if (nextMode) {
+                onViewModeChange(nextMode)
+              }
             }}
             className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 w-20 justify-center"
           >

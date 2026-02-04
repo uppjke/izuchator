@@ -4,13 +4,15 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { PlannerHeader } from './planner-header'
 import { WeekGrid } from './week-grid'
 import { AgendaView } from './agenda-view'
+import { MonthView } from './month-view'
+import { YearView } from './year-view'
 import { getNextWeek, getPreviousWeek, getWeekData } from './utils'
 import { LessonDialog } from './lesson-dialog'
 import { LessonDetailsDialog } from './lesson-details-dialog'
 import type { PlannerProps, Lesson } from './types'
 import { useQuery } from '@tanstack/react-query'
 import { getLessonsForPeriod } from '@/lib/api'
-import { startOfWeek, endOfWeek } from 'date-fns'
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, addMonths, addYears, subMonths, subYears } from 'date-fns'
 import { useQueryClient } from '@tanstack/react-query'
 
 export function Planner({ 
@@ -26,13 +28,30 @@ export function Planner({
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const queryClient = useQueryClient()
   
-  // Расчет текущей недели и загрузка уроков
-  const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate])
-  const weekEnd = useMemo(() => endOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate])
+  // Расчет периода для загрузки уроков в зависимости от режима
+  const { periodStart, periodEnd } = useMemo(() => {
+    switch (viewMode) {
+      case 'week':
+        return {
+          periodStart: startOfWeek(currentDate, { weekStartsOn: 1 }),
+          periodEnd: endOfWeek(currentDate, { weekStartsOn: 1 })
+        }
+      case 'month':
+        return {
+          periodStart: startOfMonth(currentDate),
+          periodEnd: endOfMonth(currentDate)
+        }
+      case 'year':
+        return {
+          periodStart: startOfYear(currentDate),
+          periodEnd: endOfYear(currentDate)
+        }
+    }
+  }, [currentDate, viewMode])
 
   const { data: lessons = [], refetch: refetchLessons } = useQuery<Lesson[]>({
-    queryKey: ['lessons', weekStart.toISOString()],
-    queryFn: () => getLessonsForPeriod(weekStart, new Date(weekEnd.getTime() + 1000)),
+    queryKey: ['lessons', viewMode, periodStart.toISOString()],
+    queryFn: () => getLessonsForPeriod(periodStart, new Date(periodEnd.getTime() + 1000)),
   })
   
   // Проверка ширины экрана
@@ -55,11 +74,31 @@ export function Planner({
   }, [forceTodayInAgenda])
   
   const handlePreviousDate = () => {
-    setCurrentDate(getPreviousWeek(currentDate))
+    switch (viewMode) {
+      case 'week':
+        setCurrentDate(getPreviousWeek(currentDate))
+        break
+      case 'month':
+        setCurrentDate(subMonths(currentDate, 1))
+        break
+      case 'year':
+        setCurrentDate(subYears(currentDate, 1))
+        break
+    }
   }
   
   const handleNextDate = () => {
-    setCurrentDate(getNextWeek(currentDate))
+    switch (viewMode) {
+      case 'week':
+        setCurrentDate(getNextWeek(currentDate))
+        break
+      case 'month':
+        setCurrentDate(addMonths(currentDate, 1))
+        break
+      case 'year':
+        setCurrentDate(addYears(currentDate, 1))
+        break
+    }
   }
   
   const handleToday = () => {
@@ -121,35 +160,45 @@ export function Planner({
       
       {/* Содержимое планера */}
       <div className="flex-1 min-h-0">
-    {viewMode === 'week' && isWideScreen && (
+        {viewMode === 'week' && isWideScreen && (
           <WeekGrid
             week={getWeekData(currentDate)}
-      lessons={lessons}
+            lessons={lessons}
             onEditLesson={handleShowLessonDetails}
           />
         )}
         
-    {viewMode === 'week' && !isWideScreen && (
+        {viewMode === 'week' && !isWideScreen && (
           <AgendaView
             week={getWeekData(currentDate)}
-      lessons={lessons}
+            lessons={lessons}
             onCreateLesson={(date) => handleCreateLesson(date)}
             onEditLesson={handleShowLessonDetails}
             forceToday={forceTodayInAgenda}
           />
         )}
         
-        {viewMode !== 'week' && (
-          <div className="flex items-center justify-center h-full p-4">
-            <div className="text-center text-gray-500">
-              <div className="text-lg mb-2">Режим в разработке</div>
-              <div className="text-sm">
-                Текущий режим: <span className="font-medium text-blue-600">
-                  {viewMode === 'month' ? 'Месяц' : 'Год'}
-                </span>
-              </div>
-            </div>
-          </div>
+        {viewMode === 'month' && (
+          <MonthView
+            currentDate={currentDate}
+            lessons={lessons}
+            onDayClick={(date) => {
+              setCurrentDate(date)
+              setViewMode('week')
+            }}
+            onLessonClick={handleShowLessonDetails}
+          />
+        )}
+        
+        {viewMode === 'year' && (
+          <YearView
+            currentDate={currentDate}
+            lessons={lessons}
+            onMonthClick={(date) => {
+              setCurrentDate(date)
+              setViewMode('month')
+            }}
+          />
         )}
       </div>
     </div>

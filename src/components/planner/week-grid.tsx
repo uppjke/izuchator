@@ -96,6 +96,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
 
     week.days.forEach(day => {
       const dayKey = day.date.toISOString().split('T')[0]
+      if (!dayKey) return
       const dayLessons = getLessonsForDay(day.date)
       if (!dayLessons.length) return
 
@@ -123,6 +124,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
           clusters.push({ id: clusterId, events: [], maxCols: 0 })
         }
         const cluster = clusters[clusters.length - 1]
+        if (!cluster) return
         // Определяем занятые колонки
         const used = new Set(active.map(a => a.column))
         let col = 0
@@ -201,7 +203,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
   const getDayAbbr = (date: Date): string => {
     const dayIndex = date.getDay()
     const dayAbbrs = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ']
-    return dayAbbrs[dayIndex]
+    return dayAbbrs[dayIndex] ?? ''
   }
   
   // Получаем текущее время для отображения индикатора
@@ -320,7 +322,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                   {/* Карточки уроков - отображаем только для первого часа каждого дня */}
                   {hourIndex === 0 && dayLessons.map((lesson) => {
                     const position = getLessonPosition(lesson)
-                    const dayKey = day.date.toISOString().split('T')[0]
+                    const dayKey = day.date.toISOString().split('T')[0] ?? ''
                     const layoutInfo = dayLayouts[dayKey]?.[lesson.id]
                     
                     // Получаем информацию об ученике из связи

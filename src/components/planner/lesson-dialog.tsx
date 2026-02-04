@@ -66,7 +66,8 @@ function generateRecurrenceDates(base: Date, values: FormValues): Date[] {
   const dates: Date[] = []
   const weekdays = (values.repeatWeekdays || []).sort()
   const push = (d: Date) => {
-    if (dates.length === 0 || d.getTime() !== dates[dates.length - 1].getTime()) {
+    const lastDate = dates[dates.length - 1]
+    if (dates.length === 0 || (lastDate && d.getTime() !== lastDate.getTime())) {
       dates.push(d)
     }
   }
@@ -440,7 +441,10 @@ function RecurrenceControl({ watch, setValue, disabled }: RecurrenceControlProps
   if (weekdays.length === 0) base = 'Выберите дни'
   else if (weekdays.length === 7) base = 'Каждый день'
   else if (weekdays.length === 5 && weekdays.every((d,i)=>[1,2,3,4,5][i]===d)) base = 'Будни'
-  else if (weekdays.length === 1) base = `Каждую неделю (${labels[weekdays[0]]})`
+  else if (weekdays.length === 1) {
+    const firstWeekday = weekdays[0]
+    base = `Каждую неделю (${firstWeekday !== undefined ? labels[firstWeekday] : ''})`
+  }
   else base = order.filter(d => weekdays.includes(d)).map(d => labels[d]).join(',')
   if (interval > 1) base = `Каждые ${interval} нед.: ` + base
     let tail = ''
@@ -666,7 +670,9 @@ function ColorSwatchPicker({ value, onChange, disabled }: ColorSwatchPickerProps
     }
     e.preventDefault()
     const nextColor = flat[next]
-    onChange(nextColor)
+    if (nextColor) {
+      onChange(nextColor)
+    }
     swatchRefs.current[next]?.focus()
   }
 

@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button'
 import type { Lesson } from './types'
 import { Icon } from '@/components/ui/icon'
-import { Clock, Calendar, User, Repeat, Trash2, AlertTriangle, ChevronDown, BadgeInfo, FileText, Coins, History } from 'lucide-react'
+import { Clock, Calendar, User, Repeat, Trash2, AlertTriangle, ChevronDown, BadgeInfo, FileText, History, Check, X, Play, CalendarCheck, Pencil, Palette } from 'lucide-react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import type { LucideIcon } from 'lucide-react'
 import { format } from 'date-fns'
@@ -14,6 +14,9 @@ import { useQuery } from '@tanstack/react-query'
 import { getLessonById, deleteLesson, updateLesson, type DeleteLessonScope } from '@/lib/api'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface LessonDetailsDialogProps {
   lesson: Lesson | null
@@ -26,8 +29,12 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
   const { user } = useAuth()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [rescheduleMode, setRescheduleMode] = useState(false)
+  const [editMode, setEditMode] = useState(false)
   const [newStart, setNewStart] = useState<string>('')
   const [newEnd, setNewEnd] = useState<string>('')
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editColor, setEditColor] = useState('')
   const queryClient = useQueryClient()
 
   // Получаем актуальные данные занятия из БД
@@ -52,6 +59,24 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
       setNewEnd(fmt(end))
     }
   }, [rescheduleMode, currentLesson?.id, currentLesson?.startTime, currentLesson?.endTime, currentLesson])
+
+  // Инициализация полей при входе в режим редактирования
+  React.useEffect(() => {
+    if (editMode && currentLesson) {
+      setEditTitle(currentLesson.title || '')
+      setEditDescription(currentLesson.description || '')
+      setEditColor(currentLesson.labelColor || '#3b82f6')
+    }
+  }, [editMode, currentLesson])
+
+  // Сброс режимов при закрытии диалога
+  React.useEffect(() => {
+    if (!open) {
+      setEditMode(false)
+      setRescheduleMode(false)
+      setShowDeleteConfirm(false)
+    }
+  }, [open])
 
   // Проверяем, является ли пользователь преподавателем
   const isTeacher = user?.role === 'teacher'
@@ -112,8 +137,62 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
   const rawStatus = (currentLesson as { status?: string }).status || 'scheduled'
   const statusLabel = statusMap[rawStatus] || rawStatus
 
-  // Статус оплаты (по аналогии с agenda-view)
-  const isPaid = Boolean((currentLesson as { price?: number | string | null }).price)
+  // Обработчик изменения статуса
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      await updateLesson({ id: currentLesson.id, status: newStatus })
+      toast.success('Статус обновлен')
+      await queryClient.invalidateQueries({ queryKey: ['lesson', currentLesson.id] })
+      await queryClient.invalidateQueries({ queryKey: ['lessons'] })
+    } catch {
+      toast.error('Ошибка обновления статуса')
+    }
+  }
+
+  // Обработчик сохранения редактирования
+  const handleSaveEdit = async () => {
+    try {
+      if (!editTitle.trim()) {
+        toast.error('Название не может быть пустым')
+        return
+      }
+      await updateLesson({
+        id: currentLesson.id,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        labelColor: editColor,
+      })
+      toast.success('Урок обновлен')
+      setEditMode(false)
+      await queryClient.invalidateQueries({ queryKey: ['lesson', currentLesson.id] })
+      await queryClient.invalidateQueries({ queryKey: ['lessons'] })
+    } catch {
+      toast.error('Ошибка сохранения')
+    }
+  }
+
+  // Доступные действия для изменения статуса (в зависимости от текущего)
+  const getStatusActions = () => {
+    const actions: { status: string; label: string; icon: typeof Check; color: string }[] = []
+    
+    if (rawStatus !== 'confirmed' && rawStatus !== 'completed' && rawStatus !== 'cancelled') {
+      actions.push({ status: 'confirmed', label: 'Подтвердить', icon: CalendarCheck, color: 'text-emerald-600' })
+    }
+    if (rawStatus !== 'in_progress' && rawStatus !== 'completed' && rawStatus !== 'cancelled') {
+      actions.push({ status: 'in_progress', label: 'Начать', icon: Play, color: 'text-orange-600' })
+    }
+    if (rawStatus !== 'completed' && rawStatus !== 'cancelled') {
+      actions.push({ status: 'completed', label: 'Завершить', icon: Check, color: 'text-green-600' })
+    }
+    if (rawStatus !== 'cancelled' && rawStatus !== 'completed') {
+      actions.push({ status: 'cancelled', label: 'Отменить', icon: X, color: 'text-red-600' })
+    }
+    if (rawStatus === 'cancelled' || rawStatus === 'completed') {
+      actions.push({ status: 'scheduled', label: 'Восстановить', icon: CalendarCheck, color: 'text-blue-600' })
+    }
+    
+    return actions
+  }
 
   // Ограниченное описание
   const limitedDescription = currentLesson.description
@@ -211,14 +290,75 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
       <DialogContent className="sm:max-w-lg max-w-[95vw] focus:outline-none">
         <DialogHeader className="text-center">
           <DialogTitle className="text-xl font-semibold text-center">
-            <span className="truncate">{currentLesson.title}</span>
+            {editMode ? (
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="text-center text-xl font-semibold"
+                placeholder="Название урока"
+              />
+            ) : (
+              <div className="flex items-center justify-center gap-2">
+                <span className="truncate" style={currentLesson.labelColor ? { color: currentLesson.labelColor } : undefined}>
+                  {currentLesson.title}
+                </span>
+                {isTeacher && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => setEditMode(true)}
+                  >
+                    <Icon icon={Pencil} size="xs" />
+                  </Button>
+                )}
+              </div>
+            )}
             {isLoading && <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mt-2" />}
           </DialogTitle>
           <DialogDescription className="text-center">
-            Полная информация о занятии
+            {editMode ? 'Редактирование занятия' : 'Полная информация о занятии'}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-5 py-2">
+        
+        {/* Режим редактирования */}
+        {editMode && isTeacher ? (
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Описание</Label>
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                className="w-full min-h-[80px] text-sm rounded-lg border border-input bg-transparent px-3 py-2 focus-visible:outline-none focus-visible:border-blue-500 transition resize-none"
+                placeholder="Краткое описание урока"
+                maxLength={300}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Icon icon={Palette} size="xs" />
+                Цвет метки
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {['#3b82f6', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#0ea5e9', '#84cc16', '#9333ea', '#64748b'].map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setEditColor(color)}
+                    className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${editColor === color ? 'border-gray-900 scale-110' : 'border-transparent'}`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setEditMode(false)}>Отмена</Button>
+              <Button onClick={handleSaveEdit}>Сохранить</Button>
+            </div>
+          </div>
+        ) : (
+          /* Режим просмотра */
+          <div className="space-y-5 py-2">
           {infoRow(User, participantRole, studentName)}
           <div className="flex items-start gap-3 text-sm">
             <div className="mt-0.5 text-muted-foreground"><Icon icon={Calendar} size="xs" /></div>
@@ -279,26 +419,43 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
           {infoRow(Clock, 'Время', `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')}`)}
           {recurrenceSummary && infoRow(Repeat, 'Повтор', recurrenceSummary)}
           {infoRow(BadgeInfo, 'Статус', (
-            <span className="relative group inline-flex items-center gap-1">
-              {statusLabel}
-              {rawStatus === 'rescheduled' && (currentLesson as { previousStartTime?: string }).previousStartTime && (
-                <span className="inline-flex items-center">
-                  <Icon icon={History} size="xs" />
-                  <span className="invisible group-hover:visible absolute left-0 top-full mt-1 z-10 whitespace-nowrap rounded bg-black/80 px-2 py-1 text-[10px] text-white">
-                    Было: {format(new Date((currentLesson as { previousStartTime?: string }).previousStartTime!), 'd MMM yyyy HH:mm', { locale: ru })}
-                    {(currentLesson as { previousEndTime?: string }).previousEndTime && ` – ${format(new Date((currentLesson as { previousEndTime?: string }).previousEndTime!), 'HH:mm', { locale: ru })}`}
+            <div className="flex flex-col gap-2">
+              <span className="relative group inline-flex items-center gap-1">
+                {statusLabel}
+                {rawStatus === 'rescheduled' && (currentLesson as { previousStartTime?: string }).previousStartTime && (
+                  <span className="inline-flex items-center">
+                    <Icon icon={History} size="xs" />
+                    <span className="invisible group-hover:visible absolute left-0 top-full mt-1 z-10 whitespace-nowrap rounded bg-black/80 px-2 py-1 text-[10px] text-white">
+                      Было: {format(new Date((currentLesson as { previousStartTime?: string }).previousStartTime!), 'd MMM yyyy HH:mm', { locale: ru })}
+                      {(currentLesson as { previousEndTime?: string }).previousEndTime && ` – ${format(new Date((currentLesson as { previousEndTime?: string }).previousEndTime!), 'HH:mm', { locale: ru })}`}
+                    </span>
                   </span>
-                </span>
+                )}
+              </span>
+              {/* Кнопки изменения статуса */}
+              {isTeacher && (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {getStatusActions().map(action => (
+                    <Button
+                      key={action.status}
+                      variant="outline"
+                      size="sm"
+                      className={`h-7 px-2 text-xs ${action.color} hover:${action.color}`}
+                      onClick={() => handleStatusChange(action.status)}
+                    >
+                      <Icon icon={action.icon} size="xs" className="mr-1" />
+                      {action.label}
+                    </Button>
+                  ))}
+                </div>
               )}
-            </span>
-          ))}
-          {infoRow(Coins, 'Оплата', (
-            <span className={isPaid ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-              {isPaid ? 'Оплачено' : 'Не оплачено'}
-            </span>
+            </div>
           ))}
           {infoRow(FileText, 'Описание', limitedDescription || '—')}
         </div>
+        )}
+        
+        {!editMode && (
         <DialogFooter>
           {isTeacher && (
             <Button
@@ -311,6 +468,7 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
             </Button>
           )}
         </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )
