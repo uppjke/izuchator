@@ -15,6 +15,44 @@ import { useAuth } from '@/lib/auth-context'
 import { useStudentTeachers, useRemoveRelation, useUpdateCustomName, type TeacherRelation } from '@/hooks/use-relations'
 import { usePresenceContext } from '@/lib/presence-context'
 
+// Конфигурация анимаций для списка
+const listContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1
+    }
+  }
+}
+
+const listItemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: [0.25, 0.46, 0.45, 0.94] as const
+    }
+  },
+  exit: { 
+    opacity: 0, 
+    y: -10,
+    transition: { duration: 0.2 }
+  }
+}
+
+const emptyStateVariants = {
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: { 
+    opacity: 1, 
+    scale: 1,
+    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] as const }
+  }
+}
+
 export function TeachersTab() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
@@ -216,29 +254,38 @@ export function TeachersTab() {
         </Button>
       </div>
 
-      {teachers.length === 0 ? (
-        /* Центрированное сообщение если нет преподавателей */
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center text-gray-500">
-            <p className="text-lg">У вас пока нет преподавателей</p>
-            <p className="text-sm mt-1">Пригласите преподавателя или дождитесь приглашения</p>
-          </div>
-        </div>
-      ) : (
-        /* Список преподавателей */
-        <div className="space-y-4 pt-16">
-          {teachers.map((relation: TeacherRelation) => (
-            <div key={relation.id}>
-              <motion.div
-                className="flex flex-col bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 overflow-hidden"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ 
-                duration: 0.2,
-                ease: "easeOut"
-              }}
-            >
+      <AnimatePresence mode="wait">
+        {teachers.length === 0 ? (
+          /* Центрированное сообщение если нет преподавателей */
+          <motion.div 
+            key="empty"
+            className="flex items-center justify-center h-64"
+            variants={emptyStateVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+          >
+            <div className="text-center text-gray-500">
+              <p className="text-lg">У вас пока нет преподавателей</p>
+              <p className="text-sm mt-1">Пригласите преподавателя или дождитесь приглашения</p>
+            </div>
+          </motion.div>
+        ) : (
+          /* Список преподавателей */
+          <motion.div 
+            key="list"
+            className="space-y-4 pt-16"
+            variants={listContainerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {teachers.map((relation: TeacherRelation) => (
+              <motion.div 
+                key={relation.id}
+                variants={listItemVariants}
+                layout
+              >
+                <div className="flex flex-col bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 overflow-hidden">
               {/* Основная часть карточки */}
               <div className="flex items-center gap-4 p-4 min-h-[100px] sm:min-h-[88px]">
               {/* Аватар - скрываем в режиме редактирования */}
@@ -534,11 +581,12 @@ export function TeachersTab() {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
-            </div>
-          ))}
-        </div>
-      )}
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Диалог заметок */}
       <NotesDialog

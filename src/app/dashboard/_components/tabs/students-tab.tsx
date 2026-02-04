@@ -15,6 +15,44 @@ import { useAuth } from '@/lib/auth-context'
 import { useTeacherStudents, useRemoveRelation, useUpdateCustomName, type StudentRelation } from '@/hooks/use-relations'
 import { usePresenceContext } from '@/lib/presence-context'
 
+// Конфигурация анимаций для списка
+const listContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1
+    }
+  }
+}
+
+const listItemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: [0.25, 0.46, 0.45, 0.94] as const
+    }
+  },
+  exit: { 
+    opacity: 0, 
+    y: -10,
+    transition: { duration: 0.2 }
+  }
+}
+
+const emptyStateVariants = {
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: { 
+    opacity: 1, 
+    scale: 1,
+    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] as const }
+  }
+}
+
 export function StudentsTab() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
@@ -208,29 +246,38 @@ export function StudentsTab() {
         </Button>
       </div>
 
-      {students.length === 0 ? (
-        /* Центрированное сообщение если нет учеников */
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center text-gray-500">
-            <p className="text-lg">У вас пока нет учеников</p>
-            <p className="text-sm mt-1">Пригласите ученика или дождитесь приглашения</p>
-          </div>
-        </div>
-      ) : (
-        /* Список учеников */
-        <div className="space-y-4 pt-16">
-          {students.map((relation: StudentRelation) => (
-            <div key={relation.id}>
-              <motion.div
-                className="flex flex-col bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 overflow-hidden"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ 
-                duration: 0.2,
-                ease: "easeOut"
-              }}
-            >
+      <AnimatePresence mode="wait">
+        {students.length === 0 ? (
+          /* Центрированное сообщение если нет учеников */
+          <motion.div 
+            key="empty"
+            className="flex items-center justify-center h-64"
+            variants={emptyStateVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+          >
+            <div className="text-center text-gray-500">
+              <p className="text-lg">У вас пока нет учеников</p>
+              <p className="text-sm mt-1">Пригласите ученика или дождитесь приглашения</p>
+            </div>
+          </motion.div>
+        ) : (
+          /* Список учеников */
+          <motion.div 
+            key="list"
+            className="space-y-4 pt-16"
+            variants={listContainerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {students.map((relation: StudentRelation) => (
+              <motion.div 
+                key={relation.id}
+                variants={listItemVariants}
+                layout
+              >
+                <div className="flex flex-col bg-zinc-50/80 rounded-xl border border-zinc-200/50 min-w-0 overflow-hidden">
               {/* Основная часть карточки */}
               <div className="flex items-center gap-4 p-4 min-h-[100px] sm:min-h-[88px]">
               {/* Аватар - скрываем в режиме редактирования */}
@@ -526,11 +573,12 @@ export function StudentsTab() {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
-          </div>
-        ))}
-      </div>
-    )}
+            </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     {/* Диалог заметок */}
     <NotesDialog

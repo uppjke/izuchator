@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
 import { Upload, File, Image, Video, Music, Archive, FileText, Download, Trash2 } from 'lucide-react'
@@ -12,6 +13,44 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
+// Конфигурация анимаций для списка файлов
+const gridContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.1
+    }
+  }
+}
+
+const fileCardVariants = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: { 
+    opacity: 1, 
+    scale: 1,
+    transition: {
+      duration: 0.25,
+      ease: [0.25, 0.46, 0.45, 0.94] as const
+    }
+  },
+  exit: { 
+    opacity: 0, 
+    scale: 0.9,
+    transition: { duration: 0.15 }
+  }
+}
+
+const emptyStateVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] as const }
+  }
+}
 
 const getFileIcon = (fileType: string, mimeType: string) => {
   switch (fileType) {
@@ -183,27 +222,53 @@ export function FileManager({ relationId, className }: FileManagerProps) {
 
       {/* Список файлов с отступом сверху */}
       <div className="pt-16">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
-          </div>
-        ) : files.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="mb-6">
-              <Icon icon={File} size="lg" className="mx-auto text-muted-foreground/40" />
-            </div>
-            <h3 className="text-lg font-medium mb-2 text-foreground/80">Файлов пока нет</h3>
-            <p className="text-muted-foreground/70 mb-6 max-w-sm mx-auto">
-              Загрузите первый файл, чтобы начать работу с материалами
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <AnimatePresence mode="wait">
+          {isLoading ? (
+            <motion.div 
+              key="loading"
+              className="flex items-center justify-center py-16"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
+            </motion.div>
+          ) : files.length === 0 ? (
+            <motion.div 
+              key="empty"
+              className="text-center py-16"
+              variants={emptyStateVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+            >
+              <div className="mb-6">
+                <Icon icon={File} size="lg" className="mx-auto text-muted-foreground/40" />
+              </div>
+              <h3 className="text-lg font-medium mb-2 text-foreground/80">Файлов пока нет</h3>
+              <p className="text-muted-foreground/70 mb-6 max-w-sm mx-auto">
+                Загрузите первый файл, чтобы начать работу с материалами
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="grid"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+              variants={gridContainerVariants}
+              initial="hidden"
+              animate="visible"
+            >
             {files.map((file) => {
               const FileIcon = getFileIcon(file.fileType, file.mimeType)
               
               return (
-                <div key={file.id} className="group relative bg-zinc-50/80 rounded-xl border border-zinc-200/50 p-4 hover:bg-zinc-50 transition-all duration-200">
+                <motion.div 
+                  key={file.id} 
+                  className="group relative bg-zinc-50/80 rounded-xl border border-zinc-200/50 p-4 hover:bg-zinc-50 transition-colors duration-200"
+                  variants={fileCardVariants}
+                  layout
+                  whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                >
                   <div className="flex items-start justify-between mb-4">
                     <div className="p-2 rounded-lg bg-white/60 border border-zinc-200/30">
                       <Icon icon={FileIcon} size="md" className="text-zinc-600" />
@@ -239,11 +304,12 @@ export function FileManager({ relationId, className }: FileManagerProps) {
                       <span>{format(new Date(file.createdAt), 'd MMM', { locale: ru })}</span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )
             })}
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Диалог подтверждения удаления */}
