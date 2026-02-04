@@ -115,7 +115,51 @@ export async function GET(request: NextRequest) {
     }
     
     const { relationId, type: fileType } = queryValidation.data
+    const sharedOnly = searchParams.get('shared') === 'true'
 
+    // If sharedOnly=true, return files shared with user (as student)
+    if (sharedOnly) {
+      const sharedFiles = await db.fileShare.findMany({
+        where: {
+          relation: {
+            studentId: session.user.id,
+            status: 'ACTIVE',
+          },
+        },
+        include: {
+          file: {
+            include: {
+              user: {
+                select: { name: true, email: true },
+              },
+            },
+          },
+          relation: {
+            select: {
+              id: true,
+              teacherName: true,
+              teacher: { select: { name: true, email: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      // Transform to file format with extra shared info
+      const files = sharedFiles.map((share) => ({
+        ...share.file,
+        sharedBy: {
+          name: share.relation.teacherName || share.relation.teacher.name,
+          email: share.relation.teacher.email,
+        },
+        sharedAt: share.createdAt,
+        relationId: share.relation.id,
+      }))
+
+      return NextResponse.json({ files })
+    }
+
+    // Regular file query - user's own files
     const files = await db.file.findMany({
       where: {
         userId: session.user.id,
@@ -133,7 +177,18 @@ export async function GET(request: NextRequest) {
             teacher: { select: { name: true, email: true } },
             student: { select: { name: true, email: true } }
           }
-        }
+        },
+        shares: {
+          include: {
+            relation: {
+              select: {
+                id: true,
+                studentName: true,
+                student: { select: { name: true, email: true } },
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' }
     })

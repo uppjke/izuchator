@@ -84,8 +84,20 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
       resetState()
       // Обновляем сессию NextAuth
       await updateSession()
-      // Редирект на дашборд после успешного входа
-      router.push('/dashboard')
+      
+      // Проверяем, есть ли invite в localStorage (сохранён InviteHandler)
+      const pendingInvite = localStorage.getItem('pendingInvite')
+      if (pendingInvite) {
+        try {
+          const { code } = JSON.parse(pendingInvite)
+          localStorage.removeItem('pendingInvite')
+          router.push(`/invite/${code}`)
+        } catch {
+          router.push('/dashboard')
+        }
+      } else {
+        router.push('/dashboard')
+      }
     }, SUCCESS_DELAY)
   }, [onOpenChange, resetState, updateSession, router])
 

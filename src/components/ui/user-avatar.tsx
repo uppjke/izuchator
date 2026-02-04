@@ -13,6 +13,7 @@ interface UserAvatarProps {
   className?: string
   showOnlineStatus?: boolean
   isOnline?: boolean
+  lastSeenText?: string | null
 }
 
 const sizeClasses = {
@@ -26,7 +27,8 @@ export function UserAvatar({
   size = 'md', 
   className, 
   showOnlineStatus = false,
-  isOnline = false 
+  isOnline = false,
+  lastSeenText
 }: UserAvatarProps) {
   const getInitials = () => {
     if (!user) return 'У'
@@ -58,7 +60,8 @@ export function UserAvatar({
           <div className="absolute -bottom-0.5 -right-0.5">
             <OnlineIndicator 
               isOnline={isOnline} 
-              size={size === 'sm' ? 'sm' : 'md'} 
+              size={size === 'sm' ? 'sm' : 'md'}
+              lastSeenText={lastSeenText}
             />
           </div>
         )}
@@ -79,7 +82,8 @@ export function UserAvatar({
         <div className="absolute -bottom-0.5 -right-0.5">
           <OnlineIndicator 
             isOnline={isOnline} 
-            size={size === 'sm' ? 'sm' : 'md'} 
+            size={size === 'sm' ? 'sm' : 'md'}
+            lastSeenText={lastSeenText}
           />
         </div>
       )}

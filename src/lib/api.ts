@@ -291,6 +291,16 @@ export interface FileData {
     teacher?: { name?: string; email?: string }
     student?: { name?: string; email?: string }
   }
+  shares?: Array<{
+    id: string
+    relationId: string
+    createdAt: string
+    relation: {
+      id: string
+      studentName?: string
+      student: { name?: string; email?: string }
+    }
+  }>
 }
 
 export async function uploadFile(file: File, relationId?: string): Promise<FileData> {
@@ -343,4 +353,74 @@ export async function deleteFile(fileId: string): Promise<void> {
 
 export function getFileDownloadUrl(fileId: string): string {
   return `/api/files/${fileId}`
+}
+
+// File sharing
+
+export interface FileShareData {
+  id: string
+  fileId: string
+  relationId: string
+  createdAt: string
+  relation: {
+    id: string
+    studentName?: string
+    student: { name?: string; email?: string }
+  }
+}
+
+export interface SharedFileData extends FileData {
+  sharedBy: {
+    name?: string
+    email?: string
+  }
+  sharedAt: string
+}
+
+export async function shareFile(fileId: string, relationIds: string[]): Promise<FileShareData[]> {
+  const response = await fetch(`/api/files/${fileId}/share`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ relationIds }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to share file')
+  }
+
+  const data = await response.json()
+  return data.shares
+}
+
+export async function getFileShares(fileId: string): Promise<FileShareData[]> {
+  const response = await fetch(`/api/files/${fileId}/share`)
+  if (!response.ok) {
+    throw new Error('Failed to get file shares')
+  }
+
+  const data = await response.json()
+  return data.shares
+}
+
+export async function unshareFile(fileId: string, relationId: string): Promise<void> {
+  const response = await fetch(`/api/files/${fileId}/share?relationId=${relationId}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to unshare file')
+  }
+}
+
+export async function getSharedFiles(): Promise<SharedFileData[]> {
+  const response = await fetch('/api/files?shared=true')
+  if (!response.ok) {
+    throw new Error('Failed to fetch shared files')
+  }
+
+  const data = await response.json()
+  return data.files
 }

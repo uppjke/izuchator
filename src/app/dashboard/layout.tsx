@@ -7,10 +7,9 @@ import { useAuth } from "@/lib/auth-context";
 import { usePresence } from "@/hooks/use-presence";
 import { PresenceProvider } from "@/lib/presence-context";
 
-// Новые компоненты навигации (Mobile-first)
+// Компоненты навигации
 import { BottomTabBar, type TabId } from "@/components/ui/bottom-tab-bar";
 import { MobileHeader } from "@/components/ui/mobile-header";
-import { TabletSidebar } from "@/components/ui/tablet-sidebar";
 import { DesktopSidebar } from "@/components/ui/desktop-sidebar";
 import { DesktopHeader } from "@/components/ui/desktop-header";
 
@@ -50,7 +49,6 @@ export default function DashboardLayout() {
   const presenceData = usePresence();
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
-  const [tabletSidebarOpen, setTabletSidebarOpen] = useState(false);
 
   // Восстановление активного таба из localStorage
   useEffect(() => {
@@ -154,25 +152,15 @@ export default function DashboardLayout() {
           onLogout={handleLogout}
         />
 
-        {/* Tablet Sidebar (Sheet drawer) - для md экранов */}
-        <TabletSidebar
-          isOpen={tabletSidebarOpen}
-          onClose={() => setTabletSidebarOpen(false)}
-          userRole={userRole}
-          user={user}
-          activeTab={activeTab}
-          onTabChange={changeTab}
-          onLogout={handleLogout}
-        />
-
         {/* Main content area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {/* Mobile Header - только на мобилах и планшетах */}
+          {/* Mobile/Tablet Header - до lg */}
           <div className="lg:hidden">
             <MobileHeader
               title={currentPageTitle}
-              showMenuButton={true}
-              onMenuClick={() => setTabletSidebarOpen(true)}
+              user={user}
+              userRole={userRole}
+              onLogout={handleLogout}
             />
           </div>
 
@@ -180,16 +168,20 @@ export default function DashboardLayout() {
           <DesktopHeader title={currentPageTitle} />
 
           {/* Page content */}
-          <main className="flex-1 overflow-auto p-4 lg:p-6 pb-20 md:pb-4">
+          <main className="flex-1 overflow-auto p-4 lg:p-6 pb-20 lg:pb-4">
             <div className="bg-white rounded-2xl shadow-sm border border-zinc-200/50 h-full overflow-auto">
               <div className="p-4 lg:p-6 h-full">
-                <ActiveTabComponent />
+                {activeTab === 'dashboard' ? (
+                  <DashboardTab onNavigate={changeTab} />
+                ) : (
+                  <ActiveTabComponent />
+                )}
               </div>
             </div>
           </main>
         </div>
 
-        {/* Bottom Tab Bar - только на мобилах (до md) */}
+        {/* Bottom Tab Bar - мобильные и планшеты (до lg) */}
         <BottomTabBar
           activeTab={activeTab}
           onTabChange={changeTab}

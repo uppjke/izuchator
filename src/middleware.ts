@@ -34,6 +34,13 @@ function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
 
 // Security headers для соответствия best practices
 function addSecurityHeaders(response: NextResponse): NextResponse {
+  const isDev = process.env.NODE_ENV === 'development'
+  
+  // В development разрешаем localhost для presence сервера
+  const connectSrc = isDev 
+    ? "connect-src 'self' http://localhost:* ws://localhost:* https: wss:"
+    : "connect-src 'self' https: wss:"
+  
   // Content Security Policy
   response.headers.set(
     'Content-Security-Policy',
@@ -43,7 +50,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https: wss:",
+      connectSrc,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

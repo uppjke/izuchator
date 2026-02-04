@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, Suspense } from 'react';
+import { useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,10 +9,15 @@ import { Icon } from '@/components/ui/icon';
 import { AnimatedBlobs } from '@/components/animated-blobs';
 import { LoginDialog } from '@/components/auth/login-dialog';
 import { RegisterDialog } from '@/components/auth/register-dialog';
-import { InviteHandler } from '@/components/invite-handler';
 import { Header } from '@/components/header';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
+
+// Dynamic import with SSR disabled to avoid useSearchParams SSG issues
+const InviteHandler = dynamic(
+  () => import('@/components/invite-handler').then(mod => mod.InviteHandler),
+  { ssr: false }
+);
 
 const ANIMATION_CONFIG = {
   initial: { opacity: 0, y: 20 },
@@ -52,10 +58,8 @@ export default function Home() {
       <div className="min-h-[calc(100dvh-4.5rem)] bg-white flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
       <AnimatedBlobs />
       
-      {/* Обработчик параметров приглашения */}
-      <Suspense fallback={null}>
-        <InviteHandler onInviteFound={handleInviteFound} />
-      </Suspense>
+      {/* Обработчик параметров приглашения - загружается только на клиенте */}
+      <InviteHandler onInviteFound={handleInviteFound} />
       
       <motion.div
         initial={ANIMATION_CONFIG.initial}

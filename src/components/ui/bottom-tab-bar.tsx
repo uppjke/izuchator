@@ -61,7 +61,7 @@ export function BottomTabBar({ activeTab, onTabChange, userRole }: BottomTabBarP
 
   return (
     <nav 
-      className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white/95 backdrop-blur-xl border-t border-zinc-200/50"
+      className="fixed bottom-0 inset-x-0 z-50 lg:hidden bg-white/95 backdrop-blur-xl border-t border-zinc-200/50"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       role="tablist"
       aria-label="Навигация"

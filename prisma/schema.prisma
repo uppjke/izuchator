@@ -90,10 +90,11 @@ model TeacherStudentRelation {
   updatedAt       DateTime       @updatedAt @map("updated_at")
   deletedAt       DateTime?      @map("deleted_at")
 
-  teacher User @relation("TeacherRelations", fields: [teacherId], references: [id])
-  student User @relation("StudentRelations", fields: [studentId], references: [id])
-  lessons Lesson[] @relation("LessonRelation")
-  files   File[]
+  teacher    User        @relation("TeacherRelations", fields: [teacherId], references: [id])
+  student    User        @relation("StudentRelations", fields: [studentId], references: [id])
+  lessons    Lesson[]    @relation("LessonRelation")
+  files      File[]
+  fileShares FileShare[]
 
   @@unique([teacherId, studentId])
   @@map("teacher_student_relations")
@@ -181,8 +182,23 @@ model File {
 
   user     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   relation TeacherStudentRelation?    @relation(fields: [relationId], references: [id], onDelete: SetNull)
+  shares   FileShare[]
 
   @@map("files")
+}
+
+// Модель для шаринга файлов между учителем и учеником
+model FileShare {
+  id         String   @id @default(cuid())
+  fileId     String   @map("file_id")
+  relationId String   @map("relation_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  file     File                   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  relation TeacherStudentRelation @relation(fields: [relationId], references: [id], onDelete: Cascade)
+
+  @@unique([fileId, relationId])
+  @@map("file_shares")
 }
 
 enum FileType {

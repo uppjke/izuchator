@@ -1,238 +1,504 @@
-import { createServer } from 'node:http'
-import { Server as SocketIOServer } from 'socket.io'
+import { createServer, IncomingMessage, ServerResponse } from 'node:http'
+import { Server as SocketIOServer, Socket } from 'socket.io'
+import { createAdapter } from '@socket.io/redis-adapter'
 import Redis from 'ioredis'
+import { URL } from 'node:url'
+import type {
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData,
+  UserPresence,
+  PresenceServerConfig,
+  PresenceMetrics,
+  JoinPresencePayload,
+} from './types'
 
-// Интерфейсы для типизации
-interface UserPresence {
-  userId: string
-  socketId: string
-  lastSeen: number
-  roomId: string
-}
+// Typed socket
+type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>
 
 /**
- * Современный Socket.io + Redis сервер для presence tracking
- * Enterprise-grade решение для российских платформ
+ * Production-grade Presence Server
+ * - Typed Socket.io events
+ * - Redis Pub/Sub для multi-server scaling
+ * - Health check endpoint
+ * - Graceful shutdown
+ * - Connection rate limiting
+ * - Last seen tracking
  */
 class PresenceServer {
-  private io: SocketIOServer
-  private redis: Redis
+  private io: SocketIOServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>
+  private redisPub: Redis
+  private redisSub: Redis
+  private redisStore: Redis
   private server: ReturnType<typeof createServer>
+  
+  // Local state
   private userPresence = new Map<string, UserPresence>() // socketId -> UserPresence
-  private userSockets = new Map<string, string>() // userId -> socketId
+  private userSockets = new Map<string, Set<string>>() // userId -> Set<socketId> (multi-device)
+  private lastSeenMap = new Map<string, number>() // userId -> timestamp
+  private connectionsByIp = new Map<string, number>() // ip -> count
+  
+  // Intervals
   private cleanupInterval: NodeJS.Timeout | null = null
+  private metricsInterval: NodeJS.Timeout | null = null
+  
+  // Metrics
+  private startTime = Date.now()
+  private messageCount = 0
+  
+  private config: PresenceServerConfig
 
-  constructor(port: number = 3002) {
-    // Создаем HTTP сервер
-    this.server = createServer()
+  constructor(config: Partial<PresenceServerConfig> = {}) {
+    this.config = {
+      port: parseInt(process.env.PRESENCE_PORT || '3002'),
+      redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+      corsOrigins: process.env.NODE_ENV === 'production'
+        ? ['https://izuchator.ru', 'https://www.izuchator.ru']
+        : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+      pingTimeout: 60000,
+      pingInterval: 25000,
+      cleanupInterval: 30000,
+      userTimeout: 90000, // 1.5 минуты
+      maxConnectionsPerIp: 10,
+      ...config
+    }
+
+    // Создаем HTTP сервер с health check
+    this.server = createServer((req, res) => this.handleHttpRequest(req, res))
     
-    // Настраиваем Socket.io с CORS для Next.js и мобильных устройств
+    // Redis connections
+    this.redisPub = new Redis(this.config.redisUrl, { lazyConnect: true })
+    this.redisSub = new Redis(this.config.redisUrl, { lazyConnect: true })
+    this.redisStore = new Redis(this.config.redisUrl, { lazyConnect: true })
+
+    // Socket.io с типизацией
     this.io = new SocketIOServer(this.server, {
       cors: {
         origin: process.env.NODE_ENV === 'production' 
-          ? ['https://izuchator.ru', 'https://www.izuchator.ru']
-          : true, // В development разрешаем все origins
+          ? this.config.corsOrigins 
+          : true,
         methods: ['GET', 'POST'],
         credentials: true,
-        allowedHeaders: ['*']
       },
-      transports: ['websocket', 'polling'], // Fallback на polling для мобильных
-      pingTimeout: 60000,
-      pingInterval: 25000,
-      allowEIO3: true // Поддержка старых клиентов
-    })
-
-    // Подключаемся к Redis
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      lazyConnect: true
-    })
-
-    this.setupEventHandlers()
-    this.startCleanupTimer()
-    
-    this.server.listen(port, '0.0.0.0', () => {
-      console.log(`🚀 Presence server running on port ${port}`)
-      console.log(`📍 Available at:`)
-      console.log(`   - http://localhost:${port}`)
-      console.log(`   - http://127.0.0.1:${port}`)
-      
-      // Показываем все сетевые интерфейсы
-      const { networkInterfaces } = require('os')
-      const nets = networkInterfaces()
-      
-      for (const name of Object.keys(nets)) {
-        for (const net of nets[name]!) {
-          // Показываем только IPv4 адреса, исключая internal
-          if (net.family === 'IPv4' && !net.internal) {
-            console.log(`   - http://${net.address}:${port}`)
-          }
-        }
+      transports: ['websocket', 'polling'],
+      pingTimeout: this.config.pingTimeout,
+      pingInterval: this.config.pingInterval,
+      allowEIO3: true,
+      connectionStateRecovery: {
+        maxDisconnectionDuration: 2 * 60 * 1000, // 2 минуты
+        skipMiddlewares: true,
       }
+    })
+
+    this.init()
+  }
+
+  private async init() {
+    try {
+      // Подключаемся к Redis
+      await Promise.all([
+        this.redisPub.connect(),
+        this.redisSub.connect(),
+        this.redisStore.connect()
+      ])
+      console.log('📡 Connected to Redis')
+
+      // Redis adapter для multi-server
+      this.io.adapter(createAdapter(this.redisPub, this.redisSub))
+      console.log('🔗 Redis adapter enabled')
+
+      // Восстанавливаем lastSeen из Redis
+      await this.restoreLastSeen()
+
+      // Setup handlers
+      this.setupMiddleware()
+      this.setupEventHandlers()
+      this.setupRedisHandlers()
+      this.startCleanupTimer()
+      this.startMetricsTimer()
+      this.setupGracefulShutdown()
+
+      // Start server
+      this.server.listen(this.config.port, '0.0.0.0', () => {
+        console.log(`🚀 Presence server running on port ${this.config.port}`)
+        this.logNetworkInterfaces()
+      })
+    } catch (error) {
+      console.error('❌ Failed to initialize presence server:', error)
+      process.exit(1)
+    }
+  }
+
+  private handleHttpRequest(req: IncomingMessage, res: ServerResponse) {
+    const url = new URL(req.url || '/', `http://${req.headers.host}`)
+
+    // Health check endpoint
+    if (url.pathname === '/health' || url.pathname === '/healthz') {
+      const health = {
+        status: 'ok',
+        uptime: Math.floor((Date.now() - this.startTime) / 1000),
+        connections: this.io.engine?.clientsCount || 0,
+        onlineUsers: this.getOnlineUserIds().length,
+        redis: this.redisPub.status === 'ready'
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(health))
+      return
+    }
+
+    // Metrics endpoint (Prometheus format)
+    if (url.pathname === '/metrics') {
+      const metrics = this.getMetrics()
+      const prometheusMetrics = [
+        `# HELP presence_connected_sockets Number of connected sockets`,
+        `# TYPE presence_connected_sockets gauge`,
+        `presence_connected_sockets ${metrics.connectedSockets}`,
+        `# HELP presence_online_users Number of online users`,
+        `# TYPE presence_online_users gauge`,
+        `presence_online_users ${metrics.onlineUsers}`,
+        `# HELP presence_uptime_seconds Server uptime in seconds`,
+        `# TYPE presence_uptime_seconds counter`,
+        `presence_uptime_seconds ${metrics.uptime}`,
+        `# HELP presence_redis_connected Redis connection status`,
+        `# TYPE presence_redis_connected gauge`,
+        `presence_redis_connected ${metrics.redisConnected ? 1 : 0}`,
+      ].join('\n')
+
+      res.writeHead(200, { 'Content-Type': 'text/plain' })
+      res.end(prometheusMetrics)
+      return
+    }
+
+    // Default response
+    res.writeHead(404)
+    res.end('Not found')
+  }
+
+  private setupMiddleware() {
+    // Rate limiting middleware
+    this.io.use((socket, next) => {
+      const ip = socket.handshake.address
+      const count = this.connectionsByIp.get(ip) || 0
+
+      if (count >= this.config.maxConnectionsPerIp) {
+        return next(new Error('Too many connections from this IP'))
+      }
+
+      this.connectionsByIp.set(ip, count + 1)
+      
+      socket.on('disconnect', () => {
+        const current = this.connectionsByIp.get(ip) || 1
+        if (current <= 1) {
+          this.connectionsByIp.delete(ip)
+        } else {
+          this.connectionsByIp.set(ip, current - 1)
+        }
+      })
+
+      next()
     })
   }
 
   private setupEventHandlers() {
-    this.io.on('connection', (socket) => {
+    this.io.on('connection', (socket: TypedSocket) => {
       console.log(`Socket connected: ${socket.id}`)
 
-      // Обработка присоединения пользователя
-      socket.on('join-presence', async (data: { userId: string }) => {
-        await this.handleUserJoin(socket, data.userId)
-      })
-
-      // Обработка heartbeat
-      socket.on('heartbeat', async (data: { userId: string }) => {
-        await this.handleHeartbeat(socket.id, data.userId)
-      })
-
-      // Обработка отключения
-      socket.on('disconnect', async () => {
-        await this.handleUserLeave(socket.id)
-      })
-
-      // Обработка manual leave
-      socket.on('leave-presence', async () => {
-        await this.handleUserLeave(socket.id)
-      })
-    })
-
-    // Обработка ошибок Redis
-    this.redis.on('error', (err) => {
-      console.error('Redis connection error:', err)
-    })
-
-    this.redis.on('connect', () => {
-      console.log('📡 Connected to Redis')
+      socket.on('join-presence', (data) => this.handleJoin(socket, data))
+      socket.on('heartbeat', (data) => this.handleHeartbeat(socket, data))
+      socket.on('leave-presence', () => this.handleLeave(socket))
+      socket.on('get-user-status', (data, callback) => this.handleGetUserStatus(data, callback))
+      socket.on('disconnect', () => this.handleDisconnect(socket))
     })
   }
 
-  private async handleUserJoin(socket: any, userId: string) {
-    try {
-      const now = Date.now()
-      const roomId = 'global-presence'
+  private setupRedisHandlers() {
+    this.redisPub.on('error', (err) => console.error('Redis pub error:', err))
+    this.redisSub.on('error', (err) => console.error('Redis sub error:', err))
+    this.redisStore.on('error', (err) => console.error('Redis store error:', err))
+  }
 
-      // Если пользователь уже подключен с другого устройства - отключаем старое соединение
-      const existingSocketId = this.userSockets.get(userId)
-      if (existingSocketId && existingSocketId !== socket.id) {
-        await this.handleUserLeave(existingSocketId)
+  private async handleJoin(socket: TypedSocket, data: JoinPresencePayload) {
+    try {
+      const { userId, metadata } = data
+      
+      if (!userId || typeof userId !== 'string') {
+        socket.emit('error', { code: 'INVALID_USER_ID', message: 'Invalid user ID' })
+        return
       }
 
-      // Создаем новую запись присутствия
+      const now = Date.now()
+      const deviceType = metadata?.deviceType || this.detectDeviceType(metadata?.userAgent)
+
+      // Сохраняем данные в socket
+      socket.data.userId = userId
+      socket.data.joinedAt = now
+      socket.data.lastHeartbeat = now
+
+      // Создаем запись присутствия
       const presence: UserPresence = {
         userId,
         socketId: socket.id,
         lastSeen: now,
-        roomId
+        joinedAt: now,
+        deviceType
       }
 
       this.userPresence.set(socket.id, presence)
-      this.userSockets.set(userId, socket.id)
 
-      // Присоединяем к комнате
-      socket.join(roomId)
+      // Multi-device: добавляем socket к пользователю
+      if (!this.userSockets.has(userId)) {
+        this.userSockets.set(userId, new Set())
+      }
+      this.userSockets.get(userId)!.add(socket.id)
 
-      // Сохраняем в Redis для масштабирования на несколько серверов
-      await this.redis.setex(`presence:${userId}`, 120, JSON.stringify({
-        lastSeen: now,
+      // Присоединяем к глобальной комнате
+      socket.join('global-presence')
+
+      // Сохраняем в Redis
+      await this.redisStore.hset(`presence:${userId}`, {
+        lastSeen: now.toString(),
+        deviceType,
         serverId: process.env.SERVER_ID || 'default'
-      }))
+      })
+      await this.redisStore.expire(`presence:${userId}`, 300) // 5 минут TTL
 
       // Уведомляем всех о новом онлайн пользователе
-      await this.broadcastPresenceUpdate()
-
-      console.log(`User ${userId} joined presence (socket: ${socket.id})`)
-    } catch (error) {
-      console.error('Error handling user join:', error)
-    }
-  }
-
-  private async handleHeartbeat(socketId: string, userId: string) {
-    const presence = this.userPresence.get(socketId)
-    if (presence && presence.userId === userId) {
-      presence.lastSeen = Date.now()
+      const wasOffline = !this.lastSeenMap.has(userId) || 
+        (this.userSockets.get(userId)?.size === 1)
       
-      // Обновляем в Redis
-      await this.redis.setex(`presence:${userId}`, 120, JSON.stringify({
-        lastSeen: presence.lastSeen,
-        serverId: process.env.SERVER_ID || 'default'
-      }))
+      if (wasOffline) {
+        this.io.to('global-presence').emit('user-online', { userId, timestamp: now })
+      }
+
+      // Отправляем полный список онлайн
+      await this.broadcastPresenceUpdate()
+
+      console.log(`✅ User ${userId} joined (socket: ${socket.id}, device: ${deviceType})`)
+      this.messageCount++
+    } catch (error) {
+      console.error('Error in handleJoin:', error)
+      socket.emit('error', { code: 'JOIN_ERROR', message: 'Failed to join presence' })
     }
   }
 
-  private async handleUserLeave(socketId: string) {
-    try {
-      const presence = this.userPresence.get(socketId)
-      if (!presence) return
+  private async handleHeartbeat(socket: TypedSocket, data: { userId: string }) {
+    const presence = this.userPresence.get(socket.id)
+    
+    if (presence && presence.userId === data.userId) {
+      const now = Date.now()
+      presence.lastSeen = now
+      socket.data.lastHeartbeat = now
 
-      // Удаляем из локальных структур данных
-      this.userPresence.delete(socketId)
-      this.userSockets.delete(presence.userId)
-
-      // Удаляем из Redis
-      await this.redis.del(`presence:${presence.userId}`)
-
-      // Уведомляем всех об отключении
-      await this.broadcastPresenceUpdate()
-
-      console.log(`User ${presence.userId} left presence (socket: ${socketId})`)
-    } catch (error) {
-      console.error('Error handling user leave:', error)
+      // Обновляем в Redis
+      await this.redisStore.hset(`presence:${presence.userId}`, 'lastSeen', now.toString())
+      await this.redisStore.expire(`presence:${presence.userId}`, 300)
+      
+      this.messageCount++
     }
+  }
+
+  private handleGetUserStatus(
+    data: { userId: string }, 
+    callback: (response: { userId: string; isOnline: boolean; lastSeen: number | null }) => void
+  ) {
+    const isOnline = this.userSockets.has(data.userId) && 
+      (this.userSockets.get(data.userId)?.size || 0) > 0
+    const lastSeen = this.lastSeenMap.get(data.userId) || null
+
+    callback({ userId: data.userId, isOnline, lastSeen })
+  }
+
+  private async handleLeave(socket: TypedSocket) {
+    await this.removeSocket(socket, 'manual')
+  }
+
+  private async handleDisconnect(socket: TypedSocket) {
+    await this.removeSocket(socket, 'disconnect')
+  }
+
+  private async removeSocket(socket: TypedSocket, reason: string) {
+    const presence = this.userPresence.get(socket.id)
+    if (!presence) return
+
+    const { userId } = presence
+    const now = Date.now()
+
+    // Удаляем socket из presence
+    this.userPresence.delete(socket.id)
+
+    // Удаляем socket из user sockets
+    const userSocketSet = this.userSockets.get(userId)
+    if (userSocketSet) {
+      userSocketSet.delete(socket.id)
+      
+      // Если это был последний socket пользователя - он офлайн
+      if (userSocketSet.size === 0) {
+        this.userSockets.delete(userId)
+        this.lastSeenMap.set(userId, now)
+        
+        // Сохраняем last seen в Redis
+        await this.redisStore.set(`lastSeen:${userId}`, now.toString())
+        await this.redisStore.del(`presence:${userId}`)
+
+        // Уведомляем об офлайне
+        this.io.to('global-presence').emit('user-offline', { userId, lastSeen: now })
+      }
+    }
+
+    // Broadcast update
+    await this.broadcastPresenceUpdate()
+    
+    console.log(`❌ User ${userId} socket removed (${reason}, socket: ${socket.id})`)
   }
 
   private async broadcastPresenceUpdate() {
+    const onlineUsers = this.getOnlineUserIds()
+    const lastSeenObj: Record<string, number> = {}
+    
+    this.lastSeenMap.forEach((time, id) => {
+      lastSeenObj[id] = time
+    })
+
+    this.io.to('global-presence').emit('presence-update', {
+      onlineUsers,
+      lastSeenMap: lastSeenObj,
+      timestamp: Date.now()
+    })
+  }
+
+  private getOnlineUserIds(): string[] {
+    return Array.from(this.userSockets.keys()).filter(
+      userId => (this.userSockets.get(userId)?.size || 0) > 0
+    )
+  }
+
+  private async restoreLastSeen() {
     try {
-      // Собираем список онлайн пользователей
-      const onlineUsers = Array.from(this.userPresence.values()).map(p => p.userId)
-      
-      // Отправляем всем в комнате
-      this.io.to('global-presence').emit('presence-update', {
-        onlineUsers,
-        timestamp: Date.now()
-      })
+      const keys = await this.redisStore.keys('lastSeen:*')
+      for (const key of keys) {
+        const userId = key.replace('lastSeen:', '')
+        const lastSeen = await this.redisStore.get(key)
+        if (lastSeen) {
+          this.lastSeenMap.set(userId, parseInt(lastSeen))
+        }
+      }
+      console.log(`📥 Restored ${this.lastSeenMap.size} last seen records`)
     } catch (error) {
-      console.error('Error broadcasting presence update:', error)
+      console.error('Error restoring last seen:', error)
     }
   }
 
   private startCleanupTimer() {
-    // Каждые 30 секунд проверяем неактивных пользователей
     this.cleanupInterval = setInterval(async () => {
       const now = Date.now()
-      const TIMEOUT = 90000 // 1.5 минуты
-
       let hasChanges = false
 
       for (const [socketId, presence] of this.userPresence) {
-        if (now - presence.lastSeen > TIMEOUT) {
-          await this.handleUserLeave(socketId)
-          hasChanges = true
+        if (now - presence.lastSeen > this.config.userTimeout) {
+          const socket = this.io.sockets.sockets.get(socketId)
+          if (socket) {
+            await this.removeSocket(socket as TypedSocket, 'timeout')
+            hasChanges = true
+          }
         }
       }
 
       if (hasChanges) {
         await this.broadcastPresenceUpdate()
       }
+    }, this.config.cleanupInterval)
+  }
+
+  private startMetricsTimer() {
+    this.metricsInterval = setInterval(() => {
+      const metrics = this.getMetrics()
+      console.log(`📊 Metrics: ${metrics.onlineUsers} users, ${metrics.connectedSockets} sockets, ${this.messageCount} msg/30s`)
+      this.messageCount = 0
     }, 30000)
   }
 
-  public async shutdown() {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval)
+  private getMetrics(): PresenceMetrics {
+    return {
+      connectedSockets: this.io.engine?.clientsCount || 0,
+      onlineUsers: this.getOnlineUserIds().length,
+      uptime: Math.floor((Date.now() - this.startTime) / 1000),
+      messagesPerSecond: this.messageCount / 30,
+      redisConnected: this.redisPub.status === 'ready'
+    }
+  }
+
+  private detectDeviceType(userAgent?: string): 'desktop' | 'mobile' | 'tablet' {
+    if (!userAgent) return 'desktop'
+    if (/tablet|ipad/i.test(userAgent)) return 'tablet'
+    if (/mobile|android|iphone/i.test(userAgent)) return 'mobile'
+    return 'desktop'
+  }
+
+  private setupGracefulShutdown() {
+    const shutdown = async (signal: string) => {
+      console.log(`\n⚠️ Received ${signal}, shutting down gracefully...`)
+      
+      // Останавливаем таймеры
+      if (this.cleanupInterval) clearInterval(this.cleanupInterval)
+      if (this.metricsInterval) clearInterval(this.metricsInterval)
+
+      // Уведомляем всех клиентов
+      this.io.emit('error', { code: 'SERVER_SHUTDOWN', message: 'Server is shutting down' })
+
+      // Закрываем соединения
+      this.io.close()
+      
+      // Закрываем Redis
+      await Promise.all([
+        this.redisPub.quit(),
+        this.redisSub.quit(),
+        this.redisStore.quit()
+      ])
+
+      // Закрываем HTTP сервер
+      this.server.close(() => {
+        console.log('✅ Server closed gracefully')
+        process.exit(0)
+      })
+
+      // Force exit after 10s
+      setTimeout(() => {
+        console.log('⚠️ Force exit after timeout')
+        process.exit(1)
+      }, 10000)
+    }
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'))
+    process.on('SIGINT', () => shutdown('SIGINT'))
+  }
+
+  private logNetworkInterfaces() {
+    console.log('📍 Available at:')
+    console.log(`   - http://localhost:${this.config.port}`)
+    console.log(`   - http://127.0.0.1:${this.config.port}`)
+
+    const { networkInterfaces } = require('os')
+    const nets = networkInterfaces()
+
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name]!) {
+        if (net.family === 'IPv4' && !net.internal) {
+          console.log(`   - http://${net.address}:${this.config.port}`)
+        }
+      }
     }
     
-    await this.redis.quit()
-    this.server.close()
+    console.log(`\n📋 Endpoints:`)
+    console.log(`   - Health: http://localhost:${this.config.port}/health`)
+    console.log(`   - Metrics: http://localhost:${this.config.port}/metrics`)
   }
 }
 
-// Запуск сервера если файл запущен напрямую
+// Запуск
 if (require.main === module) {
-  const port = parseInt(process.env.PRESENCE_PORT || '3002')
-  new PresenceServer(port)
+  new PresenceServer()
 }
 
 export default PresenceServer

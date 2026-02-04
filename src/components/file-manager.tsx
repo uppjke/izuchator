@@ -4,11 +4,12 @@ import React, { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
-import { Upload, File, Image, Video, Music, Archive, FileText, Download, Trash2 } from 'lucide-react'
+import { Upload, File, Image, Video, Music, Archive, FileText, Download, Trash2, Share2, Users } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFiles, uploadFile, deleteFile, getFileDownloadUrl, type FileData } from '@/lib/api'
 import { toast } from 'sonner'
 import { ConfirmationDialog } from '@/components/confirmation-dialog'
+import { ShareDialog } from '@/components/share-dialog'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
@@ -81,10 +82,12 @@ const getFileExtension = (filename: string): string => {
 interface FileManagerProps {
   relationId?: string
   className?: string
+  isTeacher?: boolean
 }
 
-export function FileManager({ relationId, className }: FileManagerProps) {
+export function FileManager({ relationId, className, isTeacher = false }: FileManagerProps) {
   const [fileToDelete, setFileToDelete] = useState<FileData | null>(null)
+  const [fileToShare, setFileToShare] = useState<FileData | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   
   const queryClient = useQueryClient()
@@ -132,12 +135,14 @@ export function FileManager({ relationId, className }: FileManagerProps) {
 
   const validateFile = (file: File): boolean => {
     const allowedTypes = [
-      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'text/plain',
       'application/zip',
       'application/x-rar-compressed'
@@ -214,7 +219,7 @@ export function FileManager({ relationId, className }: FileManagerProps) {
       <input
         type="file"
         multiple
-        accept=".jpeg,.jpg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+        accept=".jpeg,.jpg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
         className="hidden"
         id="file-upload"
         onChange={handleFileInput}
@@ -274,6 +279,22 @@ export function FileManager({ relationId, className }: FileManagerProps) {
                       <Icon icon={FileIcon} size="md" className="text-zinc-600" />
                     </div>
                     <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      {isTeacher && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setFileToShare(file)}
+                          className={`h-7 w-7 p-0 hover:bg-white/80 border border-transparent hover:border-zinc-200/50 ${
+                            file.shares && file.shares.length > 0 ? 'text-primary' : ''
+                          }`}
+                          title={file.shares && file.shares.length > 0 
+                            ? `Поделился с ${file.shares.length} учеником(ами)` 
+                            : 'Поделиться'
+                          }
+                        >
+                          <Icon icon={Share2} size="xs" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -302,6 +323,15 @@ export function FileManager({ relationId, className }: FileManagerProps) {
                       <span>{getFileExtension(file.originalName)}</span>
                       <span>•</span>
                       <span>{format(new Date(file.createdAt), 'd MMM', { locale: ru })}</span>
+                      {isTeacher && file.shares && file.shares.length > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="flex items-center gap-1 text-primary">
+                            <Icon icon={Users} size="xs" />
+                            {file.shares.length}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -322,6 +352,15 @@ export function FileManager({ relationId, className }: FileManagerProps) {
         onConfirm={confirmDelete}
         variant="destructive"
       />
+
+      {/* Диалог для шаринга файла */}
+      {isTeacher && (
+        <ShareDialog
+          file={fileToShare}
+          open={!!fileToShare}
+          onOpenChange={(open) => !open && setFileToShare(null)}
+        />
+      )}
     </div>
   )
 }

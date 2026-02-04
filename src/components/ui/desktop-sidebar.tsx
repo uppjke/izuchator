@@ -8,7 +8,6 @@ import {
   Users, 
   FolderOpen,
   Home,
-  Settings,
   LogOut,
   type LucideIcon
 } from 'lucide-react'
@@ -167,15 +166,7 @@ export function DesktopSidebar({
       </nav>
 
       {/* Footer actions */}
-      <div className="p-3 border-t border-zinc-100 space-y-1">
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 h-10 px-4 rounded-xl"
-        >
-          <Icon icon={Settings} size="sm" className="text-zinc-500" />
-          <span className="text-sm font-medium text-zinc-700">Настройки</span>
-        </Button>
-
+      <div className="p-3 border-t border-zinc-100">
         {onLogout && (
           <Button
             variant="ghost"

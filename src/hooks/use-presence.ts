@@ -1,29 +1,93 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useSession } from 'next-auth/react'
+import type {
+  ClientToServerEvents,
+  ServerToClientEvents,
+  PresenceUpdatePayload,
+} from '../../server/types'
+
+// Typed socket для клиента
+type TypedClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>
 
 interface PresenceState {
   onlineUsers: Set<string>
+  lastSeenMap: Map<string, number>
   isUserOnline: (userId: string) => boolean
+  getLastSeen: (userId: string) => number | null
+  formatLastSeen: (userId: string) => string | null
   isTracking: boolean
+  isConnected: boolean
 }
 
+// Exponential backoff конфигурация
+const INITIAL_RECONNECT_DELAY = 1000
+const MAX_RECONNECT_DELAY = 30000
+const RECONNECT_MULTIPLIER = 2
+
 /**
- * Modern presence hook using Socket.io + Redis
- * Enterprise-grade решение для российских платформ
+ * Production-grade presence hook
+ * - Typed Socket.io events
+ * - Exponential backoff reconnection
+ * - Last seen formatting
+ * - Multi-device support
  */
 export function usePresence(): PresenceState {
   const { data: session } = useSession()
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
+  const [lastSeenMap, setLastSeenMap] = useState<Map<string, number>>(new Map())
   const [isTracking, setIsTracking] = useState(false)
-  const socketRef = useRef<Socket | null>(null)
+  const [isConnected, setIsConnected] = useState(false)
+  
+  const socketRef = useRef<TypedClientSocket | null>(null)
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectAttemptRef = useRef(0)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Форматирование "был N минут назад"
+  const formatLastSeen = useCallback((userId: string): string | null => {
+    const lastSeen = lastSeenMap.get(userId)
+    if (!lastSeen) return null
+
+    const now = Date.now()
+    const diff = now - lastSeen
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(diff / 86400000)
+
+    if (minutes < 1) return 'только что'
+    if (minutes < 60) {
+      const form = getMinutesForm(minutes)
+      return `${minutes} ${form} назад`
+    }
+    if (hours < 24) {
+      const form = getHoursForm(hours)
+      return `${hours} ${form} назад`
+    }
+    if (days < 7) {
+      const form = getDaysForm(days)
+      return `${days} ${form} назад`
+    }
+    
+    // Более недели - показываем дату
+    const date = new Date(lastSeen)
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+  }, [lastSeenMap])
+
+  const getLastSeen = useCallback((userId: string): number | null => {
+    return lastSeenMap.get(userId) || null
+  }, [lastSeenMap])
+
+  const isUserOnline = useCallback((userId: string): boolean => {
+    return onlineUsers.has(userId)
+  }, [onlineUsers])
 
   useEffect(() => {
     // Presence отключён если не задан NEXT_PUBLIC_PRESENCE_SERVER
-    if (!process.env.NEXT_PUBLIC_PRESENCE_SERVER) {
+    const presenceServerUrl = process.env.NEXT_PUBLIC_PRESENCE_SERVER
+    if (!presenceServerUrl) {
       return
     }
 
@@ -35,73 +99,132 @@ export function usePresence(): PresenceState {
 
     const userId = session.user.id
     
-    // Определяем является ли устройство мобильным
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    // Определяем тип устройства
+    const deviceType = detectDeviceType()
+    const isMobile = deviceType !== 'desktop'
     
-    // Используем NEXT_PUBLIC_PRESENCE_SERVER
-    const presenceServerUrl = process.env.NEXT_PUBLIC_PRESENCE_SERVER
-    
-    const socket = io(presenceServerUrl, {
-      transports: isMobile ? ['polling', 'websocket'] : ['websocket', 'polling'], // Для мобильных prioritize polling
-      timeout: 5000, // Быстрый таймаут
+    // Создаём socket с типизацией
+    const socket: TypedClientSocket = io(presenceServerUrl, {
+      transports: isMobile ? ['polling', 'websocket'] : ['websocket', 'polling'],
+      timeout: 10000,
       forceNew: false,
       autoConnect: true,
-      upgrade: !isMobile, // Отключаем upgrade для мобильных
+      upgrade: !isMobile,
       rememberUpgrade: false,
-      reconnection: true,
-      reconnectionAttempts: 1, // Минимум попыток - presence опционален
-      reconnectionDelay: 5000,
-      withCredentials: false // Для мобильных устройств
+      reconnection: false, // Мы сами управляем reconnection с exponential backoff
+      withCredentials: false
     })
 
     socketRef.current = socket
 
+    const connect = () => {
+      if (!socket.connected) {
+        socket.connect()
+      }
+    }
+
+    const scheduleReconnect = () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+      }
+
+      const delay = Math.min(
+        INITIAL_RECONNECT_DELAY * Math.pow(RECONNECT_MULTIPLIER, reconnectAttemptRef.current),
+        MAX_RECONNECT_DELAY
+      )
+      
+      reconnectAttemptRef.current++
+      
+      console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttemptRef.current})`)
+      
+      reconnectTimeoutRef.current = setTimeout(connect, delay)
+    }
+
     socket.on('connect', () => {
       console.log('🚀 Connected to presence server')
-      console.log('📱 User agent:', navigator.userAgent)
-      console.log('📶 Transport:', (socket as { io?: { engine?: { transport?: { name?: string } } } }).io?.engine?.transport?.name)
+      setIsConnected(true)
       setIsTracking(true)
+      reconnectAttemptRef.current = 0 // Reset on successful connect
       
       // Присоединяемся к presence tracking
-      socket.emit('join-presence', { userId })
+      socket.emit('join-presence', { 
+        userId,
+        metadata: {
+          deviceType,
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined
+        }
+      })
 
-      // Запускаем heartbeat каждые 30 секунд
+      // Запускаем heartbeat
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current)
+      }
       heartbeatRef.current = setInterval(() => {
         if (socket.connected) {
-          socket.emit('heartbeat', { userId })
+          socket.emit('heartbeat', { userId, timestamp: Date.now() })
         }
       }, 30000)
     })
 
-    socket.on('presence-update', (data: { onlineUsers: string[], timestamp: number }) => {
-      // Обновляем список онлайн пользователей
+    socket.on('presence-update', (data: PresenceUpdatePayload) => {
       setOnlineUsers(new Set(data.onlineUsers))
-      console.log('📡 Presence updated:', data.onlineUsers.length, 'users online')
+      setLastSeenMap(new Map(Object.entries(data.lastSeenMap)))
+    })
+
+    socket.on('user-online', ({ userId: onlineUserId }) => {
+      setOnlineUsers(prev => new Set(prev).add(onlineUserId))
+    })
+
+    socket.on('user-offline', ({ userId: offlineUserId, lastSeen }) => {
+      setOnlineUsers(prev => {
+        const next = new Set(prev)
+        next.delete(offlineUserId)
+        return next
+      })
+      setLastSeenMap(prev => new Map(prev).set(offlineUserId, lastSeen))
     })
 
     socket.on('disconnect', (reason) => {
       console.log('❌ Disconnected from presence server:', reason)
+      setIsConnected(false)
       setIsTracking(false)
-      setOnlineUsers(new Set())
       
       if (heartbeatRef.current) {
         clearInterval(heartbeatRef.current)
         heartbeatRef.current = null
       }
+
+      // Reconnect если это не намеренный disconnect
+      if (reason !== 'io client disconnect') {
+        scheduleReconnect()
+      }
     })
 
     socket.on('connect_error', (error) => {
-      // Тихо обрабатываем ошибку - presence сервер опционален
       if (process.env.NODE_ENV === 'development') {
         console.log('ℹ️ Presence server unavailable (optional):', error.message)
       }
+      setIsConnected(false)
       setIsTracking(false)
+      scheduleReconnect()
     })
 
-    // Cleanup при размонтировании
+    socket.on('error', ({ code, message }) => {
+      console.error('Presence error:', code, message)
+      
+      if (code === 'SERVER_SHUTDOWN') {
+        // Сервер перезапускается - подождем и переподключимся
+        scheduleReconnect()
+      }
+    })
+
+    // Cleanup
     return () => {
       if (heartbeatRef.current) {
         clearInterval(heartbeatRef.current)
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
       }
       
       if (socket.connected) {
@@ -112,11 +235,52 @@ export function usePresence(): PresenceState {
     }
   }, [session?.user?.id])
 
-  const isUserOnline = (userId: string) => onlineUsers.has(userId)
-
   return {
     onlineUsers,
+    lastSeenMap,
     isUserOnline,
-    isTracking
+    getLastSeen,
+    formatLastSeen,
+    isTracking,
+    isConnected
   }
+}
+
+// Helpers для склонения слов
+function getMinutesForm(n: number): string {
+  const lastTwo = n % 100
+  const lastOne = n % 10
+  
+  if (lastTwo >= 11 && lastTwo <= 14) return 'минут'
+  if (lastOne === 1) return 'минуту'
+  if (lastOne >= 2 && lastOne <= 4) return 'минуты'
+  return 'минут'
+}
+
+function getHoursForm(n: number): string {
+  const lastTwo = n % 100
+  const lastOne = n % 10
+  
+  if (lastTwo >= 11 && lastTwo <= 14) return 'часов'
+  if (lastOne === 1) return 'час'
+  if (lastOne >= 2 && lastOne <= 4) return 'часа'
+  return 'часов'
+}
+
+function getDaysForm(n: number): string {
+  const lastTwo = n % 100
+  const lastOne = n % 10
+  
+  if (lastTwo >= 11 && lastTwo <= 14) return 'дней'
+  if (lastOne === 1) return 'день'
+  if (lastOne >= 2 && lastOne <= 4) return 'дня'
+  return 'дней'
+}
+
+function detectDeviceType(): 'desktop' | 'mobile' | 'tablet' {
+  if (typeof navigator === 'undefined') return 'desktop'
+  const ua = navigator.userAgent
+  if (/tablet|ipad/i.test(ua)) return 'tablet'
+  if (/mobile|android|iphone/i.test(ua)) return 'mobile'
+  return 'desktop'
 }

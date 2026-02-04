@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack --hostname 0.0.0.0",
+    "dev": "next dev --hostname 0.0.0.0",
+    "dev:turbo": "next dev --turbopack --hostname 0.0.0.0",
+    "dev:https": "next dev --turbopack --hostname 0.0.0.0 --experimental-https",
     "build": "next build",
     "start": "next start",
     "dev:all": "prisma migrate dev && next dev --turbopack --hostname 0.0.0.0",
@@ -24,6 +26,7 @@
     "@radix-ui/react-popover": "^1.1.14",
     "@radix-ui/react-select": "^2.2.5",
     "@radix-ui/react-slot": "^1.2.3",
+    "@socket.io/redis-adapter": "^8.3.0",
     "@tanstack/react-query": "^5.85.0",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.12",

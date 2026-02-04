@@ -278,7 +278,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
               height: '2px',
               top: `${(currentHour * 64) + (currentMinutes / 60) * 64 - 1}px`, // 64px = высота ячейки
               boxShadow: '0 0 4px rgba(239, 68, 68, 0.6)',
-              zIndex: 9999
+              zIndex: 20
             }}
           />
         )}
@@ -298,7 +298,7 @@ export function WeekGrid({ week, lessons = [], onEditLesson }: WeekGridProps) {
                   style={{ 
                     top: `calc(${timeIndicatorPosition}% - 13px)`,
                     boxShadow: '0 0 4px rgba(239, 68, 68, 0.6)',
-                    zIndex: 9999,
+                    zIndex: 20,
                     width: '48px', // Фиксированная ширина для HH:MM формата
                     textAlign: 'center'
                   }}

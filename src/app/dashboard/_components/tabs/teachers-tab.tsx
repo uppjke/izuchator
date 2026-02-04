@@ -72,7 +72,7 @@ export function TeachersTab() {
   const updateNameMutation = useUpdateCustomName()
   
   // Используем присутствие для отслеживания онлайн статуса
-  const { isUserOnline } = usePresenceContext()
+  const { isUserOnline, formatLastSeen } = usePresenceContext()
 
   const handleInvite = () => {
     setInviteDialogOpen(true)
@@ -310,6 +310,7 @@ export function TeachersTab() {
                       size="md"
                       showOnlineStatus={true}
                       isOnline={relation.teacher?.id ? isUserOnline(relation.teacher.id) : false}
+                      lastSeenText={relation.teacher?.id ? formatLastSeen(relation.teacher.id) : null}
                     />
                   </motion.div>
                 )}

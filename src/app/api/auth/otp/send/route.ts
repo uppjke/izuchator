@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/database'
+import { normalizeEmail } from '@/lib/utils'
 import nodemailer from 'nodemailer'
 import { createHash } from 'crypto'
 import { buildOtpEmail } from '@/lib/email-templates'
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
     if (typeof email !== 'string') {
       return NextResponse.json({ error: 'Email required' }, { status: 400 })
     }
-    const normEmail = email.toLowerCase().trim()
+    const normEmail = normalizeEmail(email)
     if (!/^.+@.+\..+$/.test(normEmail)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
     }

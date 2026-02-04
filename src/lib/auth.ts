@@ -4,6 +4,7 @@ import { Pool } from "pg"
 import Credentials from "next-auth/providers/credentials"
 import { db } from "./database"
 import { createHash } from "crypto"
+import { normalizeEmail } from "./utils"
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -25,7 +26,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Проверка OTP кода
       async authorize(creds) {
         if (!creds?.email || !creds?.code) return null
-        const email = String(creds.email).toLowerCase().trim()
+        const email = normalizeEmail(String(creds.email))
         const code = String(creds.code).trim()
         if (code.length !== 6) return null
 
@@ -72,9 +73,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id
         token.role = (user as { role?: string }).role || 'STUDENT'
       }
+      
+      // Периодическая проверка существования пользователя в БД
+      // Проверяем каждые 5 минут, чтобы не нагружать БД
+      const now = Date.now()
+      const lastCheck = (token.lastDbCheck as number) || 0
+      const FIVE_MINUTES = 5 * 60 * 1000
+      
+      if (token.id && now - lastCheck > FIVE_MINUTES) {
+        const dbUser = await db.user.findUnique({ 
+          where: { id: token.id as string },
+          select: { id: true, role: true }
+        })
+        
+        if (!dbUser) {
+          // Пользователь удалён — инвалидируем токен
+          return { ...token, id: null, invalidated: true }
+        }
+        
+        // Синхронизируем роль из БД
+        token.role = dbUser.role
+        token.lastDbCheck = now
+      }
+      
       return token
     },
     async session({ session, token }) {
+      // Если токен инвалидирован — возвращаем пустую сессию
+      if ((token as { invalidated?: boolean }).invalidated || !token.id) {
+        return { ...session, user: undefined }
+      }
+      
       if (session.user && token) {
         session.user.id = token.id as string
         ;(session.user as { role?: string }).role = (token as { role?: string }).role || 'STUDENT'

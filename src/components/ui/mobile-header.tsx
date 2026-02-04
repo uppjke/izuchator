@@ -1,25 +1,34 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Bell, Search, Menu, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Icon } from '@/components/ui/icon'
+import { UserAvatar } from '@/components/ui/user-avatar'
+import { ProfileSheet } from '@/components/ui/profile-sheet'
 import { cn } from '@/lib/utils'
 
 interface MobileHeaderProps {
   title: string
-  onMenuClick?: () => void
-  showMenuButton?: boolean
+  user?: {
+    email?: string
+    name?: string
+    role?: string
+  } | null
+  userRole?: 'student' | 'teacher'
+  onLogout?: () => void
 }
 
 export function MobileHeader({ 
   title, 
-  onMenuClick, 
-  showMenuButton = false 
+  user,
+  userRole = 'student',
+  onLogout
 }: MobileHeaderProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   const toggleSearch = useCallback(() => setIsSearchOpen(prev => !prev), [])
   const closeSearch = useCallback(() => setIsSearchOpen(false), [])
@@ -37,19 +46,6 @@ export function MobileHeader({
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       <div className="flex items-center flex-1 min-w-0 gap-3">
-        {/* Menu button - только для планшетов */}
-        {showMenuButton && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onMenuClick}
-            className="flex-shrink-0 h-10 w-10 rounded-full"
-            aria-label="Открыть меню"
-          >
-            <Icon icon={Menu} size="md" />
-          </Button>
-        )}
-
         <AnimatePresence mode="wait">
           {!isSearchOpen ? (
             <motion.h1
@@ -113,17 +109,31 @@ export function MobileHeader({
           </Button>
         )}
 
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="relative h-10 w-10 rounded-full"
-          aria-label="Уведомления"
+        {/* Profile avatar */}
+        <button
+          onClick={() => setIsProfileOpen(true)}
+          className="h-10 w-10 rounded-full flex items-center justify-center touch-manipulation active:scale-95 transition-transform"
+          aria-label="Профиль"
         >
-          <Icon icon={Bell} size="md" className="text-zinc-600" />
-          {/* Notification badge */}
-          <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white" />
-        </Button>
+          <UserAvatar 
+            user={{
+              name: user?.name,
+              email: user?.email,
+              avatar_url: null
+            }}
+            size="sm"
+          />
+        </button>
       </div>
+
+      {/* Profile Sheet */}
+      <ProfileSheet
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={user}
+        userRole={userRole}
+        onLogout={onLogout}
+      />
     </header>
   )
 }

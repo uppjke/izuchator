@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell, Search } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Icon } from '@/components/ui/icon'
 import { cn } from '@/lib/utils'
@@ -30,7 +29,7 @@ export function DesktopHeader({ title }: DesktopHeaderProps) {
         {title}
       </h1>
 
-      {/* Right side - Search and notifications */}
+      {/* Right side - Search */}
       <div className="flex items-center gap-4">
         {/* Search */}
         <div className="relative w-80">
@@ -47,20 +46,6 @@ export function DesktopHeader({ title }: DesktopHeaderProps) {
             className="pl-10 h-10 bg-zinc-50 border-zinc-200 rounded-xl focus:bg-white"
           />
         </div>
-
-        {/* Notifications */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="relative h-10 w-10 rounded-full hover:bg-zinc-100"
-          aria-label="Уведомления"
-        >
-          <Icon icon={Bell} size="md" className="text-zinc-600" />
-          {/* Notification badge */}
-          <span className="absolute top-1 right-1 h-3 w-3 bg-red-500 rounded-full border-2 border-white">
-            <span className="sr-only">Новые уведомления</span>
-          </span>
-        </Button>
       </div>
     </header>
   )
