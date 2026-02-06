@@ -3,10 +3,9 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatDate } from './utils'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { Icon } from '@/components/ui/icon'
-import { Clock, CalendarOff } from 'lucide-react'
+import { CalendarOff } from 'lucide-react'
 import type { PlannerWeek, Lesson } from './types'
 import { useAuth } from '@/lib/auth-context'
 
@@ -228,64 +227,52 @@ export function AgendaView({
                 }
                 
                 const statusInfo = getStatusInfo(lesson.status || 'scheduled')
+                const accentColor = lesson.labelColor || '#3b82f6'
+                const timeStart = lessonDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+                const timeEnd = endTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
                 
                 return (
                   <motion.div
                     key={lesson.id}
                     variants={itemVariants}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileTap={{ scale: 0.97 }}
                   >
-                    <Card 
-                      className="cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden"
+                    <div 
+                      className="group cursor-pointer rounded-2xl bg-white border border-gray-200/80 shadow-sm hover:shadow-md active:shadow-sm transition-all duration-200 overflow-hidden flex"
                       onClick={() => onEditLesson(lesson)}
-                      style={lesson.labelColor ? { borderColor: lesson.labelColor, color: lesson.labelColor } : undefined}
                     >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between pr-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">
-                          <span className="truncate max-w-[160px] sm:max-w-none" style={lesson.labelColor ? { color: lesson.labelColor } : undefined}>{lesson.title}</span>
-                        </CardTitle>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Icon icon={Clock} size="xs" />
-                          <span className="ml-1">
-                            {lessonDate.toLocaleTimeString('ru-RU', { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })} - {endTime.toLocaleTimeString('ru-RU', { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}
+                      {/* Цветной акцент слева */}
+                      <div 
+                        className="w-1 flex-shrink-0 rounded-l-2xl" 
+                        style={{ backgroundColor: accentColor }} 
+                      />
+                      
+                      <div className="flex-1 min-w-0 px-4 py-3.5 space-y-2">
+                        {/* Первая строка: заголовок на всю ширину */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span 
+                            className="text-[15px] font-semibold truncate flex-1 min-w-0"
+                            style={{ color: accentColor }}
+                          >
+                            {lesson.title}
                           </span>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="pt-0">
-                      <div className="space-y-3">
-                        {/* Студент */}
-                        <div className="flex items-center">
-                          <UserAvatar 
-                            user={{ 
-                              name: studentDisplayName,
-                              avatar_url: null
-                            }} 
-                            size="sm" 
-                          />
-                          <span className="ml-2 text-sm font-medium text-gray-700">
-                            {studentDisplayName}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-end">
-                          {/* Статус */}
-                          <div className={`text-xs px-2 py-1 rounded-full border ${statusInfo.color}`}>
+                          <div className={`flex-shrink-0 text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${statusInfo.color}`}>
                             {statusInfo.label}
                           </div>
                         </div>
+                        
+                        {/* Вторая строка: время · участник */}
+                        <div className="flex items-center gap-2 text-[13px] text-gray-500">
+                          <span className="font-medium text-gray-600">{timeStart} – {timeEnd}</span>
+                          <span className="text-gray-300">·</span>
+                          <UserAvatar 
+                            user={{ name: studentDisplayName, avatar_url: null }} 
+                            size="xs" 
+                          />
+                          <span className="truncate">{studentDisplayName}</span>
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
                 </motion.div>
                 )
               })}

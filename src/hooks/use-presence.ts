@@ -86,9 +86,21 @@ export function usePresence(): PresenceState {
 
   useEffect(() => {
     // Presence отключён если не задан NEXT_PUBLIC_PRESENCE_SERVER
-    const presenceServerUrl = process.env.NEXT_PUBLIC_PRESENCE_SERVER
-    if (!presenceServerUrl) {
+    const envUrl = process.env.NEXT_PUBLIC_PRESENCE_SERVER
+    if (!envUrl) {
       return
+    }
+
+    // Динамически подставляем hostname из браузера,
+    // чтобы мобильные устройства в локальной сети (192.168.x.x)
+    // подключались к правильному адресу вместо localhost
+    let presenceServerUrl = envUrl
+    if (typeof window !== 'undefined') {
+      try {
+        const url = new URL(envUrl)
+        url.hostname = window.location.hostname
+        presenceServerUrl = url.origin
+      } catch { /* fallback to env value */ }
     }
 
     // Подключаемся только если пользователь аутентифицирован

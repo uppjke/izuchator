@@ -281,7 +281,7 @@ export function LessonDialog({ open, onOpenChange, selectedDate }: LessonDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-[95vw] sm:max-w-md p-0 flex flex-col max-h-[90vh] focus:outline-none">
+      <DialogContent className="w-full sm:max-w-md p-0 flex flex-col max-h-[90vh] focus:outline-none">
         <DialogHeader className="p-4 sm:p-6 pb-2">
           <DialogTitle className="text-center text-2xl font-semibold">Новый урок</DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">

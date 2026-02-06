@@ -36,9 +36,9 @@ function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
 function addSecurityHeaders(response: NextResponse): NextResponse {
   const isDev = process.env.NODE_ENV === 'development'
   
-  // В development разрешаем localhost для presence сервера
+  // В development разрешаем localhost и LAN IP для presence сервера
   const connectSrc = isDev 
-    ? "connect-src 'self' http://localhost:* ws://localhost:* https: wss:"
+    ? "connect-src 'self' http: ws: https: wss:"
     : "connect-src 'self' https: wss:"
   
   // Content Security Policy

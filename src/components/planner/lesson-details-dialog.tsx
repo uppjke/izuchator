@@ -287,7 +287,7 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onDeleted }: L
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-w-[95vw] focus:outline-none">
+      <DialogContent className="sm:max-w-lg w-full focus:outline-none">
         <DialogHeader className="text-center">
           <DialogTitle className="text-xl font-semibold text-center">
             {editMode ? (

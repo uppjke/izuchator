@@ -54,15 +54,12 @@ export function ShareDialog({ file, open, onOpenChange }: ShareDialogProps) {
 
   // Initialize selected relations from current shares
   useEffect(() => {
-    if (shares.length > 0) {
-      const sharedIds = new Set(shares.map((s) => s.relationId))
-      setSelectedRelations(sharedIds)
-      setInitialShares(sharedIds)
-    } else {
-      setSelectedRelations(new Set())
-      setInitialShares(new Set())
-    }
-  }, [shares])
+    if (!open) return
+    const sharedIds = new Set(shares.map((s) => s.relationId))
+    setSelectedRelations(sharedIds)
+    setInitialShares(sharedIds)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, JSON.stringify(shares.map((s) => s.relationId).sort())])
 
   const shareMutation = useMutation({
     mutationFn: async () => {

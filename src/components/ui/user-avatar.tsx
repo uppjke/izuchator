@@ -9,7 +9,7 @@ interface UserAvatarProps {
     avatar_url?: string | null
     id?: string
   } | null
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
   showOnlineStatus?: boolean
   isOnline?: boolean
@@ -17,6 +17,7 @@ interface UserAvatarProps {
 }
 
 const sizeClasses = {
+  xs: 'w-6 h-6 text-xs',
   sm: 'w-8 h-8 text-sm',
   md: 'w-10 h-10 text-sm lg:w-12 lg:h-12 lg:text-base',
   lg: 'w-16 h-16 text-lg'
@@ -51,8 +52,8 @@ export function UserAvatar({
           <Image
             src={user.avatar_url}
             alt={user.name || 'Пользователь'}
-            width={size === 'sm' ? 32 : size === 'md' ? 48 : 64}
-            height={size === 'sm' ? 32 : size === 'md' ? 48 : 64}
+            width={size === 'xs' ? 24 : size === 'sm' ? 32 : size === 'md' ? 48 : 64}
+            height={size === 'xs' ? 24 : size === 'sm' ? 32 : size === 'md' ? 48 : 64}
             className="w-full h-full object-cover"
           />
         </div>

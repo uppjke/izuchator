@@ -6,26 +6,47 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # Монтируем исходный код для hot reload
-      - ./src:/app/src
-      - ./public:/app/public
-      - ./prisma:/app/prisma
-      # Не монтируем node_modules (используем из контейнера)
+      # Монтируем весь проект для hot reload
+      - .:/app
+      # Переопределяем .env хоста на Docker-версию (Prisma читает .env из корня)
+      - ./.env.docker:/app/.env:ro
+      # Не монтируем node_modules и .next (используем из контейнера)
       - /app/node_modules
       - /app/.next
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/izuchator
-      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_SECRET=docker-dev-secret-change-in-production
       - AUTH_TRUST_HOST=true
       - NEXTAUTH_URL=http://localhost:3000
+      - NEXT_PUBLIC_PRESENCE_SERVER=http://localhost:3002
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # Запускаем в dev режиме
     command: pnpm dev
+
+  presence:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3002:3002"
+    volumes:
+      - .:/app
+      - ./.env.docker:/app/.env:ro
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - PRESENCE_PORT=3002
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/izuchator
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: pnpm presence:dev
 
   postgres:
     image: postgres:16-alpine
@@ -34,7 +55,8 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: izuchator
     ports:
-      - "5432:5432"
+      # Порт 5433 на хосте, чтобы не конфликтовать с локальным PostgreSQL
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -46,7 +68,8 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      # Порт 6380 на хосте, чтобы не конфликтовать с локальным Redis
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
