@@ -115,8 +115,15 @@ export function usePresence(): PresenceState {
     const deviceType = detectDeviceType()
     const isMobile = deviceType !== 'desktop'
     
+    let mounted = true
+    let socket: TypedClientSocket | null = null
+
+    // Delay connection to survive React 19 Strict Mode double-invoke
+    const connectTimer = setTimeout(() => {
+      if (!mounted) return
+
     // Создаём socket с типизацией
-    const socket: TypedClientSocket = io(presenceServerUrl, {
+    socket = io(presenceServerUrl, {
       transports: isMobile ? ['polling', 'websocket'] : ['websocket', 'polling'],
       timeout: 10000,
       forceNew: false,
@@ -130,12 +137,13 @@ export function usePresence(): PresenceState {
     socketRef.current = socket
 
     const connect = () => {
-      if (!socket.connected) {
+      if (socket && !socket.connected) {
         socket.connect()
       }
     }
 
     const scheduleReconnect = () => {
+      if (!mounted) return
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
       }
@@ -153,13 +161,14 @@ export function usePresence(): PresenceState {
     }
 
     socket.on('connect', () => {
+      if (!mounted) return
       console.log('🚀 Connected to presence server')
       setIsConnected(true)
       setIsTracking(true)
       reconnectAttemptRef.current = 0 // Reset on successful connect
       
       // Присоединяемся к presence tracking
-      socket.emit('join-presence', { 
+      socket!.emit('join-presence', { 
         userId,
         metadata: {
           deviceType,
@@ -172,22 +181,25 @@ export function usePresence(): PresenceState {
         clearInterval(heartbeatRef.current)
       }
       heartbeatRef.current = setInterval(() => {
-        if (socket.connected) {
+        if (socket?.connected) {
           socket.emit('heartbeat', { userId, timestamp: Date.now() })
         }
       }, 30000)
     })
 
     socket.on('presence-update', (data: PresenceUpdatePayload) => {
+      if (!mounted) return
       setOnlineUsers(new Set(data.onlineUsers))
       setLastSeenMap(new Map(Object.entries(data.lastSeenMap)))
     })
 
     socket.on('user-online', ({ userId: onlineUserId }) => {
+      if (!mounted) return
       setOnlineUsers(prev => new Set(prev).add(onlineUserId))
     })
 
     socket.on('user-offline', ({ userId: offlineUserId, lastSeen }) => {
+      if (!mounted) return
       setOnlineUsers(prev => {
         const next = new Set(prev)
         next.delete(offlineUserId)
@@ -197,6 +209,7 @@ export function usePresence(): PresenceState {
     })
 
     socket.on('disconnect', (reason) => {
+      if (!mounted) return
       console.log('❌ Disconnected from presence server:', reason)
       setIsConnected(false)
       setIsTracking(false)
@@ -213,6 +226,7 @@ export function usePresence(): PresenceState {
     })
 
     socket.on('connect_error', (error) => {
+      if (!mounted) return
       if (process.env.NODE_ENV === 'development') {
         console.log('ℹ️ Presence server unavailable (optional):', error.message)
       }
@@ -222,6 +236,7 @@ export function usePresence(): PresenceState {
     })
 
     socket.on('error', ({ code, message }) => {
+      if (!mounted) return
       console.error('Presence error:', code, message)
       
       if (code === 'SERVER_SHUTDOWN') {
@@ -230,8 +245,13 @@ export function usePresence(): PresenceState {
       }
     })
 
+    }, 100) // Delay to survive Strict Mode unmount
+
     // Cleanup
     return () => {
+      mounted = false
+      clearTimeout(connectTimer)
+
       if (heartbeatRef.current) {
         clearInterval(heartbeatRef.current)
       }
@@ -239,11 +259,13 @@ export function usePresence(): PresenceState {
         clearTimeout(reconnectTimeoutRef.current)
       }
       
-      if (socket.connected) {
-        socket.emit('leave-presence')
+      if (socket) {
+        if (socket.connected) {
+          socket.emit('leave-presence')
+        }
+        socket.disconnect()
+        socketRef.current = null
       }
-      
-      socket.disconnect()
     }
   }, [session?.user?.id])
 

@@ -42,104 +42,124 @@ export function useBoardSocket({
   const [boardUsers, setBoardUsers] = useState<BoardUser[]>([])
   const [cursors, setCursors] = useState<Map<string, CursorPosition>>(new Map())
 
+  // Store callbacks in refs to avoid re-triggering the effect
+  const callbacksRef = useRef({ onRemoteElement, onRemoteErase, onRemoteClear, onRemoteUndo })
+  callbacksRef.current = { onRemoteElement, onRemoteErase, onRemoteClear, onRemoteUndo }
+
   useEffect(() => {
     const envUrl = process.env.NEXT_PUBLIC_PRESENCE_SERVER
-    if (!envUrl || !session?.user?.id) return
+    if (!envUrl || !session?.user?.id || !boardId) return
 
-    // Derive URL from browser hostname (same as presence hook)
-    let serverUrl = envUrl
-    if (typeof window !== 'undefined') {
-      try {
-        const url = new URL(envUrl)
-        url.hostname = window.location.hostname
-        serverUrl = url.origin
-      } catch { /* fallback */ }
-    }
+    let mounted = true
+    let socket: Socket<BoardServerToClientEvents, BoardClientToServerEvents> | null = null
 
-    const socket: Socket<BoardServerToClientEvents, BoardClientToServerEvents> = io(
-      `${serverUrl}/board`,
-      {
-        transports: ['websocket', 'polling'],
-        timeout: 10000,
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 2000,
+    // Delay connection to survive React Strict Mode double-invoke
+    const connectTimer = setTimeout(() => {
+      if (!mounted) return
+
+      // Derive URL from browser hostname (same as presence hook)
+      let serverUrl = envUrl
+      if (typeof window !== 'undefined') {
+        try {
+          const url = new URL(envUrl)
+          url.hostname = window.location.hostname
+          serverUrl = url.origin
+        } catch { /* fallback */ }
       }
-    )
 
-    socketRef.current = socket
-    const currentUserId = session.user.id!
+      socket = io(
+        `${serverUrl}/board`,
+        {
+          transports: ['websocket', 'polling'],
+          timeout: 10000,
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 2000,
+        }
+      )
 
-    socket.on('connect', () => {
-      setIsConnected(true)
-      socket.emit('board:join', {
-        boardId,
-        userId: currentUserId,
+      socketRef.current = socket
+      const currentUserId = session.user!.id!
+
+      socket.on('connect', () => {
+        if (!mounted) return
+        setIsConnected(true)
+        socket!.emit('board:join', {
+          boardId,
+          userId: currentUserId,
+        })
       })
-    })
 
-    socket.on('disconnect', () => {
-      setIsConnected(false)
-    })
+      socket.on('disconnect', () => {
+        if (!mounted) return
+        setIsConnected(false)
+      })
 
-    // Remote drawing
-    socket.on('board:draw', ({ element, userId }) => {
-      if (userId !== currentUserId) {
-        onRemoteElement(element)
-      }
-    })
+      socket.on('board:draw', ({ element, userId }) => {
+        if (userId !== currentUserId) {
+          callbacksRef.current.onRemoteElement(element)
+        }
+      })
 
-    socket.on('board:erase', ({ elementIds, userId }) => {
-      if (userId !== currentUserId) {
-        onRemoteErase(elementIds)
-      }
-    })
+      socket.on('board:erase', ({ elementIds, userId }) => {
+        if (userId !== currentUserId) {
+          callbacksRef.current.onRemoteErase(elementIds)
+        }
+      })
 
-    socket.on('board:clear', ({ userId }) => {
-      if (userId !== currentUserId) {
-        onRemoteClear()
-      }
-    })
+      socket.on('board:clear', ({ userId }) => {
+        if (userId !== currentUserId) {
+          callbacksRef.current.onRemoteClear()
+        }
+      })
 
-    socket.on('board:undo', ({ elementId, userId }) => {
-      if (userId !== currentUserId) {
-        onRemoteUndo(elementId)
-      }
-    })
+      socket.on('board:undo', ({ elementId, userId }) => {
+        if (userId !== currentUserId) {
+          callbacksRef.current.onRemoteUndo(elementId)
+        }
+      })
 
-    socket.on('board:cursor', ({ x, y, userId, userName }) => {
-      if (userId !== currentUserId) {
+      socket.on('board:cursor', ({ x, y, userId, userName }) => {
+        if (!mounted || userId === currentUserId) return
         setCursors(prev => {
           const next = new Map(prev)
           next.set(userId, { x, y, userId, userName })
           return next
         })
-      }
-    })
-
-    socket.on('board:user-joined', ({ userId, userName }) => {
-      setBoardUsers(prev => {
-        if (prev.some(u => u.userId === userId)) return prev
-        return [...prev, { userId, userName }]
       })
-    })
 
-    socket.on('board:user-left', ({ userId }) => {
-      setBoardUsers(prev => prev.filter(u => u.userId !== userId))
-      setCursors(prev => {
-        const next = new Map(prev)
-        next.delete(userId)
-        return next
+      socket.on('board:user-joined', ({ userId, userName }) => {
+        if (!mounted) return
+        setBoardUsers(prev => {
+          if (prev.some(u => u.userId === userId)) return prev
+          return [...prev, { userId, userName }]
+        })
       })
-    })
 
-    socket.on('board:users', ({ users }) => {
-      setBoardUsers(users)
-    })
+      socket.on('board:user-left', ({ userId }) => {
+        if (!mounted) return
+        setBoardUsers(prev => prev.filter(u => u.userId !== userId))
+        setCursors(prev => {
+          const next = new Map(prev)
+          next.delete(userId)
+          return next
+        })
+      })
+
+      socket.on('board:users', ({ users }) => {
+        if (!mounted) return
+        setBoardUsers(users)
+      })
+    }, 100) // Delay to survive Strict Mode unmount
 
     return () => {
-      socket.emit('board:leave', { boardId })
-      socket.disconnect()
+      mounted = false
+      clearTimeout(connectTimer)
+      if (socket) {
+        socket.emit('board:leave', { boardId })
+        socket.disconnect()
+        socketRef.current = null
+      }
     }
   }, [boardId, session?.user?.id])
 
