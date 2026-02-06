@@ -7,6 +7,7 @@ import {
   Calendar, 
   Users, 
   FolderOpen,
+  PenLine,
   Home,
   LogOut,
   type LucideIcon
@@ -16,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
 import { UserAvatar } from '@/components/ui/user-avatar'
 
-export type TabId = 'dashboard' | 'planner' | 'students' | 'teachers' | 'materials'
+export type TabId = 'dashboard' | 'planner' | 'students' | 'teachers' | 'materials' | 'boards'
 
 interface TabItem {
   id: TabId
@@ -52,6 +53,11 @@ const navigationItems: TabItem[] = [
     id: 'materials',
     title: 'Мои материалы',
     icon: FolderOpen,
+  },
+  {
+    id: 'boards',
+    title: 'Доски',
+    icon: PenLine,
   },
 ]
 

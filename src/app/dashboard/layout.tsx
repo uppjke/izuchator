@@ -19,6 +19,7 @@ import { PlannerTab } from "./_components/tabs/planner-tab";
 import { StudentsTab } from "./_components/tabs/students-tab";
 import { TeachersTab } from "./_components/tabs/teachers-tab";
 import { MaterialsTab } from "./_components/tabs/materials-tab";
+import { BoardsTab } from "./_components/tabs/boards-tab";
 
 type UserRole = "student" | "teacher";
 
@@ -29,6 +30,7 @@ const tabNames: Record<TabId, string> = {
   students: 'Мои ученики',
   teachers: 'Мои учителя',
   materials: 'Материалы',
+  boards: 'Доски',
 }
 
 // Компоненты табов
@@ -38,6 +40,7 @@ const tabComponents = {
   students: StudentsTab,
   teachers: TeachersTab,
   materials: MaterialsTab,
+  boards: BoardsTab,
 } as const;
 
 export default function DashboardLayout() {

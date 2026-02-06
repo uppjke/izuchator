@@ -424,3 +424,79 @@ export async function getSharedFiles(): Promise<SharedFileData[]> {
   const data = await response.json()
   return data.files
 }
+
+// ============================================================================
+// Работа с досками
+// ============================================================================
+
+export interface BoardListItem {
+  id: string
+  title: string
+  teacherId: string
+  relationId: string | null
+  thumbnail: string | null
+  createdAt: string
+  updatedAt: string
+  teacher?: { id: string; name: string | null; email: string }
+  relation?: {
+    id: string
+    student: { id: string; name: string | null; email: string }
+  } | null
+  _count: { elements: number }
+}
+
+export interface CreateBoardData {
+  title?: string
+  relationId?: string
+}
+
+export async function getBoards(): Promise<BoardListItem[]> {
+  const response = await fetch('/api/boards')
+  if (!response.ok) {
+    throw new Error('Failed to fetch boards')
+  }
+  const data = await response.json()
+  return data.boards
+}
+
+export async function createBoard(data: CreateBoardData = {}): Promise<BoardListItem> {
+  const response = await fetch('/api/boards', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const err = await response.json()
+    throw new Error(err.error || 'Failed to create board')
+  }
+  return response.json()
+}
+
+export async function getBoard(id: string) {
+  const response = await fetch(`/api/boards/${id}`)
+  if (!response.ok) {
+    throw new Error('Failed to fetch board')
+  }
+  return response.json()
+}
+
+export async function updateBoard(id: string, data: { title?: string; settings?: Record<string, unknown> }) {
+  const response = await fetch(`/api/boards/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    throw new Error('Failed to update board')
+  }
+  return response.json()
+}
+
+export async function deleteBoard(id: string): Promise<void> {
+  const response = await fetch(`/api/boards/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    throw new Error('Failed to delete board')
+  }
+}

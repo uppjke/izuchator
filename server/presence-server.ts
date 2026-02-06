@@ -114,6 +114,7 @@ class PresenceServer {
       // Setup handlers
       this.setupMiddleware()
       this.setupEventHandlers()
+      this.setupBoardNamespace()
       this.setupRedisHandlers()
       this.startCleanupTimer()
       this.startMetricsTimer()
@@ -217,6 +218,113 @@ class PresenceServer {
     this.redisPub.on('error', (err) => console.error('Redis pub error:', err))
     this.redisSub.on('error', (err) => console.error('Redis sub error:', err))
     this.redisStore.on('error', (err) => console.error('Redis store error:', err))
+  }
+
+  // ========================================================================
+  // Board namespace — real-time доска для уроков
+  // ========================================================================
+
+  private boardUsers = new Map<string, Map<string, { userId: string; userName: string; socketId: string }>>()
+  // boardId -> Map<userId, { userId, userName, socketId }>
+
+  private setupBoardNamespace() {
+    const boardNsp = this.io.of('/board')
+
+    boardNsp.on('connection', (socket) => {
+      console.log(`🎨 Board socket connected: ${socket.id}`)
+
+      socket.on('board:join', ({ boardId, userId }) => {
+        socket.join(boardId)
+        socket.data.boardId = boardId
+        socket.data.userId = userId
+
+        // Track user in board
+        if (!this.boardUsers.has(boardId)) {
+          this.boardUsers.set(boardId, new Map())
+        }
+        const users = this.boardUsers.get(boardId)!
+        const userName = userId.slice(0, 8) // Fallback name
+        users.set(userId, { userId, userName, socketId: socket.id })
+
+        // Notify others
+        socket.to(boardId).emit('board:user-joined', { userId, userName })
+
+        // Send current users list
+        const currentUsers = Array.from(users.values()).map(u => ({
+          userId: u.userId,
+          userName: u.userName,
+        }))
+        socket.emit('board:users', { users: currentUsers })
+
+        console.log(`🎨 User ${userId} joined board ${boardId} (${users.size} users)`)
+      })
+
+      socket.on('board:leave', ({ boardId }) => {
+        this.handleBoardLeave(socket, boardId)
+      })
+
+      socket.on('board:draw', ({ boardId, element }) => {
+        socket.to(boardId).emit('board:draw', {
+          element,
+          userId: socket.data.userId || '',
+        })
+      })
+
+      socket.on('board:erase', ({ boardId, elementIds }) => {
+        socket.to(boardId).emit('board:erase', {
+          elementIds,
+          userId: socket.data.userId || '',
+        })
+      })
+
+      socket.on('board:cursor', ({ boardId, x, y, userId }) => {
+        const users = this.boardUsers.get(boardId)
+        const user = users?.get(userId)
+        socket.to(boardId).emit('board:cursor', {
+          x,
+          y,
+          userId,
+          userName: user?.userName || userId.slice(0, 8),
+        })
+      })
+
+      socket.on('board:clear', ({ boardId }) => {
+        socket.to(boardId).emit('board:clear', {
+          userId: socket.data.userId || '',
+        })
+      })
+
+      socket.on('board:undo', ({ boardId, elementId }) => {
+        socket.to(boardId).emit('board:undo', {
+          elementId,
+          userId: socket.data.userId || '',
+        })
+      })
+
+      socket.on('disconnect', () => {
+        const boardId = socket.data.boardId as string | undefined
+        if (boardId) {
+          this.handleBoardLeave(socket, boardId)
+        }
+      })
+    })
+  }
+
+  private handleBoardLeave(socket: TypedSocket | { data: Record<string, unknown>; id: string }, boardId: string) {
+    const userId = socket.data.userId as string | undefined
+    if (!userId) return
+
+    const users = this.boardUsers.get(boardId)
+    if (users) {
+      users.delete(userId)
+      if (users.size === 0) {
+        this.boardUsers.delete(boardId)
+      }
+    }
+
+    // Notify room
+    this.io.of('/board').to(boardId).emit('board:user-left', { userId })
+    console.log(`🎨 User ${userId} left board ${boardId}`)
   }
 
   private async handleJoin(socket: TypedSocket, data: JoinPresencePayload) {

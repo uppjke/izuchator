@@ -27,6 +27,8 @@ model User {
   lessons           Lesson[]
   inviteUses        InviteUse[]
   files             File[]
+  boards            Board[]        @relation("BoardCreator")
+  boardElements     BoardElement[] @relation("ElementCreator")
 
   @@map("users")
 }
@@ -95,6 +97,7 @@ model TeacherStudentRelation {
   lessons    Lesson[]    @relation("LessonRelation")
   files      File[]
   fileShares FileShare[]
+  boards     Board[]     @relation("BoardRelation")
 
   @@unique([teacherId, studentId])
   @@map("teacher_student_relations")
@@ -208,4 +211,44 @@ enum FileType {
   AUDIO
   ARCHIVE
   OTHER
+}
+
+// ============================================================================
+// Доска для проведения уроков
+// ============================================================================
+
+model Board {
+  id          String   @id @default(cuid())
+  title       String   @default("Без названия")
+  teacherId   String   @map("teacher_id")
+  relationId  String?  @map("relation_id")
+  settings    Json     @default("{\"background\":\"#ffffff\",\"gridEnabled\":false}")
+  thumbnail   String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  teacher  User                    @relation("BoardCreator", fields: [teacherId], references: [id], onDelete: Cascade)
+  relation TeacherStudentRelation? @relation("BoardRelation", fields: [relationId], references: [id], onDelete: SetNull)
+  elements BoardElement[]
+
+  @@index([teacherId])
+  @@index([relationId])
+  @@map("boards")
+}
+
+model BoardElement {
+  id        String   @id @default(cuid())
+  boardId   String   @map("board_id")
+  type      String   // pen, text, rect, circle, line, image, highlight
+  data      Json     // { points, position, style, content, src, ... }
+  zIndex    Int      @default(0) @map("z_index")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  board   Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  creator User  @relation("ElementCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([boardId])
+  @@map("board_elements")
 }

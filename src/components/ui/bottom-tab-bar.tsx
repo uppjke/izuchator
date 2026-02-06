@@ -6,12 +6,13 @@ import {
   Calendar, 
   Users, 
   FolderOpen,
+  PenLine,
   type LucideIcon
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Icon } from '@/components/ui/icon'
 
-export type TabId = 'dashboard' | 'planner' | 'students' | 'teachers' | 'materials'
+export type TabId = 'dashboard' | 'planner' | 'students' | 'teachers' | 'materials' | 'boards'
 
 interface TabItem {
   id: TabId
@@ -47,6 +48,11 @@ const navigationItems: TabItem[] = [
     id: 'materials',
     title: 'Материалы',
     icon: FolderOpen,
+  },
+  {
+    id: 'boards',
+    title: 'Доски',
+    icon: PenLine,
   },
 ]
 
