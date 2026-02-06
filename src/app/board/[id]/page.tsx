@@ -95,7 +95,7 @@ export default function BoardPage() {
           throw new Error('Ошибка загрузки доски')
         }
         const data = await res.json()
-        setBoard(data)
+        setBoard(data.board)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Неизвестная ошибка')
       } finally {

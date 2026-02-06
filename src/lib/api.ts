@@ -469,7 +469,8 @@ export async function createBoard(data: CreateBoardData = {}): Promise<BoardList
     const err = await response.json()
     throw new Error(err.error || 'Failed to create board')
   }
-  return response.json()
+  const result = await response.json()
+  return result.board
 }
 
 export async function getBoard(id: string) {
