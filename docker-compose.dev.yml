@@ -20,6 +20,7 @@ services:
       - AUTH_TRUST_HOST=true
       - NEXTAUTH_URL=http://localhost:3000
       - NEXT_PUBLIC_PRESENCE_SERVER=http://localhost:3002
+      - HOST_LAN_IP=192.168.1.177
     depends_on:
       postgres:
         condition: service_healthy

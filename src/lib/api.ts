@@ -440,7 +440,8 @@ export interface BoardListItem {
   teacher?: { id: string; name: string | null; email: string }
   relation?: {
     id: string
-    student: { id: string; name: string | null; email: string }
+    student?: { id: string; name: string | null; email: string }
+    teacher?: { id: string; name: string | null; email: string }
   } | null
   _count: { elements: number }
 }

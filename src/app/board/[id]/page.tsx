@@ -29,6 +29,7 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [showUsers, setShowUsers] = useState(false)
 
@@ -58,6 +59,7 @@ export default function BoardPage() {
     state,
     setState,
     elements,
+    loadElements,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
@@ -70,7 +72,6 @@ export default function BoardPage() {
     removeRemoteElements,
     render,
   } = useCanvas({
-    initialElements: board?.elements || [],
     userId,
     onElementAdd: (element) => {
       emitDraw(element)
@@ -96,6 +97,10 @@ export default function BoardPage() {
         }
         const data = await res.json()
         setBoard(data.board)
+        // Load saved elements into canvas
+        if (data.board.elements?.length > 0) {
+          loadElements(data.board.elements)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Неизвестная ошибка')
       } finally {
@@ -104,7 +109,7 @@ export default function BoardPage() {
     }
 
     loadBoard()
-  }, [boardId])
+  }, [boardId, loadElements])
 
   // Resize canvas to fill container
   useEffect(() => {
@@ -154,21 +159,24 @@ export default function BoardPage() {
   )
 
   // Auto-save
+  const saveBoardRef = useRef<(() => Promise<void>) | undefined>(undefined)
+
   const scheduleAutoSave = useCallback(() => {
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current)
     }
     autoSaveTimerRef.current = setTimeout(() => {
-      saveBoard()
+      saveBoardRef.current?.()
     }, 3000) // 3 seconds after last edit
   }, [])
 
   const saveBoard = useCallback(async () => {
-    if (!boardId || saving) return
+    if (!boardId || savingRef.current) return
 
+    savingRef.current = true
     setSaving(true)
     try {
-      // Save elements via batch API
+      // Save elements via batch API (replace all)
       await fetch(`/api/boards/${boardId}/elements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -178,9 +186,15 @@ export default function BoardPage() {
     } catch {
       console.error('Ошибка сохранения доски')
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
-  }, [boardId, elements, saving])
+  }, [boardId, elements])
+
+  // Keep saveBoardRef up to date
+  useEffect(() => {
+    saveBoardRef.current = saveBoard
+  }, [saveBoard])
 
   // Cleanup auto-save timer
   useEffect(() => {
@@ -297,14 +311,16 @@ export default function BoardPage() {
       </div>
 
       {/* Canvas area */}
-      <div ref={containerRef} className="flex-1 relative overflow-hidden touch-none">
+      <div ref={containerRef} className="flex-1 relative overflow-hidden">
         <canvas
           ref={canvasRef}
           className="absolute inset-0 cursor-crosshair"
+          style={{ touchAction: 'none' }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMoveWithCursor}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
+          onPointerCancel={handlePointerUp}
         />
 
         {/* Remote cursors overlay */}

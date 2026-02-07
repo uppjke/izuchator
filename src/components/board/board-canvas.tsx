@@ -204,12 +204,12 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
   const isDrawingRef = useRef(false)
   const startPointRef = useRef<[number, number]>([0, 0])
 
-  // Загружаем начальные элементы
-  useEffect(() => {
-    if (initialElements.length > 0) {
-      setElements(initialElements)
-    }
-  }, []) // Только при монтировании
+  // Загрузка элементов извне (при получении данных с сервера)
+  const loadElements = useCallback((els: BoardElement[]) => {
+    setElements(els)
+    setUndoStack([])
+    setRedoStack([])
+  }, [])
 
   // ========== Рендеринг ==========
 
@@ -253,6 +253,27 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     return () => window.removeEventListener('resize', handleResize)
   }, [render])
 
+  // Prevent native touch default behaviors (scroll, zoom, back gesture)
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const preventTouch = (e: TouchEvent) => {
+      e.preventDefault()
+    }
+
+    // Must be { passive: false } to allow preventDefault
+    canvas.addEventListener('touchstart', preventTouch, { passive: false })
+    canvas.addEventListener('touchmove', preventTouch, { passive: false })
+    canvas.addEventListener('touchend', preventTouch, { passive: false })
+
+    return () => {
+      canvas.removeEventListener('touchstart', preventTouch)
+      canvas.removeEventListener('touchmove', preventTouch)
+      canvas.removeEventListener('touchend', preventTouch)
+    }
+  }, [])
+
   // ========== Получение координат ==========
 
   const getCanvasPoint = useCallback((e: React.PointerEvent): [number, number] => {
@@ -265,7 +286,11 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
   // ========== Обработчики рисования ==========
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (e.button !== 0) return // Только левая кнопка
+    // Prevent default to stop browser gestures (scroll, zoom, back navigation)
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (e.button !== 0 && e.pointerType === 'mouse') return // Only left button for mouse
     const [x, y] = getCanvasPoint(e)
     isDrawingRef.current = true
     startPointRef.current = [x, y]
@@ -369,6 +394,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDrawingRef.current) return
+    e.preventDefault()
     const [x, y] = getCanvasPoint(e)
 
     // Continuous eraser — doesn't use drawingRef
@@ -530,6 +556,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     state,
     setState,
     elements,
+    loadElements,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,

@@ -27,6 +27,12 @@ function getAllowedOrigins(): string[] {
       }
     }
     
+    // Добавляем LAN IP хоста из env (для Docker-контейнеров, которые видят только внутреннюю сеть)
+    if (process.env.HOST_LAN_IP) {
+      const hostIPs = process.env.HOST_LAN_IP.split(',').map(ip => ip.trim());
+      localIPs.push(...hostIPs);
+    }
+    
     console.log(`🌐 Allowed origins: ${[...baseOrigins, ...localIPs].join(', ')}`);
     return [...baseOrigins, ...localIPs];
   } catch (error) {

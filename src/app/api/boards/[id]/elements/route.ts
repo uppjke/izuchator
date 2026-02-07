@@ -32,10 +32,34 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { elements } = body // Поддерживаем batch-добавление
+    const { elements, replace } = body // Поддерживаем batch-добавление и замену
 
     if (Array.isArray(elements)) {
-      // Batch-создание (для загрузки сохранённой доски)
+      if (replace) {
+        // Полная замена — удаляем старые и создаём новые в транзакции
+        const result = await db.$transaction(async (tx) => {
+          await tx.boardElement.deleteMany({ where: { boardId } })
+
+          if (elements.length === 0) return { count: 0 }
+
+          const created = await tx.boardElement.createMany({
+            data: elements.map((el: { id?: string; type: string; data: unknown; zIndex?: number }, i: number) => ({
+              ...(el.id && { id: el.id }),
+              boardId,
+              type: el.type,
+              data: el.data as object,
+              zIndex: el.zIndex ?? i,
+              createdBy: userId,
+            }))
+          })
+
+          return { count: created.count }
+        })
+
+        return NextResponse.json({ count: result.count }, { status: 201 })
+      }
+
+      // Batch-создание (добавление к существующим)
       const maxZ = await db.boardElement.aggregate({
         where: { boardId },
         _max: { zIndex: true }
