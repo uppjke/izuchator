@@ -3,7 +3,10 @@
 // ============================================================================
 
 // Инструменты доски
-export type BoardTool = 'select' | 'pen' | 'highlight' | 'text' | 'rect' | 'circle' | 'line' | 'eraser' | 'image'
+export type BoardTool = 'select' | 'pen' | 'highlight' | 'text' | 'rect' | 'circle' | 'line' | 'eraser' | 'image' | 'pan'
+
+// Тип сетки
+export type GridType = 'none' | 'dots' | 'lines' | 'squares'
 
 // Стиль линии
 export interface StrokeStyle {
@@ -11,6 +14,26 @@ export interface StrokeStyle {
   width: number
   opacity: number
 }
+
+// ============================================================================
+// Viewport — масштабирование и панорамирование
+// ============================================================================
+
+export interface ViewportState {
+  offsetX: number
+  offsetY: number
+  scale: number
+}
+
+export const DEFAULT_VIEWPORT: ViewportState = {
+  offsetX: 0,
+  offsetY: 0,
+  scale: 1,
+}
+
+export const MIN_SCALE = 0.1
+export const MAX_SCALE = 5
+export const ZOOM_STEP = 0.1
 
 // Базовый элемент доски
 export interface BoardElementBase {
@@ -110,6 +133,7 @@ export type BoardElement = PenElement | TextElement | RectElement | CircleElemen
 export interface BoardSettings {
   background: string
   gridEnabled: boolean
+  gridType?: GridType
 }
 
 // Данные доски
@@ -164,24 +188,37 @@ export interface BoardListItem {
 // ============================================================================
 
 export interface BoardClientToServerEvents {
-  'board:join': (data: { boardId: string; userId: string }) => void
+  'board:join': (data: { boardId: string; userId: string; userName: string }) => void
   'board:leave': (data: { boardId: string }) => void
   'board:draw': (data: { boardId: string; element: BoardElement }) => void
+  'board:draw-progress': (data: { boardId: string; element: BoardElement }) => void
+  'board:move-batch': (data: { boardId: string; elements: BoardElement[] }) => void
+  'board:move-delta': (data: { boardId: string; elementIds: string[]; dx: number; dy: number }) => void
+  'board:resize-delta': (data: { boardId: string; elementIds: string[]; handle: string; dx: number; dy: number; originalBounds: { x: number; y: number; w: number; h: number } }) => void
   'board:erase': (data: { boardId: string; elementIds: string[] }) => void
   'board:cursor': (data: { boardId: string; x: number; y: number; userId: string }) => void
+  'board:select': (data: { boardId: string; elementIds: string[] }) => void
   'board:clear': (data: { boardId: string }) => void
   'board:undo': (data: { boardId: string; elementId: string }) => void
+  'board:state-response': (data: { boardId: string; requesterId: string; elements: BoardElement[] }) => void
 }
 
 export interface BoardServerToClientEvents {
   'board:draw': (data: { element: BoardElement; userId: string }) => void
+  'board:draw-progress': (data: { element: BoardElement; userId: string }) => void
+  'board:move-batch': (data: { elements: BoardElement[]; userId: string }) => void
+  'board:move-delta': (data: { elementIds: string[]; dx: number; dy: number; userId: string }) => void
+  'board:resize-delta': (data: { elementIds: string[]; handle: string; dx: number; dy: number; originalBounds: { x: number; y: number; w: number; h: number }; userId: string }) => void
   'board:erase': (data: { elementIds: string[]; userId: string }) => void
   'board:cursor': (data: { x: number; y: number; userId: string; userName: string }) => void
+  'board:select': (data: { elementIds: string[]; userId: string }) => void
   'board:user-joined': (data: { userId: string; userName: string }) => void
   'board:user-left': (data: { userId: string }) => void
   'board:clear': (data: { userId: string }) => void
   'board:undo': (data: { elementId: string; userId: string }) => void
   'board:users': (data: { users: Array<{ userId: string; userName: string }> }) => void
+  'board:request-state': (data: { requesterId: string }) => void
+  'board:sync-state': (data: { elements: BoardElement[] }) => void
 }
 
 // Состояние холста
@@ -192,6 +229,7 @@ export interface CanvasState {
   fillColor: string | null
   opacity: number
   fontSize: number
+  gridType: GridType
 }
 
 export const DEFAULT_CANVAS_STATE: CanvasState = {
@@ -201,6 +239,7 @@ export const DEFAULT_CANVAS_STATE: CanvasState = {
   fillColor: null,
   opacity: 1,
   fontSize: 16,
+  gridType: 'dots',
 }
 
 export const HIGHLIGHT_DEFAULTS = {
@@ -219,4 +258,12 @@ export const TOOL_LABELS: Record<BoardTool, string> = {
   line: 'Линия',
   eraser: 'Ластик',
   image: 'Изображение',
+  pan: 'Перемещение',
+}
+
+export const GRID_LABELS: Record<GridType, string> = {
+  none: 'Нет',
+  dots: 'Точки',
+  lines: 'Линии',
+  squares: 'Клетки',
 }

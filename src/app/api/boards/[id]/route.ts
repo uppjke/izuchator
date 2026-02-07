@@ -77,7 +77,22 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { title, settings, thumbnail } = body
+    const { title, settings, thumbnail, relationId } = body
+
+    // Если указан relationId — проверяем, что это связь текущего учителя
+    if (relationId !== undefined && relationId !== null) {
+      const relation = await db.teacherStudentRelation.findFirst({
+        where: {
+          id: relationId,
+          teacherId: session.user.id,
+          status: 'ACTIVE',
+          deletedAt: null,
+        }
+      })
+      if (!relation) {
+        return NextResponse.json({ error: 'Связь не найдена' }, { status: 404 })
+      }
+    }
 
     const updatedBoard = await db.board.update({
       where: { id },
@@ -85,6 +100,15 @@ export async function PATCH(
         ...(title !== undefined && { title }),
         ...(settings !== undefined && { settings }),
         ...(thumbnail !== undefined && { thumbnail }),
+        ...(relationId !== undefined && { relationId: relationId || null }),
+      },
+      include: {
+        relation: {
+          include: {
+            student: { select: { id: true, name: true, email: true } },
+            teacher: { select: { id: true, name: true, email: true } },
+          }
+        },
       },
     })
 

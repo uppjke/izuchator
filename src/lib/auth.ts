@@ -69,9 +69,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        // Первичный вход: переносим id/role в токен
+        // Первичный вход: переносим id/role/name/email в токен
         token.id = user.id
         token.role = (user as { role?: string }).role || 'STUDENT'
+        token.name = user.name || null
+        token.email = user.email || null
       }
       
       // Периодическая проверка существования пользователя в БД
@@ -83,7 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.id && now - lastCheck > FIVE_MINUTES) {
         const dbUser = await db.user.findUnique({ 
           where: { id: token.id as string },
-          select: { id: true, role: true }
+          select: { id: true, role: true, name: true, email: true }
         })
         
         if (!dbUser) {
@@ -91,8 +93,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return { ...token, id: null, invalidated: true }
         }
         
-        // Синхронизируем роль из БД
+        // Синхронизируем роль и имя из БД
         token.role = dbUser.role
+        token.name = dbUser.name || token.name
+        token.email = dbUser.email || token.email
         token.lastDbCheck = now
       }
       
@@ -106,6 +110,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       
       if (session.user && token) {
         session.user.id = token.id as string
+        session.user.name = (token.name as string) || null
+        if (token.email) session.user.email = token.email as string
         ;(session.user as { role?: string }).role = (token as { role?: string }).role || 'STUDENT'
       }
       return session

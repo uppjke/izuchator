@@ -482,7 +482,7 @@ export async function getBoard(id: string) {
   return response.json()
 }
 
-export async function updateBoard(id: string, data: { title?: string; settings?: Record<string, unknown> }) {
+export async function updateBoard(id: string, data: { title?: string; settings?: Record<string, unknown>; relationId?: string | null }) {
   const response = await fetch(`/api/boards/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

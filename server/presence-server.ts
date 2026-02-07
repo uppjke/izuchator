@@ -233,7 +233,7 @@ class PresenceServer {
     boardNsp.on('connection', (socket) => {
       console.log(`🎨 Board socket connected: ${socket.id}`)
 
-      socket.on('board:join', ({ boardId, userId }) => {
+      socket.on('board:join', ({ boardId, userId, userName: clientUserName }) => {
         socket.join(boardId)
         socket.data.boardId = boardId
         socket.data.userId = userId
@@ -243,7 +243,7 @@ class PresenceServer {
           this.boardUsers.set(boardId, new Map())
         }
         const users = this.boardUsers.get(boardId)!
-        const userName = userId.slice(0, 8) // Fallback name
+        const userName = clientUserName || userId.slice(0, 8)
         users.set(userId, { userId, userName, socketId: socket.id })
 
         // Notify others
@@ -255,6 +255,15 @@ class PresenceServer {
           userName: u.userName,
         }))
         socket.emit('board:users', { users: currentUsers })
+
+        // Request state sync from an existing peer (if any)
+        // This ensures the joining user gets the latest unsaved state
+        const otherUser = Array.from(users.values()).find(u => u.userId !== userId)
+        if (otherUser) {
+          const boardNsp = this.io.of('/board')
+          boardNsp.to(otherUser.socketId).emit('board:request-state', { requesterId: socket.id })
+          console.log(`🔄 Requesting state sync from ${otherUser.userId} for joining ${userId}`)
+        }
 
         console.log(`🎨 User ${userId} joined board ${boardId} (${users.size} users)`)
       })
@@ -270,8 +279,49 @@ class PresenceServer {
         })
       })
 
+      socket.on('board:draw-progress', ({ boardId, element }) => {
+        socket.to(boardId).emit('board:draw-progress', {
+          element,
+          userId: socket.data.userId || '',
+        })
+      })
+
+      socket.on('board:move-batch', ({ boardId, elements }) => {
+        socket.to(boardId).emit('board:move-batch', {
+          elements,
+          userId: socket.data.userId || '',
+        })
+      })
+
+      socket.on('board:move-delta', ({ boardId, elementIds, dx, dy }) => {
+        socket.to(boardId).emit('board:move-delta', {
+          elementIds,
+          dx,
+          dy,
+          userId: socket.data.userId || '',
+        })
+      })
+
+      socket.on('board:resize-delta', ({ boardId, elementIds, handle, dx, dy, originalBounds }) => {
+        socket.to(boardId).emit('board:resize-delta', {
+          elementIds,
+          handle,
+          dx,
+          dy,
+          originalBounds,
+          userId: socket.data.userId || '',
+        })
+      })
+
       socket.on('board:erase', ({ boardId, elementIds }) => {
         socket.to(boardId).emit('board:erase', {
+          elementIds,
+          userId: socket.data.userId || '',
+        })
+      })
+
+      socket.on('board:select', ({ boardId, elementIds }) => {
+        socket.to(boardId).emit('board:select', {
           elementIds,
           userId: socket.data.userId || '',
         })
@@ -299,6 +349,12 @@ class PresenceServer {
           elementId,
           userId: socket.data.userId || '',
         })
+      })
+
+      // State sync: forward elements from existing user to joining user
+      socket.on('board:state-response', ({ requesterId, elements }) => {
+        const boardNsp = this.io.of('/board')
+        boardNsp.to(requesterId).emit('board:sync-state', { elements })
       })
 
       socket.on('disconnect', () => {

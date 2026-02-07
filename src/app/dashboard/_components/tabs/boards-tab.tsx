@@ -7,26 +7,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, PenLine, Clock, Layers, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { ConfirmationDialog } from '@/components/confirmation-dialog'
 import { useAuth } from '@/lib/auth-context'
-import { useTeacherStudents } from '@/hooks/use-relations'
 import { getBoards, createBoard, deleteBoard, type BoardListItem } from '@/lib/api'
 
 const listContainerVariants = {
@@ -85,9 +67,6 @@ export function BoardsTab() {
   const isTeacher = user?.role?.toLowerCase() === 'teacher'
 
   const [deleteTarget, setDeleteTarget] = useState<BoardListItem | null>(null)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [newBoardTitle, setNewBoardTitle] = useState('Новая доска')
-  const [selectedRelationId, setSelectedRelationId] = useState<string>('none')
 
   const { data: boards = [], isLoading } = useQuery({
     queryKey: ['boards'],
@@ -95,16 +74,10 @@ export function BoardsTab() {
     staleTime: 30_000,
   })
 
-  // Fetch teacher's students for the student selector
-  const { data: students = [] } = useTeacherStudents(isTeacher ? user?.id : undefined)
-
   const createMutation = useMutation({
-    mutationFn: (data: { title: string; relationId?: string }) => createBoard(data),
+    mutationFn: () => createBoard({ title: 'Новая доска' }),
     onSuccess: (board) => {
       queryClient.invalidateQueries({ queryKey: ['boards'] })
-      setShowCreateDialog(false)
-      setNewBoardTitle('Новая доска')
-      setSelectedRelationId('none')
       router.push(`/board/${board.id}`)
     },
   })
@@ -116,16 +89,6 @@ export function BoardsTab() {
       setDeleteTarget(null)
     },
   })
-
-  const handleCreateBoard = () => {
-    const data: { title: string; relationId?: string } = {
-      title: newBoardTitle || 'Новая доска',
-    }
-    if (selectedRelationId && selectedRelationId !== 'none') {
-      data.relationId = selectedRelationId
-    }
-    createMutation.mutate(data)
-  }
 
   // Loading
   if (isLoading) {
@@ -150,7 +113,8 @@ export function BoardsTab() {
         </div>
         {isTeacher && (
           <Button
-            onClick={() => setShowCreateDialog(true)}
+            onClick={() => createMutation.mutate()}
+            disabled={createMutation.isPending}
             size="sm"
           >
             <Icon icon={Plus} size="sm" />
@@ -181,7 +145,8 @@ export function BoardsTab() {
           </p>
           {isTeacher && (
             <Button
-              onClick={() => setShowCreateDialog(true)}
+              onClick={() => createMutation.mutate()}
+              disabled={createMutation.isPending}
               className="mt-4"
               size="sm"
             >
@@ -207,16 +172,29 @@ export function BoardsTab() {
                 className="group relative bg-white border border-zinc-200 rounded-xl overflow-hidden hover:border-zinc-300 hover:shadow-sm transition-all cursor-pointer"
                 onClick={() => router.push(`/board/${board.id}`)}
               >
-                {/* Thumbnail / placeholder */}
+                {/* Thumbnail / preview */}
                 <div className="aspect-[16/10] bg-zinc-50 flex items-center justify-center relative">
                   {board.thumbnail ? (
                     <img
                       src={board.thumbnail}
                       alt={board.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain bg-white"
                     />
                   ) : (
-                    <Icon icon={PenLine} size="xl" className="text-zinc-200" />
+                    <div className="w-full h-full relative">
+                      {/* Dot grid pattern for empty boards */}
+                      <div className="absolute inset-0" style={{
+                        backgroundImage: 'radial-gradient(circle, #d4d4d8 1px, transparent 1px)',
+                        backgroundSize: '16px 16px',
+                        backgroundPosition: '8px 8px',
+                      }} />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-1 bg-white/70 rounded-lg px-3 py-2">
+                          <Icon icon={PenLine} size="lg" className="text-zinc-300" />
+                          <span className="text-[10px] text-zinc-400">Пустая доска</span>
+                        </div>
+                      </div>
+                    </div>
                   )}
                   {/* Delete button */}
                   {isTeacher && (
@@ -267,68 +245,6 @@ export function BoardsTab() {
           </AnimatePresence>
         </motion.div>
       )}
-
-      {/* Create board dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Новая доска</DialogTitle>
-            <DialogDescription>
-              Создайте интерактивную доску для проведения уроков
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="board-title">Название</Label>
-              <Input
-                id="board-title"
-                value={newBoardTitle}
-                onChange={(e) => setNewBoardTitle(e.target.value)}
-                placeholder="Название доски"
-                autoFocus
-              />
-            </div>
-
-            {students.length > 0 && (
-              <div className="space-y-2">
-                <Label>Ученик</Label>
-                <Select value={selectedRelationId} onValueChange={setSelectedRelationId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите ученика (необязательно)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Без ученика</SelectItem>
-                    {students.map((rel: { id: string; student: { id: string; name: string | null; email: string } }) => (
-                      <SelectItem key={rel.id} value={rel.id}>
-                        {rel.student.name || rel.student.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-zinc-400">
-                  Выбранный ученик получит доступ к доске
-                </p>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowCreateDialog(false)}
-            >
-              Отмена
-            </Button>
-            <Button 
-              onClick={handleCreateBoard}
-              disabled={createMutation.isPending}
-            >
-              {createMutation.isPending ? 'Создание...' : 'Создать'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete confirmation */}
       <ConfirmationDialog

@@ -9,6 +9,20 @@ export interface ClientToServerEvents {
   'leave-presence': () => void
   'heartbeat': (data: HeartbeatPayload) => void
   'get-user-status': (data: GetUserStatusPayload, callback: (response: UserStatusResponse) => void) => void
+  // Board events
+  'board:join': (data: { boardId: string; userId: string; userName: string }) => void
+  'board:leave': (data: { boardId: string }) => void
+  'board:draw': (data: { boardId: string; element: unknown }) => void
+  'board:draw-progress': (data: { boardId: string; element: unknown }) => void
+  'board:move-batch': (data: { boardId: string; elements: unknown[] }) => void
+  'board:move-delta': (data: { boardId: string; elementIds: string[]; dx: number; dy: number }) => void
+  'board:resize-delta': (data: { boardId: string; elementIds: string[]; handle: string; dx: number; dy: number; originalBounds: { x: number; y: number; w: number; h: number } }) => void
+  'board:erase': (data: { boardId: string; elementIds: string[] }) => void
+  'board:cursor': (data: { boardId: string; x: number; y: number; userId: string }) => void
+  'board:select': (data: { boardId: string; elementIds: string[] }) => void
+  'board:clear': (data: { boardId: string }) => void
+  'board:undo': (data: { boardId: string; elementId: string }) => void
+  'board:state-response': (data: { boardId: string; requesterId: string; elements: unknown[] }) => void
 }
 
 // События от сервера к клиенту
@@ -17,6 +31,22 @@ export interface ServerToClientEvents {
   'user-online': (data: UserOnlinePayload) => void
   'user-offline': (data: UserOfflinePayload) => void
   'error': (data: ErrorPayload) => void
+  // Board events
+  'board:user-joined': (data: { userId: string; userName: string }) => void
+  'board:user-left': (data: { userId: string }) => void
+  'board:users': (data: { users: Array<{ userId: string; userName: string }> }) => void
+  'board:draw': (data: { element: unknown; userId: string }) => void
+  'board:draw-progress': (data: { element: unknown; userId: string }) => void
+  'board:move-batch': (data: { elements: unknown[]; userId: string }) => void
+  'board:move-delta': (data: { elementIds: string[]; dx: number; dy: number; userId: string }) => void
+  'board:resize-delta': (data: { elementIds: string[]; handle: string; dx: number; dy: number; originalBounds: { x: number; y: number; w: number; h: number }; userId: string }) => void
+  'board:erase': (data: { elementIds: string[]; userId: string }) => void
+  'board:cursor': (data: { x: number; y: number; userId: string; userName: string }) => void
+  'board:select': (data: { elementIds: string[]; userId: string }) => void
+  'board:clear': (data: { userId: string }) => void
+  'board:undo': (data: { elementId: string; userId: string }) => void
+  'board:request-state': (data: { requesterId: string }) => void
+  'board:sync-state': (data: { elements: unknown[] }) => void
 }
 
 // Межсерверные события (для Redis Pub/Sub)
@@ -29,6 +59,7 @@ export interface SocketData {
   userId: string
   joinedAt: number
   lastHeartbeat: number
+  boardId?: string
 }
 
 // Payloads
