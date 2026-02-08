@@ -18,15 +18,15 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/izuchator
       - AUTH_SECRET=docker-dev-secret-change-in-production
       - AUTH_TRUST_HOST=true
-      - NEXTAUTH_URL=http://localhost:3000
-      - NEXT_PUBLIC_PRESENCE_SERVER=http://localhost:3002
+      - NEXTAUTH_URL=https://localhost:3000
+      - NEXT_PUBLIC_PRESENCE_SERVER=https://localhost:3002
       - HOST_LAN_IP=192.168.1.13
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: pnpm dev
+    command: pnpm dev:https
 
   presence:
     build:
@@ -44,6 +44,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - PRESENCE_PORT=3002
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/izuchator
+      - TLS_CERT=/app/certs/localhost+2.pem
+      - TLS_KEY=/app/certs/localhost+2-key.pem
     depends_on:
       redis:
         condition: service_healthy

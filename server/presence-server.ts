@@ -1,4 +1,7 @@
-import { createServer, IncomingMessage, ServerResponse } from 'node:http'
+import { createServer as createHttpServer, IncomingMessage, ServerResponse } from 'node:http'
+import { createServer as createHttpsServer } from 'node:https'
+import { readFileSync, existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { Server as SocketIOServer, Socket } from 'socket.io'
 import { createAdapter } from '@socket.io/redis-adapter'
 import Redis from 'ioredis'
@@ -31,7 +34,7 @@ class PresenceServer {
   private redisPub: Redis
   private redisSub: Redis
   private redisStore: Redis
-  private server: ReturnType<typeof createServer>
+  private server: ReturnType<typeof createHttpServer>
   
   // Local state
   private userPresence = new Map<string, UserPresence>() // socketId -> UserPresence
@@ -48,6 +51,7 @@ class PresenceServer {
   private messageCount = 0
   
   private config: PresenceServerConfig
+  private useTls = false
 
   constructor(config: Partial<PresenceServerConfig> = {}) {
     this.config = {
@@ -55,7 +59,7 @@ class PresenceServer {
       redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
       corsOrigins: process.env.NODE_ENV === 'production'
         ? ['https://izuchator.ru', 'https://www.izuchator.ru']
-        : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+        : ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://localhost:3000', 'https://127.0.0.1:3000'],
       pingTimeout: 60000,
       pingInterval: 25000,
       cleanupInterval: 30000,
@@ -64,8 +68,22 @@ class PresenceServer {
       ...config
     }
 
-    // Создаем HTTP сервер с health check
-    this.server = createServer((req, res) => this.handleHttpRequest(req, res))
+    // Создаем HTTP/HTTPS сервер
+    const certPath = process.env.TLS_CERT || ''
+    const keyPath = process.env.TLS_KEY || ''
+    this.useTls = !!(certPath && keyPath && existsSync(certPath) && existsSync(keyPath))
+
+    if (this.useTls) {
+      const tlsOptions = {
+        cert: readFileSync(certPath),
+        key: readFileSync(keyPath),
+      }
+      this.server = createHttpsServer(tlsOptions, (req, res) => this.handleHttpRequest(req, res))
+      console.log('🔒 TLS enabled for presence server')
+    } else {
+      this.server = createHttpServer((req, res) => this.handleHttpRequest(req, res))
+      console.log('⚠️  No TLS certs found, running HTTP')
+    }
     
     // Redis connections
     this.redisPub = new Redis(this.config.redisUrl, { lazyConnect: true })
@@ -133,6 +151,12 @@ class PresenceServer {
 
   private handleHttpRequest(req: IncomingMessage, res: ServerResponse) {
     const url = new URL(req.url || '/', `http://${req.headers.host}`)
+
+    // CORS headers for dev
+    if (process.env.NODE_ENV !== 'production') {
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    }
 
     // Health check endpoint
     if (url.pathname === '/health' || url.pathname === '/healthz') {
@@ -355,6 +379,61 @@ class PresenceServer {
       socket.on('board:state-response', ({ requesterId, elements }) => {
         const boardNsp = this.io.of('/board')
         boardNsp.to(requesterId).emit('board:sync-state', { elements })
+      })
+
+      // ========== WebRTC signaling relay ==========
+      socket.on('board:rtc-offer', ({ boardId, targetUserId, offer }) => {
+        const users = this.boardUsers.get(boardId)
+        const target = users?.get(targetUserId)
+        if (target) {
+          const boardNsp = this.io.of('/board')
+          boardNsp.to(target.socketId).emit('board:rtc-offer', {
+            fromUserId: socket.data.userId || '',
+            offer,
+          })
+          console.log(`📹 RTC offer: ${socket.data.userId} → ${targetUserId}`)
+        }
+      })
+
+      socket.on('board:rtc-answer', ({ boardId, targetUserId, answer }) => {
+        const users = this.boardUsers.get(boardId)
+        const target = users?.get(targetUserId)
+        if (target) {
+          const boardNsp = this.io.of('/board')
+          boardNsp.to(target.socketId).emit('board:rtc-answer', {
+            fromUserId: socket.data.userId || '',
+            answer,
+          })
+          console.log(`📹 RTC answer: ${socket.data.userId} → ${targetUserId}`)
+        }
+      })
+
+      socket.on('board:rtc-ice-candidate', ({ boardId, targetUserId, candidate }) => {
+        const users = this.boardUsers.get(boardId)
+        const target = users?.get(targetUserId)
+        if (target) {
+          const boardNsp = this.io.of('/board')
+          boardNsp.to(target.socketId).emit('board:rtc-ice-candidate', {
+            fromUserId: socket.data.userId || '',
+            candidate,
+          })
+        }
+      })
+
+      socket.on('board:rtc-hangup', ({ boardId }) => {
+        socket.to(boardId).emit('board:rtc-hangup', {
+          fromUserId: socket.data.userId || '',
+        })
+        console.log(`📹 RTC hangup: ${socket.data.userId} in board ${boardId}`)
+      })
+
+      // When a user signals they're ready for RTC, broadcast to room
+      // so users with active media can send offers
+      socket.on('board:rtc-ready', ({ boardId }) => {
+        socket.to(boardId).emit('board:rtc-ready', {
+          fromUserId: socket.data.userId || '',
+        })
+        console.log(`📹 RTC ready: ${socket.data.userId} in board ${boardId}`)
       })
 
       socket.on('disconnect', () => {
@@ -639,9 +718,10 @@ class PresenceServer {
   }
 
   private logNetworkInterfaces() {
+    const proto = this.useTls ? 'https' : 'http'
     console.log('📍 Available at:')
-    console.log(`   - http://localhost:${this.config.port}`)
-    console.log(`   - http://127.0.0.1:${this.config.port}`)
+    console.log(`   - ${proto}://localhost:${this.config.port}`)
+    console.log(`   - ${proto}://127.0.0.1:${this.config.port}`)
 
     const { networkInterfaces } = require('os')
     const nets = networkInterfaces()
@@ -649,14 +729,14 @@ class PresenceServer {
     for (const name of Object.keys(nets)) {
       for (const net of nets[name]!) {
         if (net.family === 'IPv4' && !net.internal) {
-          console.log(`   - http://${net.address}:${this.config.port}`)
+          console.log(`   - ${proto}://${net.address}:${this.config.port}`)
         }
       }
     }
     
     console.log(`\n📋 Endpoints:`)
-    console.log(`   - Health: http://localhost:${this.config.port}/health`)
-    console.log(`   - Metrics: http://localhost:${this.config.port}/metrics`)
+    console.log(`   - Health: ${proto}://localhost:${this.config.port}/health`)
+    console.log(`   - Metrics: ${proto}://localhost:${this.config.port}/metrics`)
   }
 }
 

@@ -749,7 +749,24 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
   }, [])
 
   const [state, setState] = useState<CanvasState>(DEFAULT_CANVAS_STATE)
-  const [viewport, setViewport] = useState<ViewportState>(DEFAULT_VIEWPORT)
+  const [viewport, _setViewportRaw] = useState<ViewportState>(DEFAULT_VIEWPORT)
+
+  // Keep stable refs for hot path (render + pointer handlers) to avoid useCallback churn
+  const stateRef = useRef(state)
+  stateRef.current = state
+  const viewportRef = useRef(viewport)
+  // Wrap setViewport to keep ref in sync immediately (no stale closures)
+  const setViewport = useCallback((action: React.SetStateAction<ViewportState>) => {
+    _setViewportRaw(prev => {
+      const next = typeof action === 'function' ? action(prev) : action
+      viewportRef.current = next
+      return next
+    })
+  }, [])
+
+  // rAF-based render scheduling — coalesce multiple render() calls into one frame
+  const rafIdRef = useRef<number>(0)
+  const renderPendingRef = useRef(false)
 
   // Action-based undo — only tracks current user's own actions, never touches remote elements
   type UndoAction =
@@ -765,6 +782,8 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const selectedIdsRef = useRef<string[]>([])
+  selectedIdsRef.current = selectedIds
   const selectionActionRef = useRef<SelectionAction | null>(null)
   const selectionPreviewMapRef = useRef<Map<string, BoardElement>>(new Map())
   const [selectionCursor, setSelectionCursor] = useState<string>('default')
@@ -783,6 +802,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
   const drawingRef = useRef<BoardElement | null>(null)
   const isDrawingRef = useRef(false)
   const startPointRef = useRef<[number, number]>([0, 0])
+  const activePointerIdRef = useRef<number | null>(null)
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map())
 
   // Throttle for draw-progress emission
@@ -861,13 +881,14 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
   // ========== Screen ↔ World coordinate conversion ==========
 
   const screenToWorld = useCallback((sx: number, sy: number): [number, number] => {
+    const v = viewportRef.current
     return [
-      (sx - viewport.offsetX) / viewport.scale,
-      (sy - viewport.offsetY) / viewport.scale,
+      (sx - v.offsetX) / v.scale,
+      (sy - v.offsetY) / v.scale,
     ]
-  }, [viewport])
+  }, [])
 
-  const getCanvasPoint = useCallback((e: React.PointerEvent): [number, number] => {
+  const getCanvasPoint = useCallback((e: { clientX: number; clientY: number }): [number, number] => {
     const canvas = canvasRef.current
     if (!canvas) return [0, 0]
     const rect = canvas.getBoundingClientRect()
@@ -876,7 +897,15 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     return screenToWorld(sx, sy)
   }, [screenToWorld])
 
-  const getScreenPoint = useCallback((e: React.PointerEvent): [number, number] => {
+  // Convert raw clientX/clientY to world coords (used for coalesced events)
+  const clientToWorld = useCallback((clientX: number, clientY: number): [number, number] => {
+    const canvas = canvasRef.current
+    if (!canvas) return [0, 0]
+    const rect = canvas.getBoundingClientRect()
+    return screenToWorld(clientX - rect.left, clientY - rect.top)
+  }, [screenToWorld])
+
+  const getScreenPoint = useCallback((e: { clientX: number; clientY: number }): [number, number] => {
     const canvas = canvasRef.current
     if (!canvas) return [0, 0]
     const rect = canvas.getBoundingClientRect()
@@ -885,11 +914,17 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
   // ========== Rendering ==========
 
-  const render = useCallback(() => {
+  // Core render – reads state from refs so it never needs to be recreated
+  const renderNow = useCallback(() => {
+    renderPendingRef.current = false
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    const vp = viewportRef.current
+    const st = stateRef.current
+    const selIds = selectedIdsRef.current
 
     const dpr = window.devicePixelRatio || 1
     const rect = canvas.getBoundingClientRect()
@@ -903,12 +938,12 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     ctx.clearRect(0, 0, rect.width, rect.height)
 
     // Draw grid (in screen space, grid function handles viewport)
-    drawGrid(ctx, state.gridType, viewport, rect.width, rect.height)
+    drawGrid(ctx, st.gridType, vp, rect.width, rect.height)
 
     // Apply viewport transform for elements
     ctx.save()
-    ctx.translate(viewport.offsetX, viewport.offsetY)
-    ctx.scale(viewport.scale, viewport.scale)
+    ctx.translate(vp.offsetX, vp.offsetY)
+    ctx.scale(vp.scale, vp.scale)
 
     // Draw all elements (with selection preview + remote move offsets)
     const previewMap = selectionPreviewMapRef.current
@@ -943,15 +978,15 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
     // Draw current element being drawn
     if (drawingRef.current) {
-      drawElement(ctx, drawingRef.current, imageCacheRef.current, render)
+      drawElement(ctx, drawingRef.current, imageCacheRef.current, scheduleRender)
     }
 
     // Draw selection outline with resize handles (union bounds of all selected)
-    if (selectedIds.length > 0) {
+    if (selIds.length > 0) {
       // Get union bounds taking previews into account
       const getResolvedElement = (id: string) => previewMap.get(id) || currentElements.find(el => el.id === id)
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-      for (const id of selectedIds) {
+      for (const id of selIds) {
         const el = getResolvedElement(id)
         if (!el) continue
         const b = getElementBounds(el)
@@ -965,7 +1000,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         const bounds = { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
 
         // Check if single line/arrow for endpoint handles
-        const resolvedSingle = selectedIds.length === 1 ? getResolvedElement(selectedIds[0]!) : null
+        const resolvedSingle = selIds.length === 1 ? getResolvedElement(selIds[0]!) : null
         const singleLineLike = resolvedSingle && isLineLike(resolvedSingle) ? resolvedSingle : null
 
         if (singleLineLike) {
@@ -975,8 +1010,8 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
           // Dashed connection line (selection indicator)
           ctx.strokeStyle = '#3b82f6'
-          ctx.lineWidth = 1.5 / viewport.scale
-          ctx.setLineDash([6 / viewport.scale, 3 / viewport.scale])
+          ctx.lineWidth = 1.5 / vp.scale
+          ctx.setLineDash([6 / vp.scale, 3 / vp.scale])
           ctx.beginPath()
           ctx.moveTo(eps.start[0], eps.start[1])
           ctx.lineTo(eps.end[0], eps.end[1])
@@ -986,8 +1021,8 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
           ctx.setLineDash([])
           ctx.fillStyle = '#ffffff'
           ctx.strokeStyle = '#3b82f6'
-          ctx.lineWidth = 1.5 / viewport.scale
-          const radius = 5 / viewport.scale
+          ctx.lineWidth = 1.5 / vp.scale
+          const radius = 5 / vp.scale
           for (const pos of [eps.start, eps.end]) {
             ctx.beginPath()
             ctx.arc(pos[0], pos[1], radius, 0, Math.PI * 2)
@@ -1011,16 +1046,16 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
           // Dashed border
           ctx.strokeStyle = '#3b82f6'
-          ctx.lineWidth = 1.5 / viewport.scale
-          ctx.setLineDash([6 / viewport.scale, 3 / viewport.scale])
+          ctx.lineWidth = 1.5 / vp.scale
+          ctx.setLineDash([6 / vp.scale, 3 / vp.scale])
           ctx.strokeRect(bx, by, bw, bh)
 
           // 8 resize handles
           ctx.setLineDash([])
           ctx.fillStyle = '#ffffff'
           ctx.strokeStyle = '#3b82f6'
-          ctx.lineWidth = 1.5 / viewport.scale
-          const hs = 8 / viewport.scale
+          ctx.lineWidth = 1.5 / vp.scale
+          const hs = 8 / vp.scale
           const halfHs = hs / 2
           const handles = getHandlePositions(paddedBounds)
           for (const pos of Object.values(handles)) {
@@ -1058,8 +1093,8 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         ctx.fillRect(rMinX - pad, rMinY - pad, rMaxX - rMinX + pad * 2, rMaxY - rMinY + pad * 2)
         // Dashed border in user color
         ctx.strokeStyle = color
-        ctx.lineWidth = 1.5 / viewport.scale
-        ctx.setLineDash([6 / viewport.scale, 3 / viewport.scale])
+        ctx.lineWidth = 1.5 / vp.scale
+        ctx.setLineDash([6 / vp.scale, 3 / vp.scale])
         ctx.strokeRect(rMinX - pad, rMinY - pad, rMaxX - rMinX + pad * 2, rMaxY - rMinY + pad * 2)
         ctx.restore()
       }
@@ -1076,19 +1111,37 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
       ctx.fillStyle = 'rgba(59, 130, 246, 0.08)'
       ctx.fillRect(rbx, rby, rbw, rbh)
       ctx.strokeStyle = '#3b82f6'
-      ctx.lineWidth = 1 / viewport.scale
-      ctx.setLineDash([4 / viewport.scale, 3 / viewport.scale])
+      ctx.lineWidth = 1 / vp.scale
+      ctx.setLineDash([4 / vp.scale, 3 / vp.scale])
       ctx.strokeRect(rbx, rby, rbw, rbh)
       ctx.restore()
     }
 
     ctx.restore()
-  }, [state.gridType, viewport, selectedIds])
+  }, []) // no deps — reads everything from refs
+
+  // Schedule a render on the next animation frame (coalesces multiple calls per frame)
+  const scheduleRender = useCallback(() => {
+    if (renderPendingRef.current) return
+    renderPendingRef.current = true
+    rafIdRef.current = requestAnimationFrame(renderNow)
+  }, [renderNow])
+
+  // Alias for compat — synchronous render when absolutely needed (e.g. resize)
+  const render = scheduleRender
+
+  // Clean up rAF on unmount
+  useEffect(() => {
+    return () => { cancelAnimationFrame(rafIdRef.current) }
+  }, [])
 
   // Re-render on element changes
   useEffect(() => {
-    render()
-  }, [render, elements])
+    scheduleRender()
+  }, [scheduleRender, elements])
+
+  // Re-render on viewport or grid/selection changes
+  useEffect(() => { scheduleRender() }, [scheduleRender, viewport, state.gridType, selectedIds])
 
   // Notify parent when selection changes (for remote selection sync)
   useEffect(() => {
@@ -1102,25 +1155,9 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     return () => window.removeEventListener('resize', handleResize)
   }, [render])
 
-  // Prevent native touch behaviors
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const preventTouch = (e: TouchEvent) => {
-      e.preventDefault()
-    }
-
-    canvas.addEventListener('touchstart', preventTouch, { passive: false })
-    canvas.addEventListener('touchmove', preventTouch, { passive: false })
-    canvas.addEventListener('touchend', preventTouch, { passive: false })
-
-    return () => {
-      canvas.removeEventListener('touchstart', preventTouch)
-      canvas.removeEventListener('touchmove', preventTouch)
-      canvas.removeEventListener('touchend', preventTouch)
-    }
-  }, [])
+  // NOTE: Touch event prevention (for blocking iPadOS Scribble) is handled
+  // in page.tsx alongside pointer event listeners, where `loading` state is
+  // available to ensure listeners attach AFTER canvas mounts.
 
   // ========== Wheel zoom ==========
 
@@ -1180,10 +1217,37 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
   // ========== Pointer handlers ==========
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+  // Only capture pointer for mouse — pen/touch don't need it (canvas is fullscreen
+  // with touch-action:none) and capture/release transitions between rapid pen strokes
+  // can cause Safari to fire pointercancel, dropping the second stroke.
+  const capturePointer = useCallback((e: PointerEvent) => {
+    if (e.pointerType === 'mouse') {
+      const canvas = canvasRef.current
+      if (canvas) canvas.setPointerCapture(e.pointerId)
+    }
+  }, [])
+
+  const handlePointerDown = useCallback((e: PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
     if (e.button !== 0 && e.pointerType === 'mouse') return
+
+    // Defensive cleanup: if a previous drawing is somehow still in progress
+    // (e.g. missed pointerup), force-finish it before starting a new one
+    if (isDrawingRef.current && drawingRef.current) {
+      const prevEl = drawingRef.current
+      if (prevEl.type !== 'text') {
+        if ((prevEl.type === 'pen' || prevEl.type === 'highlight') && prevEl.data.points.length >= 2) {
+          setUndoStack(prev => [...prev, { type: 'add' as const, elements: [prevEl] }])
+          setRedoStack([])
+          setElements(prev => [...prev, prevEl])
+          callbacksRef.current.onElementAdd?.(prevEl)
+        }
+      }
+      drawingRef.current = null
+      isDrawingRef.current = false
+      activePointerIdRef.current = null
+    }
 
     // Track touches for pinch
     if (e.pointerType === 'touch') {
@@ -1195,44 +1259,47 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         const dist = Math.hypot(pts[0]!.x - pts[1]!.x, pts[0]!.y - pts[1]!.y)
         const cx = (pts[0]!.x + pts[1]!.x) / 2
         const cy = (pts[0]!.y + pts[1]!.y) / 2
-        pinchRef.current = { dist, scale: viewport.scale, cx, cy }
+        pinchRef.current = { dist, scale: viewportRef.current.scale, cx, cy }
         isPanningRef.current = false
         isDrawingRef.current = false
+        activePointerIdRef.current = null
         drawingRef.current = null
 
-        const canvas = canvasRef.current
-        if (canvas) canvas.setPointerCapture(e.pointerId)
+        capturePointer(e)
         return
       }
     }
 
     // Pan mode
-    if (state.tool === 'pan' || spaceHeldRef.current || (e.pointerType === 'mouse' && e.button === 1)) {
+    if (stateRef.current.tool === 'pan' || spaceHeldRef.current || (e.pointerType === 'mouse' && e.button === 1)) {
       isPanningRef.current = true
       const [sx, sy] = getScreenPoint(e)
-      panStartRef.current = { x: sx, y: sy, ox: viewport.offsetX, oy: viewport.offsetY }
+      const vp = viewportRef.current
+      panStartRef.current = { x: sx, y: sy, ox: vp.offsetX, oy: vp.offsetY }
 
-      const canvas = canvasRef.current
-      if (canvas) canvas.setPointerCapture(e.pointerId)
+      capturePointer(e)
       return
     }
 
     const [x, y] = getCanvasPoint(e)
 
-    const tool = state.tool
+    const tool = stateRef.current.tool
 
     // ===== Select tool: multi-select, drag, resize, rubber band =====
     if (tool === 'select') {
       const shiftKey = e.shiftKey
+      const curSelIds = selectedIdsRef.current
+      const curEls = elementsRef.current
+      const vp = viewportRef.current
 
       // 1. Check handles of current selection
-      if (selectedIds.length > 0) {
-        const unionBounds = getUnionBounds(elements, selectedIds)
+      if (curSelIds.length > 0) {
+        const unionBounds = getUnionBounds(curEls, curSelIds)
         if (unionBounds) {
-          const handleHitSize = Math.max(12, 12 / viewport.scale)
+          const handleHitSize = Math.max(12, 12 / vp.scale)
 
           // 1a. For single line/arrow: check endpoint handles first
-          const lineLikeEl = isSingleLineLikeSelection(elements, selectedIds)
+          const lineLikeEl = isSingleLineLikeSelection(curEls, curSelIds)
           if (lineLikeEl) {
             const endpoint = hitTestEndpoint(x, y, lineLikeEl, handleHitSize)
             if (endpoint) {
@@ -1246,8 +1313,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
               }
               selectionPreviewMapRef.current.clear()
               setSelectionCursor(ENDPOINT_CURSOR)
-              const canvas = canvasRef.current
-              if (canvas) canvas.setPointerCapture(e.pointerId)
+              capturePointer(e)
               return
             }
           }
@@ -1258,7 +1324,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
             const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
             const handle = hitTestHandle(x, y, paddedBounds, handleHitSize)
             if (handle) {
-              const origEls = selectedIds.map(id => elements.find(el => el.id === id)!).filter(Boolean)
+              const origEls = curSelIds.map(id => curEls.find(el => el.id === id)!).filter(Boolean)
               selectionActionRef.current = {
                 type: 'resize', handle,
                 startWorld: [x, y],
@@ -1268,8 +1334,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
               }
               selectionPreviewMapRef.current.clear()
               setSelectionCursor(HANDLE_CURSORS[handle])
-              const canvas = canvasRef.current
-              if (canvas) canvas.setPointerCapture(e.pointerId)
+              capturePointer(e)
               return
             }
           }
@@ -1281,16 +1346,16 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
           const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
           if (pointInRect(x, y, paddedBounds)) {
             // Check if there's a higher-z non-selected element directly under cursor
-            const topSelected = Math.max(...selectedIds.map(id => {
-              const idx = elements.findIndex(el => el.id === id)
+            const topSelected = Math.max(...curSelIds.map(id => {
+              const idx = curEls.findIndex(el => el.id === id)
               return idx
             }))
-            const higherHit = [...elements].slice(topSelected + 1).reverse().find(el =>
-              !selectedIds.includes(el.id) && hitTest(el, x, y, 10)
+            const higherHit = [...curEls].slice(topSelected + 1).reverse().find(el =>
+              !curSelIds.includes(el.id) && hitTest(el, x, y, 10)
             )
 
             if (!higherHit) {
-              const origEls = selectedIds.map(id => elements.find(el => el.id === id)!).filter(Boolean)
+              const origEls = curSelIds.map(id => curEls.find(el => el.id === id)!).filter(Boolean)
               selectionActionRef.current = {
                 type: 'move',
                 startWorld: [x, y],
@@ -1300,8 +1365,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
               }
               selectionPreviewMapRef.current.clear()
               setSelectionCursor('grab')
-              const canvas = canvasRef.current
-              if (canvas) canvas.setPointerCapture(e.pointerId)
+              capturePointer(e)
               return
             }
             // else: fall through to step 3 — select the higher element
@@ -1310,23 +1374,23 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
       }
 
       // 3. Hit-test individual elements
-      const hitEl = [...elements].reverse().find(el => hitTest(el, x, y, 10))
+      const hitEl = [...curEls].reverse().find(el => hitTest(el, x, y, 10))
       if (hitEl) {
         let newIds: string[]
         if (shiftKey) {
           // Toggle element in selection
-          if (selectedIds.includes(hitEl.id)) {
-            newIds = selectedIds.filter(id => id !== hitEl.id)
+          if (curSelIds.includes(hitEl.id)) {
+            newIds = curSelIds.filter(id => id !== hitEl.id)
           } else {
-            newIds = [...selectedIds, hitEl.id]
+            newIds = [...curSelIds, hitEl.id]
           }
         } else {
           newIds = [hitEl.id]
         }
         setSelectedIds(newIds)
         // Start potential move
-        const origEls = newIds.map(id => elements.find(el => el.id === id)!).filter(Boolean)
-        const ub = getUnionBounds(elements, newIds)
+        const origEls = newIds.map(id => curEls.find(el => el.id === id)!).filter(Boolean)
+        const ub = getUnionBounds(curEls, newIds)
         selectionActionRef.current = {
           type: 'move',
           startWorld: [x, y],
@@ -1346,13 +1410,12 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         rubberBandRef.current = { x1: x, y1: y, x2: x, y2: y }
         setSelectionCursor('crosshair')
       }
-      const canvas = canvasRef.current
-      if (canvas) canvas.setPointerCapture(e.pointerId)
+      capturePointer(e)
       return
     }
 
     // Deselect when switching to other tools
-    if (selectedIds.length > 0) {
+    if (selectedIdsRef.current.length > 0) {
       setSelectedIds([])
       selectionActionRef.current = null
       selectionPreviewMapRef.current.clear()
@@ -1360,9 +1423,12 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
     isDrawingRef.current = true
     startPointRef.current = [x, y]
+    activePointerIdRef.current = e.pointerId
 
-    const style = getStrokeStyle(state)
+    const st = stateRef.current
+    const style = getStrokeStyle(st)
     const id = nanoid()
+    const curLen = elementsRef.current.length
 
     switch (tool) {
       case 'pen':
@@ -1370,7 +1436,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         drawingRef.current = {
           id,
           type: tool,
-          zIndex: elements.length,
+          zIndex: curLen,
           createdBy: userId,
           data: { points: [[x, y]], style },
         } as PenElement
@@ -1380,9 +1446,9 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         drawingRef.current = {
           id,
           type: 'rect',
-          zIndex: elements.length,
+          zIndex: curLen,
           createdBy: userId,
-          data: { x, y, width: 0, height: 0, style, fill: state.fillColor || undefined },
+          data: { x, y, width: 0, height: 0, style, fill: st.fillColor || undefined },
         } as RectElement
         break
 
@@ -1390,9 +1456,9 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         drawingRef.current = {
           id,
           type: 'circle',
-          zIndex: elements.length,
+          zIndex: curLen,
           createdBy: userId,
-          data: { cx: x, cy: y, rx: 0, ry: 0, style, fill: state.fillColor || undefined },
+          data: { cx: x, cy: y, rx: 0, ry: 0, style, fill: st.fillColor || undefined },
         } as CircleElement
         break
 
@@ -1400,7 +1466,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         drawingRef.current = {
           id,
           type: 'line',
-          zIndex: elements.length,
+          zIndex: curLen,
           createdBy: userId,
           data: { x1: x, y1: y, x2: x, y2: y, style },
         } as LineElement
@@ -1410,7 +1476,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         drawingRef.current = {
           id,
           type: 'arrow',
-          zIndex: elements.length,
+          zIndex: curLen,
           createdBy: userId,
           data: { x1: x, y1: y, x2: x, y2: y, style },
         } as ArrowElement
@@ -1420,14 +1486,14 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         drawingRef.current = {
           id,
           type: 'triangle',
-          zIndex: elements.length,
+          zIndex: curLen,
           createdBy: userId,
-          data: { x, y, width: 0, height: 0, style, fill: state.fillColor || undefined },
+          data: { x, y, width: 0, height: 0, style, fill: st.fillColor || undefined },
         } as TriangleElement
         break
 
       case 'eraser': {
-        const hit = elements.filter(el => hitTest(el, x, y, 20))
+        const hit = elementsRef.current.filter(el => hitTest(el, x, y, 20))
         if (hit.length > 0) {
           const hitIds = hit.map(el => el.id)
           setUndoStack(prev => [...prev, { type: 'remove' as const, elements: hit }])
@@ -1444,16 +1510,16 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
           const textEl: BoardElement = {
             id,
             type: 'text',
-            zIndex: elements.length,
+            zIndex: curLen,
             createdBy: userId,
             data: {
               x, y,
-              width: Math.max(content.length * state.fontSize * 0.6, 100),
-              height: state.fontSize * 1.5,
+              width: Math.max(content.length * st.fontSize * 0.6, 100),
+              height: st.fontSize * 1.5,
               content,
-              fontSize: state.fontSize,
+              fontSize: st.fontSize,
               fontFamily: 'system-ui, sans-serif',
-              color: state.toolColors['text'] ?? state.strokeColor,
+              color: st.toolColors['text'] ?? st.strokeColor,
               bold: false,
               italic: false,
             }
@@ -1464,15 +1530,15 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
           callbacksRef.current.onElementAdd?.(textEl)
         }
         isDrawingRef.current = false
+        activePointerIdRef.current = null
         break
       }
     }
 
-    const canvas = canvasRef.current
-    if (canvas) canvas.setPointerCapture(e.pointerId)
-  }, [state, elements, userId, viewport, selectedIds, getCanvasPoint, getScreenPoint])
+    capturePointer(e)
+  }, [userId, getCanvasPoint, getScreenPoint, setElements, capturePointer])
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+  const handlePointerMove = useCallback((e: PointerEvent) => {
     e.preventDefault()
 
     // Handle touch tracking
@@ -1562,54 +1628,149 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     }
 
     if (!isDrawingRef.current) {
-      // Hover cursor detection for select tool
-      if (state.tool === 'select') {
-        const [x, y] = getCanvasPoint(e)
-        let cursor = 'default'
-        if (selectedIds.length > 0) {
-          const unionBounds = getUnionBounds(elements, selectedIds)
-          if (unionBounds) {
-            const handleHitSize = Math.max(12, 12 / viewport.scale)
+      // Safety net: recover from missed pointerdown (e.g. iPadOS sometimes drops pen DOWN).
+      // If pen is in contact but we're not drawing, synthetically start a new stroke.
+      const penInContact = e.pointerType === 'pen' && (e.pressure > 0 || e.buttons > 0)
+      if (penInContact && !isPanningRef.current && !selectionActionRef.current && !rubberBandRef.current) {
+        const tool = stateRef.current.tool
+        const drawTools = ['pen', 'highlight', 'rect', 'circle', 'line', 'arrow', 'triangle']
+        if (drawTools.includes(tool)) {
+          const [x, y] = getCanvasPoint(e)
+          isDrawingRef.current = true
+          startPointRef.current = [x, y]
+          activePointerIdRef.current = e.pointerId
 
-            // Check endpoint handles for single line/arrow
-            const lineLikeEl = isSingleLineLikeSelection(elements, selectedIds)
-            if (lineLikeEl) {
-              const endpoint = hitTestEndpoint(x, y, lineLikeEl, handleHitSize)
-              if (endpoint) {
-                cursor = ENDPOINT_CURSOR
+          const st = stateRef.current
+          const style = getStrokeStyle(st)
+          const id = nanoid()
+          const curLen = elementsRef.current.length
+
+          switch (tool) {
+            case 'pen':
+            case 'highlight':
+              drawingRef.current = {
+                id, type: tool, zIndex: curLen, createdBy: userId,
+                data: { points: [[x, y]], style },
+              } as PenElement
+              break
+            case 'rect':
+              drawingRef.current = {
+                id, type: 'rect', zIndex: curLen, createdBy: userId,
+                data: { x, y, width: 0, height: 0, style, fill: st.fillColor || undefined },
+              } as RectElement
+              break
+            case 'circle':
+              drawingRef.current = {
+                id, type: 'circle', zIndex: curLen, createdBy: userId,
+                data: { cx: x, cy: y, rx: 0, ry: 0, style, fill: st.fillColor || undefined },
+              } as CircleElement
+              break
+            case 'line':
+              drawingRef.current = {
+                id, type: 'line', zIndex: curLen, createdBy: userId,
+                data: { x1: x, y1: y, x2: x, y2: y, style },
+              } as LineElement
+              break
+            case 'arrow':
+              drawingRef.current = {
+                id, type: 'arrow', zIndex: curLen, createdBy: userId,
+                data: { x1: x, y1: y, x2: x, y2: y, style },
+              } as ArrowElement
+              break
+            case 'triangle':
+              drawingRef.current = {
+                id, type: 'triangle', zIndex: curLen, createdBy: userId,
+                data: { x, y, width: 0, height: 0, style, fill: st.fillColor || undefined },
+              } as TriangleElement
+              break
+          }
+          // Fall through to normal move handling below (don't return)
+        } else {
+          // Non-drawing tool (e.g. select) — hover cursor detection
+          if (tool === 'select') {
+            const [x, y] = getCanvasPoint(e)
+            const curSelIds = selectedIdsRef.current
+            const curEls = elementsRef.current
+            const vp = viewportRef.current
+            let cursor = 'default'
+            if (curSelIds.length > 0) {
+              const unionBounds = getUnionBounds(curEls, curSelIds)
+              if (unionBounds) {
+                const handleHitSize = Math.max(12, 12 / vp.scale)
+                const lineLikeEl = isSingleLineLikeSelection(curEls, curSelIds)
+                if (lineLikeEl) {
+                  const endpoint = hitTestEndpoint(x, y, lineLikeEl, handleHitSize)
+                  if (endpoint) {
+                    cursor = ENDPOINT_CURSOR
+                  } else {
+                    const pad = SELECTION_PAD
+                    const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
+                    if (pointInRect(x, y, paddedBounds)) cursor = 'grab'
+                  }
+                } else {
+                  const pad = SELECTION_PAD
+                  const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
+                  const handle = hitTestHandle(x, y, paddedBounds, handleHitSize)
+                  if (handle) cursor = HANDLE_CURSORS[handle]
+                  else if (pointInRect(x, y, paddedBounds)) cursor = 'grab'
+                }
+              }
+            }
+            if (cursor === 'default') {
+              const hitEl = [...curEls].reverse().find(el => hitTest(el, x, y, 10))
+              if (hitEl) cursor = 'pointer'
+            }
+            setSelectionCursor(cursor)
+          }
+          return
+        }
+      } else {
+        // Not pen or no pressure — regular hover detection
+        const tool = stateRef.current.tool
+        if (tool === 'select') {
+          const [x, y] = getCanvasPoint(e)
+          const curSelIds = selectedIdsRef.current
+          const curEls = elementsRef.current
+          const vp = viewportRef.current
+          let cursor = 'default'
+          if (curSelIds.length > 0) {
+            const unionBounds = getUnionBounds(curEls, curSelIds)
+            if (unionBounds) {
+              const handleHitSize = Math.max(12, 12 / vp.scale)
+              const lineLikeEl = isSingleLineLikeSelection(curEls, curSelIds)
+              if (lineLikeEl) {
+                const endpoint = hitTestEndpoint(x, y, lineLikeEl, handleHitSize)
+                if (endpoint) {
+                  cursor = ENDPOINT_CURSOR
+                } else {
+                  const pad = SELECTION_PAD
+                  const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
+                  if (pointInRect(x, y, paddedBounds)) cursor = 'grab'
+                }
               } else {
                 const pad = SELECTION_PAD
                 const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
-                if (pointInRect(x, y, paddedBounds)) {
-                  cursor = 'grab'
-                }
-              }
-            } else {
-              // Regular shapes: check 8 resize handles
-              const pad = SELECTION_PAD
-              const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
-              const handle = hitTestHandle(x, y, paddedBounds, handleHitSize)
-              if (handle) {
-                cursor = HANDLE_CURSORS[handle]
-              } else if (pointInRect(x, y, paddedBounds)) {
-                cursor = 'grab'
+                const handle = hitTestHandle(x, y, paddedBounds, handleHitSize)
+                if (handle) cursor = HANDLE_CURSORS[handle]
+                else if (pointInRect(x, y, paddedBounds)) cursor = 'grab'
               }
             }
           }
+          if (cursor === 'default') {
+            const hitEl = [...curEls].reverse().find(el => hitTest(el, x, y, 10))
+            if (hitEl) cursor = 'pointer'
+          }
+          setSelectionCursor(cursor)
         }
-        if (cursor === 'default') {
-          const hitEl = [...elements].reverse().find(el => hitTest(el, x, y, 10))
-          if (hitEl) cursor = 'pointer'
-        }
-        setSelectionCursor(cursor)
+        return
       }
-      return
     }
     const [x, y] = getCanvasPoint(e)
 
     // Continuous eraser
-    if (state.tool === 'eraser') {
-      const hit = elements.filter(elem => hitTest(elem, x, y, 20))
+    if (stateRef.current.tool === 'eraser') {
+      const curElements = elementsRef.current
+      const hit = curElements.filter(elem => hitTest(elem, x, y, 20))
       if (hit.length > 0) {
         const hitIds = hit.map(elem => elem.id)
         setElements(prev => prev.filter(elem => !hitIds.includes(elem.id)))
@@ -1624,9 +1785,20 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
     switch (el.type) {
       case 'pen':
-      case 'highlight':
-        (el as PenElement).data.points.push([x, y])
+      case 'highlight': {
+        // Use coalesced events for higher-fidelity stylus input
+        const coalesced = e.getCoalescedEvents?.() ?? []
+        if (coalesced.length > 1) {
+          const pts = (el as PenElement).data.points
+          for (const ce of coalesced) {
+            const [cx, cy] = clientToWorld(ce.clientX, ce.clientY)
+            pts.push([cx, cy])
+          }
+        } else {
+          (el as PenElement).data.points.push([x, y])
+        }
         break
+      }
 
       case 'rect': {
         const d = (el as RectElement).data
@@ -1673,15 +1845,18 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     const now = Date.now()
     if (now - lastDrawProgressRef.current >= DRAW_PROGRESS_THROTTLE) {
       lastDrawProgressRef.current = now
-      // Deep-copy the element to avoid reference issues
-      const snapshot = JSON.parse(JSON.stringify(el)) as BoardElement
+      // Lightweight snapshot: copy only the mutable data fields without full JSON round-trip
+      const snapshot: BoardElement = { ...el, data: { ...el.data } } as BoardElement
+      if ((el.type === 'pen' || el.type === 'highlight') && Array.isArray(el.data.points)) {
+        ;(snapshot as PenElement).data = { ...el.data, points: [...el.data.points] }
+      }
       callbacksRef.current.onDrawProgress?.(snapshot)
     }
 
     render()
-  }, [getCanvasPoint, getScreenPoint, state.tool, elements, viewport, selectedIds, render, clampScale, zoomAtPoint])
+  }, [userId, getCanvasPoint, getScreenPoint, clientToWorld, render, clampScale, zoomAtPoint, setElements])
 
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+  const handlePointerUp = useCallback((e: PointerEvent) => {
     // Remove touch from tracking
     if (e.pointerType === 'touch') {
       activeTouchesRef.current.delete(e.pointerId)
@@ -1722,7 +1897,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         }
       }
       selectionPreviewMapRef.current = new Map()
-      setSelectionCursor(selectedIds.length > 0 ? 'grab' : 'default')
+      setSelectionCursor(selectedIdsRef.current.length > 0 ? 'grab' : 'default')
       render()
       return
     }
@@ -1739,7 +1914,8 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
       if (rbw > DRAG_THRESHOLD || rbh > DRAG_THRESHOLD) {
         const rbRect = { x: rbx, y: rby, w: rbw, h: rbh }
         const hitIds: string[] = []
-        for (const el of elements) {
+        const curEls = elementsRef.current
+        for (const el of curEls) {
           const b = getElementBounds(el)
           if (b && rectsIntersect(rbRect, b)) {
             hitIds.push(el.id)
@@ -1747,7 +1923,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         }
         if (e.shiftKey) {
           // Add to existing selection
-          const combined = [...new Set([...selectedIds, ...hitIds])]
+          const combined = [...new Set([...selectedIdsRef.current, ...hitIds])]
           setSelectedIds(combined)
         } else {
           setSelectedIds(hitIds)
@@ -1759,10 +1935,24 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     }
 
     if (!isDrawingRef.current) return
+    // Ignore pointer-up / pointer-leave from a different pointer than the one drawing
+    if (activePointerIdRef.current !== null && e.pointerId !== activePointerIdRef.current) return
     isDrawingRef.current = false
+    activePointerIdRef.current = null
 
     const el = drawingRef.current
     if (el && el.type !== 'text') {
+      // Capture the final pointer position (may be missing if no pointermove fired)
+      if (el.type === 'pen' || el.type === 'highlight') {
+        const [upX, upY] = getCanvasPoint(e)
+        const pts = (el as PenElement).data.points
+        const last = pts[pts.length - 1]
+        // Add final point if it differs from the last recorded point
+        if (!last || Math.abs(last[0] - upX) > 0.5 || Math.abs(last[1] - upY) > 0.5) {
+          pts.push([upX, upY])
+        }
+      }
+
       if ((el.type === 'pen' || el.type === 'highlight') && el.data.points.length < 2) {
         drawingRef.current = null
         render()
@@ -1784,19 +1974,50 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
     drawingRef.current = null
     render()
-  }, [elements, selectedIds, render, getCanvasPoint])
+  }, [render, getCanvasPoint, setElements])
+
+  // Dedicated cancel handler — discards in-progress drawing without committing
+  const handlePointerCancel = useCallback((e: PointerEvent) => {
+    if (e.pointerType === 'touch') {
+      activeTouchesRef.current.delete(e.pointerId)
+      if (activeTouchesRef.current.size < 2) {
+        pinchRef.current = null
+      }
+    }
+    isPanningRef.current = false
+
+    if (selectionActionRef.current) {
+      selectionActionRef.current = null
+      selectionPreviewMapRef.current = new Map()
+      setSelectionCursor('default')
+      render()
+    }
+    if (rubberBandRef.current) {
+      rubberBandRef.current = null
+      render()
+    }
+
+    // Discard in-progress drawing (do NOT commit)
+    if (isDrawingRef.current) {
+      isDrawingRef.current = false
+      activePointerIdRef.current = null
+      drawingRef.current = null
+      render()
+    }
+  }, [render])
 
   // ========== Clipboard paste (images + PDF) ==========
 
   const addImageElement = useCallback((src: string, w: number, h: number, preloadedImg?: HTMLImageElement) => {
     // Place in center of current viewport
     const canvas = canvasRef.current
+    const vp = viewportRef.current
     let cx = 400, cy = 300
     if (canvas) {
       const rect = canvas.getBoundingClientRect()
       ;[cx, cy] = [
-        (rect.width / 2 - viewport.offsetX) / viewport.scale,
-        (rect.height / 2 - viewport.offsetY) / viewport.scale,
+        (rect.width / 2 - vp.offsetX) / vp.scale,
+        (rect.height / 2 - vp.offsetY) / vp.scale,
       ]
     }
     // Scale large images to fit ~400px max
@@ -1811,7 +2032,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     const imgEl: ImageElement = {
       id: nanoid(),
       type: 'image',
-      zIndex: elements.length,
+      zIndex: elementsRef.current.length,
       createdBy: userId,
       data: {
         x: cx - iw / 2,
@@ -1835,7 +2056,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     // Auto-select image after adding
     setSelectedIds([imgEl.id])
     setState(prev => ({ ...prev, tool: 'select' }))
-  }, [elements, userId, viewport])
+  }, [userId, setElements])
 
   const handlePaste = useCallback(async (e: ClipboardEvent) => {
     const items = e.clipboardData?.items
@@ -2461,6 +2682,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handlePointerCancel,
     undo,
     redo,
     clear,

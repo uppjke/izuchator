@@ -9,11 +9,11 @@ import {
   Loader2,
   Users,
   UserPlus,
-  Wifi,
-  WifiOff,
   Check,
   Trash2,
   Copy,
+  Video,
+  VideoOff,
 } from 'lucide-react'
 import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
@@ -33,6 +33,8 @@ import {
 import { useCanvas } from '@/components/board/board-canvas'
 import { FloatingToolbar } from '@/components/board/board-toolbar'
 import { useBoardSocket } from '@/components/board/use-board-socket'
+import { useVideoCall } from '@/components/board/use-video-call'
+import { VideoPanel } from '@/components/board/video-panel'
 import { useTeacherStudents } from '@/hooks/use-relations'
 import { updateBoard } from '@/lib/api'
 import type { BoardData, CanvasState } from '@/components/board/types'
@@ -74,8 +76,10 @@ export default function BoardPage() {
   // Socket — real-time collaboration
   const {
     isConnected,
+    connectionError,
     boardUsers,
     cursors,
+    socketRef,
     emitDraw,
     emitDrawProgress,
     emitErase,
@@ -101,6 +105,24 @@ export default function BoardPage() {
     },
   })
 
+  // Video call
+  const {
+    localStream,
+    remoteStreams,
+    isActive: isVideoActive,
+    isMuted,
+    isCameraOff,
+    mediaSupported,
+    toggleMedia,
+    toggleMute,
+    toggleCamera,
+  } = useVideoCall({
+    boardId,
+    userId,
+    socketRef,
+    boardUsers,
+  })
+
   // Canvas hook — callbacks are stored in refs internally, so inline functions are fine
   const {
     canvasRef,
@@ -113,6 +135,7 @@ export default function BoardPage() {
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handlePointerCancel,
     undo,
     redo,
     clear,
@@ -168,6 +191,17 @@ export default function BoardPage() {
       emitSelect(ids)
     },
   })
+
+  // Prevent text selection on the entire page during touch/stylus interaction
+  useEffect(() => {
+    const prevent = (e: Event) => e.preventDefault()
+    document.addEventListener('selectstart', prevent)
+    document.addEventListener('dragstart', prevent)
+    return () => {
+      document.removeEventListener('selectstart', prevent)
+      document.removeEventListener('dragstart', prevent)
+    }
+  }, [])
 
   // Load board data + restore viewport
   useEffect(() => {
@@ -261,22 +295,84 @@ export default function BoardPage() {
     render()
   }, [elements, render])
 
-  // Track cursor for remote users — send WORLD coordinates
-  const handlePointerMoveWithCursor = useCallback(
-    (e: React.PointerEvent<HTMLCanvasElement>) => {
-      handlePointerMove(e)
+  // Document-level pointer event listeners in CAPTURE phase.
+  // iPadOS can suppress pen pointerdown events at the element level for rapid
+  // Apple Pencil strokes (gesture recognition delay).  Capture-phase document
+  // listeners receive events before any element-level processing or suppression.
+  const pointerHandlersRef = useRef({ handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel, emitCursor, screenToWorld })
+  pointerHandlersRef.current = { handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel, emitCursor, screenToWorld }
 
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    // Check if the event actually targets the canvas/container (not UI overlays like toolbar)
+    const isInCanvas = (e: PointerEvent): boolean => {
+      const target = e.target as HTMLElement | null
+      // If the event target is not inside our container, it's a UI overlay (toolbar, header, etc.)
+      if (target && !container.contains(target)) return false
+      const rect = container.getBoundingClientRect()
+      return e.clientX >= rect.left && e.clientX <= rect.right &&
+             e.clientY >= rect.top && e.clientY <= rect.bottom
+    }
+
+    const emitWorldCursor = (e: PointerEvent) => {
       const canvas = canvasRef.current
       if (!canvas) return
       const rect = canvas.getBoundingClientRect()
       const sx = e.clientX - rect.left
       const sy = e.clientY - rect.top
-      // Convert screen → world so cursors align regardless of each user's viewport
-      const [wx, wy] = screenToWorld(sx, sy)
-      emitCursor(wx, wy)
-    },
-    [handlePointerMove, emitCursor, canvasRef, screenToWorld]
-  )
+      const [wx, wy] = pointerHandlersRef.current.screenToWorld(sx, sy)
+      pointerHandlersRef.current.emitCursor(wx, wy)
+    }
+
+    const onDown = (e: PointerEvent) => {
+      if (!isInCanvas(e)) return
+      pointerHandlersRef.current.handlePointerDown(e)
+    }
+    const onMove = (e: PointerEvent) => {
+      if (!isInCanvas(e)) return
+      pointerHandlersRef.current.handlePointerMove(e)
+      emitWorldCursor(e)
+    }
+    const onUp = (e: PointerEvent) => {
+      // Always handle up (pointer may have moved outside canvas during stroke)
+      pointerHandlersRef.current.handlePointerUp(e)
+    }
+    const onCancel = (e: PointerEvent) => {
+      pointerHandlersRef.current.handlePointerCancel(e)
+    }
+
+    // Capture phase = earliest possible interception, before bubble phase
+    const captureOpts: AddEventListenerOptions = { passive: false, capture: true }
+    document.addEventListener('pointerdown', onDown, captureOpts)
+    document.addEventListener('pointermove', onMove, captureOpts)
+    document.addEventListener('pointerup', onUp, captureOpts)
+    document.addEventListener('pointercancel', onCancel, captureOpts)
+
+    // === CRITICAL: Block touch events to disable iPadOS Scribble ===
+    // Scribble intercepts Apple Pencil touch events at the OS level and
+    // completely swallows them before they become pointer events.
+    // preventDefault() on touchstart is the ONLY way to disable it.
+    const preventTouch = (e: TouchEvent) => { e.preventDefault() }
+    container.addEventListener('touchstart', preventTouch, { passive: false })
+    container.addEventListener('touchmove', preventTouch, { passive: false })
+    container.addEventListener('touchend', preventTouch, { passive: false })
+    // Also on document capture phase for belt-and-suspenders
+    document.addEventListener('touchstart', (e: TouchEvent) => {
+      if (isInCanvas(e.touches[0] as unknown as PointerEvent)) e.preventDefault()
+    }, { passive: false, capture: true })
+
+    return () => {
+      document.removeEventListener('pointerdown', onDown, { capture: true })
+      document.removeEventListener('pointermove', onMove, { capture: true })
+      document.removeEventListener('pointerup', onUp, { capture: true })
+      document.removeEventListener('pointercancel', onCancel, { capture: true })
+      container.removeEventListener('touchstart', preventTouch)
+      container.removeEventListener('touchmove', preventTouch)
+      container.removeEventListener('touchend', preventTouch)
+    }
+  }, [loading]) // re-attach when canvas mounts after loading
 
   // Auto-save
   const saveBoardRef = useRef<(() => Promise<void>) | undefined>(undefined)
@@ -481,17 +577,17 @@ export default function BoardPage() {
   }
 
   return (
-    <div className="flex flex-col h-dvh bg-white overflow-hidden">
+    <div className="flex flex-col h-dvh bg-white overflow-hidden select-none" style={{ WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
       {/* Compact header */}
-      <header className="flex items-center justify-between px-3 py-2 border-b border-zinc-200/50 bg-white/95 backdrop-blur-sm z-30 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
+      <header className="flex items-center justify-between px-3 py-2 md:px-5 md:py-3 border-b border-zinc-200/50 bg-white/95 backdrop-blur-sm z-30 shrink-0">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <Button
             variant="ghost"
             size="icon"
             onClick={handleBack}
-            className="shrink-0 h-8 w-8"
+            className="shrink-0 h-8 w-8 md:h-10 md:w-10"
           >
-            <Icon icon={ArrowLeft} size="sm" />
+            <Icon icon={ArrowLeft} size="sm" className="md:!h-5 md:!w-5" />
           </Button>
 
           {/* Inline title editing */}
@@ -502,12 +598,12 @@ export default function BoardPage() {
               onChange={(e) => setEditTitle(e.target.value)}
               onBlur={handleTitleSave}
               onKeyDown={handleTitleKeyDown}
-              className="h-7 text-sm font-medium w-48 max-w-[50vw]"
+              className="h-7 md:h-9 text-sm md:text-base font-medium w-48 max-w-[50vw]"
               autoFocus
             />
           ) : (
             <h1
-              className={`text-sm font-medium text-zinc-900 truncate ${isTeacher ? 'cursor-pointer hover:text-zinc-600 transition-colors' : ''}`}
+              className={`text-sm md:text-base font-medium text-zinc-900 truncate ${isTeacher ? 'cursor-pointer hover:text-zinc-600 transition-colors' : ''}`}
               onClick={handleTitleClick}
               title={isTeacher ? 'Нажмите для редактирования' : undefined}
             >
@@ -521,7 +617,7 @@ export default function BoardPage() {
               {board?.relation?.student ? (
                 <Popover open={showStudentPicker} onOpenChange={setShowStudentPicker}>
                   <PopoverTrigger asChild>
-                    <button className="flex items-center gap-1 text-xs text-zinc-500 bg-zinc-100 rounded-full px-2 py-0.5 hover:bg-zinc-200 transition-colors shrink-0">
+                    <button className="flex items-center gap-1 text-xs md:text-sm text-zinc-500 bg-zinc-100 rounded-full px-2 py-0.5 md:px-3 md:py-1 hover:bg-zinc-200 transition-colors shrink-0">
                       <Icon icon={Users} size="xs" />
                       <span className="truncate max-w-[100px]">
                         {board.relation.student.name || board.relation.student.email}
@@ -554,7 +650,7 @@ export default function BoardPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-xs gap-1 text-zinc-400 hover:text-zinc-600 shrink-0"
+                      className="h-7 md:h-9 text-xs md:text-sm gap-1 text-zinc-400 hover:text-zinc-600 shrink-0"
                     >
                       <Icon icon={UserPlus} size="xs" />
                       <span className="hidden sm:inline">Пригласить</span>
@@ -587,14 +683,10 @@ export default function BoardPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 md:gap-2.5">
           {/* Connection status */}
-          <div className="flex items-center gap-1 text-xs text-zinc-500">
-            <Icon
-              icon={isConnected ? Wifi : WifiOff}
-              size="xs"
-              className={isConnected ? 'text-green-500' : 'text-red-400'}
-            />
+          <div className="flex items-center gap-1 text-xs md:text-sm text-zinc-500" title={connectionError || undefined}>
+            <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-400 animate-pulse'}`} />
           </div>
 
           {/* Online users */}
@@ -602,11 +694,26 @@ export default function BoardPage() {
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs gap-1 h-7"
+              className="text-xs md:text-sm gap-1 h-7 md:h-9"
               onClick={() => setShowUsers(!showUsers)}
             >
-              <Icon icon={Users} size="xs" />
+              <Icon icon={Users} size="xs" className="md:!h-4 md:!w-4" />
               {boardUsers.length}
+            </Button>
+          )}
+
+          {/* Camera toggle */}
+          {mediaSupported && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-7 w-7 md:h-9 md:w-9 p-0 ${
+                isVideoActive ? 'text-green-500 hover:text-green-600' : 'text-zinc-400 hover:text-zinc-600'
+              }`}
+              onClick={toggleMedia}
+              title={isVideoActive ? 'Выключить камеру' : 'Включить камеру'}
+            >
+              <Icon icon={isVideoActive ? Video : VideoOff} size="xs" className="md:!h-4 md:!w-4" />
             </Button>
           )}
 
@@ -621,17 +728,60 @@ export default function BoardPage() {
         </div>
       </header>
 
+      {/* Connection error banner */}
+      <AnimatePresence>
+        {!isConnected && connectionError && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="bg-amber-50 border-b border-amber-200 overflow-hidden"
+          >
+            <div className="px-3 py-2 flex items-center gap-2 text-xs text-amber-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
+              <span className="flex-1">
+                {connectionError === 'cert'
+                  ? 'Не удалось подключиться — откройте в браузере '
+                  : 'Подключение к серверу...'}
+                {connectionError === 'cert' && (
+                  <a
+                    href={`${(() => { try { const u = new URL(process.env.NEXT_PUBLIC_PRESENCE_SERVER || ''); u.hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost'; return u.origin } catch { return '' } })()}/health`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-medium"
+                  >
+                    сервер и примите сертификат
+                  </a>
+                )}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Canvas area — full remaining space */}
-      <div ref={containerRef} className="flex-1 relative overflow-hidden">
+      <div
+        ref={containerRef}
+        className="flex-1 relative overflow-hidden"
+        style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
+      >
         <canvas
           ref={canvasRef}
           className="absolute inset-0"
-          style={{ touchAction: 'none', cursor: cursorStyle }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMoveWithCursor}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-          onPointerCancel={handlePointerUp}
+          style={{ touchAction: 'none', cursor: cursorStyle, WebkitUserSelect: 'none' }}
+        />
+
+        {/* Video panel */}
+        <VideoPanel
+          localStream={localStream}
+          remoteStreams={remoteStreams}
+          isActive={isVideoActive}
+          isMuted={isMuted}
+          isCameraOff={isCameraOff}
+          boardUsers={boardUsers}
+          onToggleMute={toggleMute}
+          onToggleCamera={toggleCamera}
         />
 
         {/* Selection context menu */}
@@ -648,21 +798,21 @@ export default function BoardPage() {
                 top: contextMenuPos.top,
               }}
             >
-              <div className="flex items-center gap-0.5 bg-white rounded-lg shadow-lg border border-zinc-200 p-1">
+              <div className="flex items-center gap-0.5 bg-white rounded-lg shadow-lg border border-zinc-200 p-1 md:p-1.5">
                 <button
                   onClick={handleDuplicateSelected}
-                  className="flex items-center justify-center w-8 h-8 text-zinc-700 hover:bg-zinc-100 rounded-md transition-colors"
+                  className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 text-zinc-700 hover:bg-zinc-100 rounded-md transition-colors"
                   title="Дублировать (⌘D)"
                 >
-                  <Icon icon={Copy} size="sm" />
+                  <Icon icon={Copy} size="sm" className="md:!h-5 md:!w-5" />
                 </button>
-                <div className="w-px h-4 bg-zinc-200" />
+                <div className="w-px h-4 md:h-5 bg-zinc-200" />
                 <button
                   onClick={handleDeleteSelected}
-                  className="flex items-center justify-center w-8 h-8 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                  className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 text-red-600 hover:bg-red-50 rounded-md transition-colors"
                   title="Удалить (Delete)"
                 >
-                  <Icon icon={Trash2} size="sm" />
+                  <Icon icon={Trash2} size="sm" className="md:!h-5 md:!w-5" />
                 </button>
               </div>
             </motion.div>
@@ -698,13 +848,13 @@ export default function BoardPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="absolute top-2 right-2 bg-white rounded-lg shadow-lg border border-zinc-200 p-3 z-20 min-w-[160px]"
+              className="absolute top-2 right-2 md:top-3 md:right-3 bg-white rounded-lg shadow-lg border border-zinc-200 p-3 md:p-4 z-20 min-w-[160px] md:min-w-[200px]"
             >
-              <p className="text-xs font-medium text-zinc-500 mb-2">На доске:</p>
+              <p className="text-xs md:text-sm font-medium text-zinc-500 mb-2">На доске:</p>
               {boardUsers.map((user) => (
                 <div key={user.userId} className="flex items-center gap-2 py-1">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <span className="text-sm text-zinc-700">{user.userName}</span>
+                  <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-green-500" />
+                  <span className="text-sm md:text-base text-zinc-700">{user.userName}</span>
                 </div>
               ))}
             </motion.div>

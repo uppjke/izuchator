@@ -181,7 +181,7 @@ export function FloatingToolbar({
         }}
         title={`${tool.label}${tool.shortcut ? ` (${tool.shortcut})` : ''}`}
         className={cn(
-          'relative p-2 rounded-xl transition-all duration-150 flex-shrink-0',
+          'relative p-2 md:p-3 rounded-full transition-all duration-150 flex-shrink-0',
           'hover:bg-zinc-100 active:scale-95',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900',
           isActive && !activeColor && 'bg-zinc-900 text-white hover:bg-zinc-800',
@@ -192,14 +192,14 @@ export function FloatingToolbar({
         <Icon
           icon={tool.icon}
           size="sm"
-          className={isActive ? 'text-white' : 'text-zinc-700'}
+          className={cn('md:!h-5 md:!w-5', isActive ? 'text-white' : 'text-zinc-700')}
         />
       </button>
     )
   }
 
   const separator = (
-    <div className="w-px h-7 bg-zinc-200 mx-0.5 flex-shrink-0" />
+    <div className="w-px h-7 md:h-9 bg-zinc-200 mx-0.5 flex-shrink-0" />
   )
 
   const undoRedoButtons = (
@@ -208,17 +208,17 @@ export function FloatingToolbar({
         onClick={onUndo}
         disabled={!canUndo}
         title="Отменить (Ctrl+Z)"
-        className="p-2 rounded-xl transition-all hover:bg-zinc-100 active:scale-95 disabled:opacity-30 flex-shrink-0"
+        className="p-2 md:p-3 rounded-full transition-all hover:bg-zinc-100 active:scale-95 disabled:opacity-30 flex-shrink-0"
       >
-        <Icon icon={Undo2} size="sm" className="text-zinc-700" />
+        <Icon icon={Undo2} size="sm" className="text-zinc-700 md:!h-5 md:!w-5" />
       </button>
       <button
         onClick={onRedo}
         disabled={!canRedo}
         title="Повторить (Ctrl+Shift+Z)"
-        className="p-2 rounded-xl transition-all hover:bg-zinc-100 active:scale-95 disabled:opacity-30 flex-shrink-0"
+        className="p-2 md:p-3 rounded-full transition-all hover:bg-zinc-100 active:scale-95 disabled:opacity-30 flex-shrink-0"
       >
-        <Icon icon={Redo2} size="sm" className="text-zinc-700" />
+        <Icon icon={Redo2} size="sm" className="text-zinc-700 md:!h-5 md:!w-5" />
       </button>
     </>
   )
@@ -228,12 +228,12 @@ export function FloatingToolbar({
       onClick={() => togglePanel('more')}
       title="Ещё"
       className={cn(
-        'p-2 rounded-xl transition-all duration-150 flex-shrink-0',
+        'p-2 md:p-3 rounded-full transition-all duration-150 flex-shrink-0',
         'hover:bg-zinc-100 active:scale-95',
         openPanel === 'more' && 'bg-zinc-100'
       )}
     >
-      <Icon icon={MoreHorizontal} size="sm" className="text-zinc-700" />
+      <Icon icon={MoreHorizontal} size="sm" className="text-zinc-700 md:!h-5 md:!w-5" />
     </button>
   )
 
@@ -261,7 +261,7 @@ export function FloatingToolbar({
             }}
             title={color}
             className={cn(
-              'w-7 h-7 rounded-full border-2 transition-all duration-150',
+              'w-7 h-7 md:w-9 md:h-9 rounded-full border-2 transition-all duration-150',
               'hover:scale-110 active:scale-95',
               currentToolColor === color
                 ? 'border-zinc-900 ring-2 ring-zinc-900/20 scale-110'
@@ -278,7 +278,7 @@ export function FloatingToolbar({
             onClick={() => onChange({ strokeWidth: width })}
             title={`${width}px`}
             className={cn(
-              'w-7 h-7 rounded-full flex items-center justify-center transition-all',
+              'w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-all',
               'hover:bg-zinc-100 active:scale-95',
               state.strokeWidth === width && 'bg-zinc-100 ring-1 ring-zinc-300'
             )}
@@ -304,7 +304,7 @@ export function FloatingToolbar({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: panelY, scale: 0.95 }}
       transition={{ duration: 0.15 }}
-      className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-zinc-200/60 p-1 flex items-center gap-0.5 pointer-events-auto"
+      className="bg-white/95 backdrop-blur-xl rounded-full shadow-lg border border-zinc-200/60 p-1.5 md:p-2 flex items-center gap-0.5 md:gap-1 pointer-events-auto"
     >
       {GRID_OPTIONS.map((opt) => (
         <button
@@ -315,14 +315,14 @@ export function FloatingToolbar({
           }}
           title={opt.label}
           className={cn(
-            'p-2 rounded-xl transition-all',
+            'p-2 md:p-3 rounded-full transition-all',
             'hover:bg-zinc-100 active:scale-95',
             state.gridType === opt.id
               ? 'bg-zinc-900 text-white'
               : 'text-zinc-600'
           )}
         >
-          <Icon icon={opt.icon} size="sm" className={state.gridType === opt.id ? 'text-white' : ''} />
+          <Icon icon={opt.icon} size="sm" className={cn('md:!h-5 md:!w-5', state.gridType === opt.id ? 'text-white' : '')} />
         </button>
       ))}
     </motion.div>
@@ -337,19 +337,19 @@ export function FloatingToolbar({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: panelY, scale: 0.95 }}
       transition={{ duration: 0.15 }}
-      className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-zinc-200/60 p-1 flex items-center gap-0.5 pointer-events-auto"
+      className="bg-white/95 backdrop-blur-xl rounded-full shadow-lg border border-zinc-200/60 p-1.5 md:p-2 flex items-center gap-0.5 md:gap-1 pointer-events-auto"
     >
       {/* Grid — single button showing current grid, opens sub-panel */}
       <button
         onClick={() => setOpenPanel('grid')}
         title="Сетка"
         className={cn(
-          'p-2 rounded-xl transition-all',
+          'p-2 md:p-3 rounded-full transition-all',
           'hover:bg-zinc-100 active:scale-95',
           state.gridType !== 'none' ? 'text-blue-600' : 'text-zinc-600'
         )}
       >
-        <Icon icon={currentGridIcon} size="sm" />
+        <Icon icon={currentGridIcon} size="sm" className="md:!h-5 md:!w-5" />
       </button>
       {/* Position toggle */}
       <button
@@ -358,11 +358,11 @@ export function FloatingToolbar({
           setOpenPanel(null)
         }}
         title={isTop ? 'Панель вниз' : 'Панель вверх'}
-        className="p-2 rounded-xl transition-all hover:bg-zinc-100 active:scale-95"
+        className="p-2 md:p-3 rounded-full transition-all hover:bg-zinc-100 active:scale-95"
       >
-        <Icon icon={isTop ? ArrowDown : ArrowUp} size="sm" className="text-zinc-700" />
+        <Icon icon={isTop ? ArrowDown : ArrowUp} size="sm" className="text-zinc-700 md:!h-5 md:!w-5" />
       </button>
-      <div className="w-px h-7 bg-zinc-200 mx-0.5 flex-shrink-0" />
+      <div className="w-px h-7 md:h-9 bg-zinc-200 mx-0.5 flex-shrink-0" />
       {/* Clear board */}
       <button
         onClick={() => {
@@ -370,9 +370,9 @@ export function FloatingToolbar({
           setOpenPanel(null)
         }}
         title="Очистить доску"
-        className="p-2 rounded-xl transition-all hover:bg-red-50 active:scale-95"
+        className="p-2 md:p-3 rounded-full transition-all hover:bg-red-50 active:scale-95"
       >
-        <Icon icon={Trash2} size="sm" className="text-red-500" />
+        <Icon icon={Trash2} size="sm" className="text-red-500 md:!h-5 md:!w-5" />
       </button>
     </motion.div>
   )
@@ -382,7 +382,7 @@ export function FloatingToolbar({
       {/* ========== Main toolbar area ========== */}
       <div
         className={cn(
-          'fixed inset-x-0 z-50 pointer-events-none flex items-center',
+          'fixed inset-x-0 z-50 pointer-events-none flex items-center select-none',
           isTop
             ? 'top-12 flex-col'
             : 'bottom-0 flex-col'
@@ -424,7 +424,7 @@ export function FloatingToolbar({
                         }}
                         title={color}
                         className={cn(
-                          'w-7 h-7 rounded-full border-2 transition-all duration-150',
+                          'w-7 h-7 md:w-9 md:h-9 rounded-full border-2 transition-all duration-150',
                           'hover:scale-110 active:scale-95',
                           shapeColor === color
                             ? 'border-zinc-900 ring-2 ring-zinc-900/20 scale-110'
@@ -442,7 +442,7 @@ export function FloatingToolbar({
                       onClick={() => onChange({ strokeWidth: width })}
                       title={`${width}px`}
                       className={cn(
-                        'w-7 h-7 rounded-full flex items-center justify-center transition-all',
+                        'w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-all',
                         'hover:bg-zinc-100 active:scale-95',
                         state.strokeWidth === width && 'bg-zinc-100 ring-1 ring-zinc-300'
                       )}
@@ -468,7 +468,7 @@ export function FloatingToolbar({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: panelY, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
-                className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-zinc-200/60 p-1 flex items-center gap-0.5 pointer-events-auto"
+                className="bg-white/95 backdrop-blur-xl rounded-full shadow-lg border border-zinc-200/60 p-1.5 md:p-2 flex items-center gap-0.5 md:gap-1 pointer-events-auto"
               >
                 {SHAPE_TOOLS.map(tool => (
                   <button
@@ -478,27 +478,27 @@ export function FloatingToolbar({
                     }}
                     title={tool.label}
                     className={cn(
-                      'relative p-2 rounded-xl transition-all duration-150',
+                      'relative p-2 md:p-3 rounded-full transition-all duration-150',
                       'hover:bg-zinc-100 active:scale-95',
                       state.tool === tool.id && 'text-white'
                     )}
                     style={state.tool === tool.id ? { backgroundColor: getToolColor(tool.id) } : undefined}
                   >
-                    <Icon icon={tool.icon} size="sm" className={state.tool === tool.id ? 'text-white' : 'text-zinc-700'} />
+                    <Icon icon={tool.icon} size="sm" className={cn('md:!h-5 md:!w-5', state.tool === tool.id ? 'text-white' : 'text-zinc-700')} />
                   </button>
                 ))}
-                <div className="w-px h-7 bg-zinc-200 mx-0.5" />
+                <div className="w-px h-7 md:h-9 bg-zinc-200 mx-0.5" />
                 <button
                   onClick={() => setOpenPanel(prev => prev === 'shapeColors' ? 'shapes' : 'shapeColors')}
                   title="Цвет и толщина фигур"
                   className={cn(
-                    'p-2 rounded-xl transition-all duration-150',
+                    'p-2 md:p-3 rounded-full transition-all duration-150',
                     'hover:bg-zinc-100 active:scale-95',
                     openPanel === 'shapeColors' && 'bg-zinc-100'
                   )}
                 >
                   <div
-                    className="w-4 h-4 rounded-full border border-zinc-300"
+                    className="w-4 h-4 md:w-5 md:h-5 rounded-full border border-zinc-300"
                     style={{ backgroundColor: getToolColor(lastActiveShape) }}
                   />
                 </button>
@@ -507,8 +507,8 @@ export function FloatingToolbar({
           </AnimatePresence>
 
           {/* ---- Single-row pill (all devices) ---- */}
-          <div className="flex pointer-events-auto items-center gap-0.5 bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-zinc-200/60 p-1 overflow-x-auto scrollbar-hide max-w-[calc(100vw-24px)]">
-            <div className="flex items-center gap-0.5">
+          <div className="flex pointer-events-auto items-center gap-0.5 md:gap-1 bg-white/95 backdrop-blur-xl rounded-full shadow-lg border border-zinc-200/60 p-1.5 md:p-2 overflow-x-auto scrollbar-hide max-w-[calc(100vw-24px)]">
+            <div className="flex items-center gap-0.5 md:gap-1">
               {TOOLS_BEFORE_SHAPES.map(renderToolButton)}
               {/* Grouped shape button */}
               <button
@@ -522,7 +522,7 @@ export function FloatingToolbar({
                 }}
                 title="Фигуры"
                 className={cn(
-                  'relative p-2 rounded-xl transition-all duration-150 flex-shrink-0',
+                  'relative p-2 md:p-3 rounded-full transition-all duration-150 flex-shrink-0',
                   'hover:bg-zinc-100 active:scale-95',
                   isShapeTool && 'text-white',
                   openPanel === 'shapes' && !isShapeTool && 'bg-zinc-100'
@@ -532,7 +532,7 @@ export function FloatingToolbar({
                 <Icon
                   icon={SHAPE_TOOLS.find(t => t.id === lastActiveShape)?.icon ?? Square}
                   size="sm"
-                  className={isShapeTool ? 'text-white' : 'text-zinc-700'}
+                  className={cn('md:!h-5 md:!w-5', isShapeTool ? 'text-white' : 'text-zinc-700')}
                 />
               </button>
               {TOOLS_AFTER_SHAPES.map(renderToolButton)}
@@ -548,39 +548,39 @@ export function FloatingToolbar({
       {/* ========== Zoom controls — separate floating pill ========== */}
       <div
         className={cn(
-          'fixed z-50 right-3 flex flex-col items-center gap-0.5 bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-zinc-200/60 p-1 pointer-events-auto',
-          isTop ? 'top-32' : 'bottom-20'
+          'fixed z-50 right-3 md:right-4 flex flex-col items-center gap-0.5 md:gap-1 bg-white/95 backdrop-blur-xl rounded-full shadow-lg border border-zinc-200/60 p-1.5 md:p-2 pointer-events-auto',
+          isTop ? 'top-32' : 'bottom-20 md:bottom-24'
         )}
       >
         <button
           onClick={onZoomIn}
           title="Приблизить"
-          className="p-1.5 rounded-xl hover:bg-zinc-100 active:scale-95 transition-all"
+          className="p-1.5 md:p-2.5 rounded-full hover:bg-zinc-100 active:scale-95 transition-all"
         >
-          <Icon icon={ZoomIn} size="sm" className="text-zinc-700" />
+          <Icon icon={ZoomIn} size="sm" className="text-zinc-700 md:!h-5 md:!w-5" />
         </button>
         <button
           onClick={onZoomReset}
           title="Сбросить масштаб"
-          className="px-1.5 py-0.5 rounded-lg hover:bg-zinc-100 active:scale-95 transition-all min-w-[36px] text-center"
+          className="px-1.5 py-0.5 md:px-2 md:py-1 rounded-full hover:bg-zinc-100 active:scale-95 transition-all min-w-[36px] md:min-w-[44px] text-center"
         >
-          <span className="text-[10px] font-medium text-zinc-600">
+          <span className="text-[10px] md:text-xs font-medium text-zinc-600">
             {Math.round(scale * 100)}%
           </span>
         </button>
         <button
           onClick={onZoomOut}
           title="Отдалить"
-          className="p-1.5 rounded-xl hover:bg-zinc-100 active:scale-95 transition-all"
+          className="p-1.5 md:p-2.5 rounded-full hover:bg-zinc-100 active:scale-95 transition-all"
         >
-          <Icon icon={ZoomOut} size="sm" className="text-zinc-700" />
+          <Icon icon={ZoomOut} size="sm" className="text-zinc-700 md:!h-5 md:!w-5" />
         </button>
         <button
           onClick={onZoomReset}
           title="По размеру экрана"
-          className="p-1.5 rounded-xl hover:bg-zinc-100 active:scale-95 transition-all"
+          className="p-1.5 md:p-2.5 rounded-full hover:bg-zinc-100 active:scale-95 transition-all"
         >
-          <Icon icon={Maximize} size="xs" className="text-zinc-700" />
+          <Icon icon={Maximize} size="xs" className="text-zinc-700 md:!h-4 md:!w-4" />
         </button>
       </div>
     </>

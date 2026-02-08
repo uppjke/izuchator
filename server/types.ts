@@ -23,6 +23,12 @@ export interface ClientToServerEvents {
   'board:clear': (data: { boardId: string }) => void
   'board:undo': (data: { boardId: string; elementId: string }) => void
   'board:state-response': (data: { boardId: string; requesterId: string; elements: unknown[] }) => void
+  // WebRTC signaling
+  'board:rtc-offer': (data: { boardId: string; targetUserId: string; offer: RTCSessionDescriptionInit }) => void
+  'board:rtc-answer': (data: { boardId: string; targetUserId: string; answer: RTCSessionDescriptionInit }) => void
+  'board:rtc-ice-candidate': (data: { boardId: string; targetUserId: string; candidate: RTCIceCandidateInit }) => void
+  'board:rtc-hangup': (data: { boardId: string }) => void
+  'board:rtc-ready': (data: { boardId: string }) => void
 }
 
 // События от сервера к клиенту
@@ -47,6 +53,12 @@ export interface ServerToClientEvents {
   'board:undo': (data: { elementId: string; userId: string }) => void
   'board:request-state': (data: { requesterId: string }) => void
   'board:sync-state': (data: { elements: unknown[] }) => void
+  // WebRTC signaling
+  'board:rtc-offer': (data: { fromUserId: string; offer: RTCSessionDescriptionInit }) => void
+  'board:rtc-answer': (data: { fromUserId: string; answer: RTCSessionDescriptionInit }) => void
+  'board:rtc-ice-candidate': (data: { fromUserId: string; candidate: RTCIceCandidateInit }) => void
+  'board:rtc-hangup': (data: { fromUserId: string }) => void
+  'board:rtc-ready': (data: { fromUserId: string }) => void
 }
 
 // Межсерверные события (для Redis Pub/Sub)

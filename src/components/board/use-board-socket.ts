@@ -53,6 +53,7 @@ export function useBoardSocket({
   const { data: session } = useSession()
   const socketRef = useRef<Socket<BoardServerToClientEvents, BoardClientToServerEvents> | null>(null)
   const [isConnected, setIsConnected] = useState(false)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
   const [boardUsers, setBoardUsers] = useState<BoardUser[]>([])
   const [cursors, setCursors] = useState<Map<string, CursorPosition>>(new Map())
 
@@ -86,13 +87,14 @@ export function useBoardSocket({
       socket = io(
         `${serverUrl}/board`,
         {
-          transports: ['websocket'],
-          upgrade: false,
-          timeout: 5000,
+          transports: ['websocket', 'polling'],
+          upgrade: true,
+          timeout: 10000,
           reconnection: true,
-          reconnectionAttempts: 10,
+          reconnectionAttempts: Infinity,
           reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
+          reconnectionDelayMax: 10000,
+          forceNew: true,
         }
       )
 
@@ -103,6 +105,7 @@ export function useBoardSocket({
       socket.on('connect', () => {
         if (!mounted) return
         setIsConnected(true)
+        setConnectionError(null)
         socket!.emit('board:join', {
           boardId,
           userId: currentUserId,
@@ -110,9 +113,25 @@ export function useBoardSocket({
         })
       })
 
-      socket.on('disconnect', () => {
+      socket.on('disconnect', (reason) => {
         if (!mounted) return
         setIsConnected(false)
+        if (reason === 'io server disconnect') {
+          // Server forced disconnect — reconnect manually
+          socket?.connect()
+        }
+      })
+
+      socket.on('connect_error', (err) => {
+        if (!mounted) return
+        setIsConnected(false)
+        console.warn('Board socket connect_error:', err.message)
+        // Detect TLS/cert issues
+        if (err.message?.includes('xhr poll error') || err.message?.includes('websocket error')) {
+          setConnectionError('cert')
+        } else {
+          setConnectionError(err.message || 'connection_failed')
+        }
       })
 
       // Main draw handler — handles both final elements and in-progress (via _transient flag)
@@ -304,8 +323,10 @@ export function useBoardSocket({
 
   return {
     isConnected,
+    connectionError,
     boardUsers,
     cursors,
+    socketRef,
     emitDraw,
     emitDrawProgress,
     emitErase,
