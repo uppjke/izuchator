@@ -47,6 +47,8 @@ export function useVideoCall({ boardId, userId, socketRef, boardUsers }: UseVide
   // Polite peer glare handling
   const makingOfferRef = useRef<Set<string>>(new Set())
   const ignoreOfferRef = useRef<Set<string>>(new Set())
+  // Track when rtc-ready was last received per user (guards against stale hangup race)
+  const rtcReadyReceivedRef = useRef<Map<string, number>>(new Map())
 
   useEffect(() => { isActiveRef.current = isActive }, [isActive])
   useEffect(() => { boardIdRef.current = boardId }, [boardId])
@@ -71,6 +73,7 @@ export function useVideoCall({ boardId, userId, socketRef, boardUsers }: UseVide
         pendingCandidatesRef.current.delete(prevId)
         ignoreOfferRef.current.delete(prevId)
         makingOfferRef.current.delete(prevId)
+        rtcReadyReceivedRef.current.delete(prevId)
       }
     }
 
@@ -386,6 +389,14 @@ export function useVideoCall({ boardId, userId, socketRef, boardUsers }: UseVide
     }
 
     const handleHangup = ({ fromUserId }: { fromUserId: string }) => {
+      // Guard: if rtc-ready arrived recently from this user, the hangup
+      // belongs to the OLD socket (beforeunload race on page reload). Ignore it.
+      const readyTs = rtcReadyReceivedRef.current.get(fromUserId)
+      if (readyTs && Date.now() - readyTs < 5000) {
+        log(`Ignoring stale hangup from ${uid(fromUserId)} (rtc-ready ${Date.now() - readyTs}ms ago)`)
+        return
+      }
+
       log(`Hangup from ${uid(fromUserId)}`)
       const peer = peersRef.current.get(fromUserId)
       if (peer) {
@@ -400,8 +411,24 @@ export function useVideoCall({ boardId, userId, socketRef, boardUsers }: UseVide
 
     const handleRtcReady = async ({ fromUserId }: { fromUserId: string }) => {
       log(`User ${uid(fromUserId)} RTC-ready, active=${isActiveRef.current}, stream=${!!localStreamRef.current}`)
-      if (!isActiveRef.current || !localStreamRef.current) return
       if (fromUserId === userIdRef.current) return
+
+      // rtc-ready = fresh page load → any existing peer is definitely stale
+      const existing = peersRef.current.get(fromUserId)
+      if (existing) {
+        log(`Closing stale peer for ${uid(fromUserId)} on rtc-ready`)
+        existing.pc.close()
+        peersRef.current.delete(fromUserId)
+        setRemoteStreams(prev => { const n = new Map(prev); n.delete(fromUserId); return n })
+        pendingCandidatesRef.current.delete(fromUserId)
+        ignoreOfferRef.current.delete(fromUserId)
+        makingOfferRef.current.delete(fromUserId)
+      }
+
+      // Mark timestamp to guard against stale hangup from old socket
+      rtcReadyReceivedRef.current.set(fromUserId, Date.now())
+
+      if (!isActiveRef.current || !localStreamRef.current) return
       await sendOfferTo(fromUserId)
     }
 
