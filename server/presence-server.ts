@@ -456,6 +456,13 @@ class PresenceServer {
 
     const users = this.boardUsers.get(boardId)
     if (users) {
+      const tracked = users.get(userId)
+      // Only remove if this socket is still the current one for this user.
+      // A newer socket may have already replaced it after a fast reload.
+      if (tracked && tracked.socketId !== socket.id) {
+        console.log(`🎨 Ignoring stale leave for ${userId} (socket ${socket.id} ≠ ${tracked.socketId})`)
+        return
+      }
       users.delete(userId)
       if (users.size === 0) {
         this.boardUsers.delete(boardId)

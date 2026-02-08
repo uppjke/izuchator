@@ -52,6 +52,31 @@ export function useVideoCall({ boardId, userId, socketRef, boardUsers }: UseVide
   useEffect(() => { boardIdRef.current = boardId }, [boardId])
   useEffect(() => { userIdRef.current = userId }, [userId])
 
+  // ── Clean up video peers when users leave the board ──
+  const boardUserIdsRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    const currentIds = new Set(boardUsers.map(u => u.userId))
+    const prevIds = boardUserIdsRef.current
+
+    // Find users who departed
+    for (const prevId of prevIds) {
+      if (!currentIds.has(prevId) && prevId !== userId) {
+        const peer = peersRef.current.get(prevId)
+        if (peer) {
+          log(`User ${uid(prevId)} left board — closing peer`)
+          peer.pc.close()
+          peersRef.current.delete(prevId)
+          setRemoteStreams(prev => { const n = new Map(prev); n.delete(prevId); return n })
+        }
+        pendingCandidatesRef.current.delete(prevId)
+        ignoreOfferRef.current.delete(prevId)
+        makingOfferRef.current.delete(prevId)
+      }
+    }
+
+    boardUserIdsRef.current = currentIds
+  }, [boardUsers, userId])
+
   // ── Create a NEW peer connection (only when no existing usable peer) ──
   const createPeerConnection = useCallback((remoteUserId: string): RTCPeerConnection => {
     const existing = peersRef.current.get(remoteUserId)
@@ -154,23 +179,25 @@ export function useVideoCall({ boardId, userId, socketRef, boardUsers }: UseVide
         log(`Skip offer to ${uid(targetUserId)}: ICE ${ice}`)
         return
       }
-      // disconnected — let ICE recover, don't destroy
-      if (ice === 'disconnected') {
-        log(`Skip offer to ${uid(targetUserId)}: ICE disconnected (may recover)`)
-        return
+      // disconnected / failed — peer is stale (e.g. remote user reloaded), recreate
+      if (ice === 'disconnected' || ice === 'failed') {
+        log(`Peer ${uid(targetUserId)} ICE ${ice} → recreating`)
+        existing.pc.close()
+        peersRef.current.delete(targetUserId)
+        pc = createPeerConnection(targetUserId)
+      } else {
+        // Stable state — add our tracks and renegotiate on EXISTING peer
+        log(`Renegotiating with ${uid(targetUserId)} (ICE: ${ice})`)
+        const senderTrackIds = new Set(
+          existing.pc.getSenders().map(s => s.track?.id).filter(Boolean)
+        )
+        localStreamRef.current.getTracks().forEach((track) => {
+          if (!senderTrackIds.has(track.id)) {
+            existing.pc.addTrack(track, localStreamRef.current!)
+          }
+        })
+        pc = existing.pc
       }
-
-      // Stable state — add our tracks and renegotiate on EXISTING peer
-      log(`Renegotiating with ${uid(targetUserId)} (ICE: ${ice})`)
-      const senderTrackIds = new Set(
-        existing.pc.getSenders().map(s => s.track?.id).filter(Boolean)
-      )
-      localStreamRef.current.getTracks().forEach((track) => {
-        if (!senderTrackIds.has(track.id)) {
-          existing.pc.addTrack(track, localStreamRef.current!)
-        }
-      })
-      pc = existing.pc
     } else {
       log(`New peer for offer to ${uid(targetUserId)}`)
       pc = createPeerConnection(targetUserId)
@@ -276,7 +303,13 @@ export function useVideoCall({ boardId, userId, socketRef, boardUsers }: UseVide
         const ice = existing.pc.iceConnectionState
         log(`Existing peer: ICE=${ice}, sig=${sig}`)
 
-        if (sig === 'have-local-offer' || makingOfferRef.current.has(fromUserId)) {
+        // Stale peer — recreate fresh
+        if (ice === 'failed' || ice === 'closed') {
+          log(`Peer ${uid(fromUserId)} ICE ${ice} → recreating for incoming offer`)
+          existing.pc.close()
+          peersRef.current.delete(fromUserId)
+          pc = createPeerConnection(fromUserId)
+        } else if (sig === 'have-local-offer' || makingOfferRef.current.has(fromUserId)) {
           // ── GLARE: both sent offers simultaneously ──
           // Polite peer (lower userId) yields
           const weArePolite = userIdRef.current < fromUserId
@@ -287,10 +320,11 @@ export function useVideoCall({ boardId, userId, socketRef, boardUsers }: UseVide
           }
           log(`Glare: polite → accept offer from ${uid(fromUserId)} (implicit rollback)`)
           ignoreOfferRef.current.delete(fromUserId)
+          pc = existing.pc
+        } else {
+          // Renegotiate on EXISTING peer (stable state)
+          pc = existing.pc
         }
-
-        // Renegotiate on EXISTING peer (stable or after rollback)
-        pc = existing.pc
       } else {
         pc = createPeerConnection(fromUserId)
       }
@@ -411,6 +445,21 @@ export function useVideoCall({ boardId, userId, socketRef, boardUsers }: UseVide
       peersRef.current.forEach((peer) => peer.pc.close())
     }
   }, [])
+
+  // ── Emit hangup on page unload so remote peers clean up immediately ──
+  useEffect(() => {
+    const handleUnload = () => {
+      if (isActiveRef.current) {
+        socketRef.current?.emit('board:rtc-hangup', { boardId: boardIdRef.current })
+      }
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    window.addEventListener('pagehide', handleUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload)
+      window.removeEventListener('pagehide', handleUnload)
+    }
+  }, [socketRef])
 
   return {
     localStream,
