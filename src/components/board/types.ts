@@ -3,7 +3,7 @@
 // ============================================================================
 
 // Инструменты доски
-export type BoardTool = 'select' | 'pen' | 'highlight' | 'text' | 'rect' | 'circle' | 'line' | 'eraser' | 'image' | 'pan'
+export type BoardTool = 'select' | 'pen' | 'highlight' | 'text' | 'rect' | 'circle' | 'triangle' | 'line' | 'arrow' | 'eraser' | 'image' | 'pan'
 
 // Тип сетки
 export type GridType = 'none' | 'dots' | 'lines' | 'squares'
@@ -108,6 +108,31 @@ export interface LineElement extends BoardElementBase {
   }
 }
 
+// Стрелка
+export interface ArrowElement extends BoardElementBase {
+  type: 'arrow'
+  data: {
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+    style: StrokeStyle
+  }
+}
+
+// Треугольник
+export interface TriangleElement extends BoardElementBase {
+  type: 'triangle'
+  data: {
+    x: number
+    y: number
+    width: number
+    height: number
+    style: StrokeStyle
+    fill?: string
+  }
+}
+
 // Изображение
 export interface ImageElement extends BoardElementBase {
   type: 'image'
@@ -127,7 +152,7 @@ export interface EraserAction {
 }
 
 // Объединённый тип элемента
-export type BoardElement = PenElement | TextElement | RectElement | CircleElement | LineElement | ImageElement
+export type BoardElement = PenElement | TextElement | RectElement | CircleElement | TriangleElement | LineElement | ArrowElement | ImageElement
 
 // Настройки доски
 export interface BoardSettings {
@@ -222,6 +247,10 @@ export interface BoardServerToClientEvents {
 }
 
 // Состояние холста
+
+// Инструменты, которые используют цвет
+export const TOOLS_WITH_COLOR: BoardTool[] = ['pen', 'highlight', 'text', 'rect', 'circle', 'triangle', 'line', 'arrow']
+
 export interface CanvasState {
   tool: BoardTool
   strokeColor: string
@@ -230,6 +259,18 @@ export interface CanvasState {
   opacity: number
   fontSize: number
   gridType: GridType
+  toolColors: Record<string, string>
+}
+
+export const DEFAULT_TOOL_COLORS: Record<string, string> = {
+  pen: '#1a1a1a',
+  highlight: '#fde047',
+  text: '#1a1a1a',
+  rect: '#3b82f6',
+  circle: '#22c55e',
+  triangle: '#f97316',
+  line: '#1a1a1a',
+  arrow: '#1a1a1a',
 }
 
 export const DEFAULT_CANVAS_STATE: CanvasState = {
@@ -240,6 +281,7 @@ export const DEFAULT_CANVAS_STATE: CanvasState = {
   opacity: 1,
   fontSize: 16,
   gridType: 'dots',
+  toolColors: { ...DEFAULT_TOOL_COLORS },
 }
 
 export const HIGHLIGHT_DEFAULTS = {
@@ -255,7 +297,9 @@ export const TOOL_LABELS: Record<BoardTool, string> = {
   text: 'Текст',
   rect: 'Прямоугольник',
   circle: 'Круг',
+  triangle: 'Треугольник',
   line: 'Линия',
+  arrow: 'Стрелка',
   eraser: 'Ластик',
   image: 'Изображение',
   pan: 'Перемещение',

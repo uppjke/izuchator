@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -12,6 +12,8 @@ import {
   Wifi,
   WifiOff,
   Check,
+  Trash2,
+  Copy,
 } from 'lucide-react'
 import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
@@ -118,6 +120,9 @@ export default function BoardPage() {
     canRedo,
     selectedIds: _selectedIds,
     selectionCursor,
+    deleteSelected,
+    duplicateSelected,
+    getSelectionScreenBounds,
     addRemoteElement,
     updateRemoteElement: _updateRemoteElement,
     removeRemoteElements,
@@ -407,6 +412,47 @@ export default function BoardPage() {
     : state.tool === 'eraser' ? 'cell'
     : 'crosshair'
 
+  // Selection context menu position
+  const selectionBounds = getSelectionScreenBounds()
+  const showContextMenu = _selectedIds.length > 0 && state.tool === 'select' && selectionBounds !== null
+
+  // Smart context menu positioning: avoid overlapping handles, stay within canvas
+  const contextMenuPos = useMemo(() => {
+    if (!selectionBounds) return { left: 0, top: 0 }
+    const MENU_W = 88   // approximate menu width (2 buttons + separator + padding)
+    const MENU_H = 40   // approximate menu height
+    const HANDLE_OVERSHOOT = 6 // handles extend ~4px beyond bounds, add margin
+    const GAP = 8        // visual gap between handle and menu edge
+    const EDGE_PAD = 8   // padding from canvas edges
+
+    const container = containerRef.current
+    const containerW = container?.clientWidth ?? window.innerWidth
+
+    // Horizontal: centered on selection, clamped to canvas bounds
+    let left = selectionBounds.x + selectionBounds.w / 2 - MENU_W / 2
+    left = Math.max(EDGE_PAD, Math.min(left, containerW - MENU_W - EDGE_PAD))
+
+    // Vertical: prefer above; if no room, go below
+    const aboveTop = selectionBounds.y - HANDLE_OVERSHOOT - GAP - MENU_H
+    const belowTop = selectionBounds.y + selectionBounds.h + HANDLE_OVERSHOOT + GAP
+
+    const top = aboveTop >= EDGE_PAD ? aboveTop : belowTop
+
+    return { left, top }
+  }, [selectionBounds])
+
+  const handleDeleteSelected = useCallback(() => {
+    deleteSelected()
+    isDirtyRef.current = true
+    scheduleAutoSave()
+  }, [deleteSelected, scheduleAutoSave])
+
+  const handleDuplicateSelected = useCallback(() => {
+    duplicateSelected()
+    isDirtyRef.current = true
+    scheduleAutoSave()
+  }, [duplicateSelected, scheduleAutoSave])
+
   // ========== Loading / Error states ==========
 
   if (loading) {
@@ -587,6 +633,41 @@ export default function BoardPage() {
           onPointerLeave={handlePointerUp}
           onPointerCancel={handlePointerUp}
         />
+
+        {/* Selection context menu */}
+        <AnimatePresence>
+          {showContextMenu && selectionBounds && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15 }}
+              className="absolute z-20 pointer-events-auto"
+              style={{
+                left: contextMenuPos.left,
+                top: contextMenuPos.top,
+              }}
+            >
+              <div className="flex items-center gap-0.5 bg-white rounded-lg shadow-lg border border-zinc-200 p-1">
+                <button
+                  onClick={handleDuplicateSelected}
+                  className="flex items-center justify-center w-8 h-8 text-zinc-700 hover:bg-zinc-100 rounded-md transition-colors"
+                  title="Дублировать (⌘D)"
+                >
+                  <Icon icon={Copy} size="sm" />
+                </button>
+                <div className="w-px h-4 bg-zinc-200" />
+                <button
+                  onClick={handleDeleteSelected}
+                  className="flex items-center justify-center w-8 h-8 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                  title="Удалить (Delete)"
+                >
+                  <Icon icon={Trash2} size="sm" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Remote cursors overlay — convert world coords to screen */}
         {Array.from(cursors.values()).map((cursor) => {

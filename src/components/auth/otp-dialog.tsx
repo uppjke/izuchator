@@ -93,10 +93,8 @@ export function OtpDialog({ children, open, onOpenChange, email }: Props) {
           localStorage.removeItem('pendingInvite')
           router.push(`/invite/${code}`)
         } catch {
-          router.push('/dashboard')
+          // остаёмся на текущей странице
         }
-      } else {
-        router.push('/dashboard')
       }
     }, SUCCESS_DELAY)
   }, [onOpenChange, resetState, updateSession, router])

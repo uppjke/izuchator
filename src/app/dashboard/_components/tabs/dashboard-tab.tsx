@@ -57,7 +57,7 @@ function getGreeting(): string {
   if (hour >= 5 && hour < 12) return 'Доброе утро'
   if (hour >= 12 && hour < 17) return 'Добрый день'
   if (hour >= 17 && hour < 22) return 'Добрый вечер'
-  return 'Доброй ночи'
+  return 'Доброй ночи'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
 }
 
 function formatRelativeDate(date: Date): string {

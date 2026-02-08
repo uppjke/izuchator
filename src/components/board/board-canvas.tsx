@@ -11,7 +11,9 @@ import type {
   PenElement,
   RectElement,
   CircleElement,
+  TriangleElement,
   LineElement,
+  ArrowElement,
   ImageElement,
   StrokeStyle,
 } from './types'
@@ -29,15 +31,16 @@ import {
 // ============================================================================
 
 function getStrokeStyle(state: CanvasState): StrokeStyle {
+  const toolColor = state.toolColors[state.tool] ?? state.strokeColor
   if (state.tool === 'highlight') {
     return {
-      color: state.strokeColor,
+      color: toolColor,
       width: HIGHLIGHT_DEFAULTS.width,
       opacity: HIGHLIGHT_DEFAULTS.opacity,
     }
   }
   return {
-    color: state.strokeColor,
+    color: toolColor,
     width: state.strokeWidth,
     opacity: state.opacity,
   }
@@ -149,7 +152,7 @@ function drawGrid(
 
 // ========== Element drawing ==========
 
-function drawElement(ctx: CanvasRenderingContext2D, element: BoardElement, imageCache: Map<string, HTMLImageElement>) {
+function drawElement(ctx: CanvasRenderingContext2D, element: BoardElement, imageCache: Map<string, HTMLImageElement>, onImageLoad?: () => void) {
   ctx.save()
 
   switch (element.type) {
@@ -219,6 +222,52 @@ function drawElement(ctx: CanvasRenderingContext2D, element: BoardElement, image
       break
     }
 
+    case 'arrow': {
+      const { x1, y1, x2, y2, style } = element.data
+      ctx.globalAlpha = style.opacity
+      ctx.strokeStyle = style.color
+      ctx.fillStyle = style.color
+      ctx.lineWidth = style.width
+      ctx.lineCap = 'round'
+      // Arrowhead geometry
+      const angle = Math.atan2(y2 - y1, x2 - x1)
+      const headLen = Math.max(style.width * 3, 12)
+      // Shorten line so it ends at arrowhead base (avoids thick line poking through tip)
+      const lineEndX = x2 - headLen * 0.6 * Math.cos(angle)
+      const lineEndY = y2 - headLen * 0.6 * Math.sin(angle)
+      ctx.beginPath()
+      ctx.moveTo(x1, y1)
+      ctx.lineTo(lineEndX, lineEndY)
+      ctx.stroke()
+      // Draw arrowhead as filled triangle
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(x2, y2)
+      ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6))
+      ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6))
+      ctx.closePath()
+      ctx.fill()
+      break
+    }
+
+    case 'triangle': {
+      const { x, y, width, height, style, fill } = element.data
+      ctx.globalAlpha = style.opacity
+      ctx.beginPath()
+      ctx.moveTo(x + width / 2, y)
+      ctx.lineTo(x + width, y + height)
+      ctx.lineTo(x, y + height)
+      ctx.closePath()
+      if (fill) {
+        ctx.fillStyle = fill
+        ctx.fill()
+      }
+      ctx.strokeStyle = style.color
+      ctx.lineWidth = style.width
+      ctx.stroke()
+      break
+    }
+
     case 'text': {
       const d = element.data
       ctx.globalAlpha = 1
@@ -244,9 +293,9 @@ function drawElement(ctx: CanvasRenderingContext2D, element: BoardElement, image
         newImg.crossOrigin = 'anonymous'
         newImg.src = d.src
         imageCache.set(d.src, newImg)
-        // Will render on next frame after load
+        // Re-render once image is loaded
         newImg.onload = () => {
-          // Trigger re-render from outside
+          onImageLoad?.()
         }
       }
       break
@@ -281,6 +330,16 @@ function hitTest(element: BoardElement, x: number, y: number, threshold: number 
       const d = element.data
       const dist = pointToLineDistance(x, y, d.x1, d.y1, d.x2, d.y2)
       return dist < threshold + d.style.width / 2
+    }
+    case 'arrow': {
+      const d = element.data
+      const dist = pointToLineDistance(x, y, d.x1, d.y1, d.x2, d.y2)
+      return dist < threshold + d.style.width / 2
+    }
+    case 'triangle': {
+      const d = element.data
+      return x >= d.x - threshold && x <= d.x + d.width + threshold &&
+        y >= d.y - threshold && y <= d.y + d.height + threshold
     }
     case 'text': {
       const d = element.data
@@ -354,6 +413,23 @@ function getElementBounds(el: BoardElement): { x: number; y: number; w: number; 
         h: Math.abs(el.data.y2 - el.data.y1),
       }
     }
+    case 'arrow': {
+      const ax = Math.min(el.data.x1, el.data.x2)
+      const ay = Math.min(el.data.y1, el.data.y2)
+      return {
+        x: ax,
+        y: ay,
+        w: Math.abs(el.data.x2 - el.data.x1),
+        h: Math.abs(el.data.y2 - el.data.y1),
+      }
+    }
+    case 'triangle':
+      return {
+        x: Math.min(el.data.x, el.data.x + el.data.width),
+        y: Math.min(el.data.y, el.data.y + el.data.height),
+        w: Math.abs(el.data.width),
+        h: Math.abs(el.data.height),
+      }
     case 'text':
       return { x: el.data.x, y: el.data.y, w: el.data.width, h: el.data.height }
     case 'image':
@@ -385,6 +461,16 @@ function moveElement(el: BoardElement, dx: number, dy: number): BoardElement {
       moved.data.x2 += dx
       moved.data.y2 += dy
       break
+    case 'arrow':
+      moved.data.x1 += dx
+      moved.data.y1 += dy
+      moved.data.x2 += dx
+      moved.data.y2 += dy
+      break
+    case 'triangle':
+      moved.data.x += dx
+      moved.data.y += dy
+      break
     case 'text':
       moved.data.x += dx
       moved.data.y += dy
@@ -400,14 +486,65 @@ function moveElement(el: BoardElement, dx: number, dy: number): BoardElement {
 // ========== Resize helpers ==========
 
 type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
+type EndpointHandle = 'start' | 'end'
+type AnyHandle = ResizeHandle | EndpointHandle
 
 interface SelectionAction {
-  type: 'move' | 'resize'
-  handle?: ResizeHandle
+  type: 'move' | 'resize' | 'endpoint'
+  handle?: AnyHandle
   startWorld: [number, number]
   originalElements: BoardElement[]
   originalBounds: { x: number; y: number; w: number; h: number }
   committed: boolean
+}
+
+/** Check if element is a line or arrow (two-point objects) */
+function isLineLike(el: BoardElement): el is LineElement | ArrowElement {
+  return el.type === 'line' || el.type === 'arrow'
+}
+
+/** Check if selection is a single line-like element */
+function isSingleLineLikeSelection(elements: BoardElement[], selectedIds: string[]): (LineElement | ArrowElement) | null {
+  if (selectedIds.length !== 1) return null
+  const el = elements.find(e => e.id === selectedIds[0])
+  if (el && isLineLike(el)) return el
+  return null
+}
+
+/** Get endpoint positions for a line/arrow element */
+function getEndpointPositions(el: LineElement | ArrowElement): { start: [number, number]; end: [number, number] } {
+  return {
+    start: [el.data.x1, el.data.y1],
+    end: [el.data.x2, el.data.y2],
+  }
+}
+
+/** Hit-test endpoint handles for line/arrow */
+function hitTestEndpoint(
+  x: number, y: number,
+  el: LineElement | ArrowElement,
+  handleWorldSize: number,
+): EndpointHandle | null {
+  const eps = getEndpointPositions(el)
+  const half = handleWorldSize / 2
+  if (Math.abs(x - eps.start[0]) <= half && Math.abs(y - eps.start[1]) <= half) return 'start'
+  if (Math.abs(x - eps.end[0]) <= half && Math.abs(y - eps.end[1]) <= half) return 'end'
+  return null
+}
+
+/** Move a single endpoint of a line/arrow element */
+function moveEndpoint(el: BoardElement, endpoint: EndpointHandle, dx: number, dy: number): BoardElement {
+  const moved = JSON.parse(JSON.stringify(el)) as BoardElement
+  if (moved.type === 'line' || moved.type === 'arrow') {
+    if (endpoint === 'start') {
+      moved.data.x1 += dx
+      moved.data.y1 += dy
+    } else {
+      moved.data.x2 += dx
+      moved.data.y2 += dy
+    }
+  }
+  return moved
 }
 
 const DRAG_THRESHOLD = 3
@@ -475,6 +612,8 @@ const HANDLE_CURSORS: Record<ResizeHandle, string> = {
   sw: 'nesw-resize', w: 'ew-resize',
 }
 
+const ENDPOINT_CURSOR = 'crosshair'
+
 function computeResizedBounds(
   original: { x: number; y: number; w: number; h: number },
   handle: ResizeHandle,
@@ -538,6 +677,20 @@ function resizeElement(
       resized.data.y2 = canScaleY ? nb.y + ((origData.y2 - ob.y) / ob.h) * nb.h : nb.y + nb.h / 2
       break
     }
+    case 'arrow': {
+      const origArrow = (el as ArrowElement).data
+      resized.data.x1 = canScaleX ? nb.x + ((origArrow.x1 - ob.x) / ob.w) * nb.w : nb.x + nb.w / 2
+      resized.data.y1 = canScaleY ? nb.y + ((origArrow.y1 - ob.y) / ob.h) * nb.h : nb.y + nb.h / 2
+      resized.data.x2 = canScaleX ? nb.x + ((origArrow.x2 - ob.x) / ob.w) * nb.w : nb.x + nb.w / 2
+      resized.data.y2 = canScaleY ? nb.y + ((origArrow.y2 - ob.y) / ob.h) * nb.h : nb.y + nb.h / 2
+      break
+    }
+    case 'triangle':
+      resized.data.x = nb.x
+      resized.data.y = nb.y
+      resized.data.width = nb.w
+      resized.data.height = nb.h
+      break
     case 'text':
       resized.data.x = nb.x
       resized.data.y = nb.y
@@ -790,10 +943,10 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
     // Draw current element being drawn
     if (drawingRef.current) {
-      drawElement(ctx, drawingRef.current, imageCacheRef.current)
+      drawElement(ctx, drawingRef.current, imageCacheRef.current, render)
     }
 
-    // Draw selection outline with 8 resize handles (union bounds of all selected)
+    // Draw selection outline with resize handles (union bounds of all selected)
     if (selectedIds.length > 0) {
       // Get union bounds taking previews into account
       const getResolvedElement = (id: string) => previewMap.get(id) || currentElements.find(el => el.id === id)
@@ -810,37 +963,72 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
       }
       if (isFinite(minX)) {
         const bounds = { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
-        const pad = SELECTION_PAD
-        const bx = bounds.x - pad
-        const by = bounds.y - pad
-        const bw = bounds.w + pad * 2
-        const bh = bounds.h + pad * 2
-        const paddedBounds = { x: bx, y: by, w: bw, h: bh }
 
-        ctx.save()
-        // Semi-transparent selection fill
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.05)'
-        ctx.fillRect(bx, by, bw, bh)
+        // Check if single line/arrow for endpoint handles
+        const resolvedSingle = selectedIds.length === 1 ? getResolvedElement(selectedIds[0]!) : null
+        const singleLineLike = resolvedSingle && isLineLike(resolvedSingle) ? resolvedSingle : null
 
-        // Dashed border
-        ctx.strokeStyle = '#3b82f6'
-        ctx.lineWidth = 1.5 / viewport.scale
-        ctx.setLineDash([6 / viewport.scale, 3 / viewport.scale])
-        ctx.strokeRect(bx, by, bw, bh)
+        if (singleLineLike) {
+          // Line/arrow: draw dashed line between endpoints + 2 circular handles
+          const eps = getEndpointPositions(singleLineLike)
+          ctx.save()
 
-        // 8 resize handles
-        ctx.setLineDash([])
-        ctx.fillStyle = '#ffffff'
-        ctx.strokeStyle = '#3b82f6'
-        ctx.lineWidth = 1.5 / viewport.scale
-        const hs = 8 / viewport.scale
-        const halfHs = hs / 2
-        const handles = getHandlePositions(paddedBounds)
-        for (const pos of Object.values(handles)) {
-          ctx.fillRect(pos[0] - halfHs, pos[1] - halfHs, hs, hs)
-          ctx.strokeRect(pos[0] - halfHs, pos[1] - halfHs, hs, hs)
+          // Dashed connection line (selection indicator)
+          ctx.strokeStyle = '#3b82f6'
+          ctx.lineWidth = 1.5 / viewport.scale
+          ctx.setLineDash([6 / viewport.scale, 3 / viewport.scale])
+          ctx.beginPath()
+          ctx.moveTo(eps.start[0], eps.start[1])
+          ctx.lineTo(eps.end[0], eps.end[1])
+          ctx.stroke()
+
+          // Endpoint circles
+          ctx.setLineDash([])
+          ctx.fillStyle = '#ffffff'
+          ctx.strokeStyle = '#3b82f6'
+          ctx.lineWidth = 1.5 / viewport.scale
+          const radius = 5 / viewport.scale
+          for (const pos of [eps.start, eps.end]) {
+            ctx.beginPath()
+            ctx.arc(pos[0], pos[1], radius, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.stroke()
+          }
+          ctx.restore()
+        } else {
+          // Normal shapes: bounding box + 8 square handles
+          const pad = SELECTION_PAD
+          const bx = bounds.x - pad
+          const by = bounds.y - pad
+          const bw = bounds.w + pad * 2
+          const bh = bounds.h + pad * 2
+          const paddedBounds = { x: bx, y: by, w: bw, h: bh }
+
+          ctx.save()
+          // Semi-transparent selection fill
+          ctx.fillStyle = 'rgba(59, 130, 246, 0.05)'
+          ctx.fillRect(bx, by, bw, bh)
+
+          // Dashed border
+          ctx.strokeStyle = '#3b82f6'
+          ctx.lineWidth = 1.5 / viewport.scale
+          ctx.setLineDash([6 / viewport.scale, 3 / viewport.scale])
+          ctx.strokeRect(bx, by, bw, bh)
+
+          // 8 resize handles
+          ctx.setLineDash([])
+          ctx.fillStyle = '#ffffff'
+          ctx.strokeStyle = '#3b82f6'
+          ctx.lineWidth = 1.5 / viewport.scale
+          const hs = 8 / viewport.scale
+          const halfHs = hs / 2
+          const handles = getHandlePositions(paddedBounds)
+          for (const pos of Object.values(handles)) {
+            ctx.fillRect(pos[0] - halfHs, pos[1] - halfHs, hs, hs)
+            ctx.strokeRect(pos[0] - halfHs, pos[1] - halfHs, hs, hs)
+          }
+          ctx.restore()
         }
-        ctx.restore()
       }
     }
 
@@ -1037,45 +1225,86 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     if (tool === 'select') {
       const shiftKey = e.shiftKey
 
-      // 1. Check resize handle of current selection's union bounds
+      // 1. Check handles of current selection
       if (selectedIds.length > 0) {
         const unionBounds = getUnionBounds(elements, selectedIds)
         if (unionBounds) {
-          const pad = SELECTION_PAD
-          const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
           const handleHitSize = Math.max(12, 12 / viewport.scale)
-          const handle = hitTestHandle(x, y, paddedBounds, handleHitSize)
-          if (handle) {
-            const origEls = selectedIds.map(id => elements.find(el => el.id === id)!).filter(Boolean)
-            selectionActionRef.current = {
-              type: 'resize', handle,
-              startWorld: [x, y],
-              originalElements: JSON.parse(JSON.stringify(origEls)),
-              originalBounds: unionBounds,
-              committed: false,
+
+          // 1a. For single line/arrow: check endpoint handles first
+          const lineLikeEl = isSingleLineLikeSelection(elements, selectedIds)
+          if (lineLikeEl) {
+            const endpoint = hitTestEndpoint(x, y, lineLikeEl, handleHitSize)
+            if (endpoint) {
+              const origEls = [JSON.parse(JSON.stringify(lineLikeEl))]
+              selectionActionRef.current = {
+                type: 'endpoint', handle: endpoint,
+                startWorld: [x, y],
+                originalElements: origEls,
+                originalBounds: unionBounds,
+                committed: false,
+              }
+              selectionPreviewMapRef.current.clear()
+              setSelectionCursor(ENDPOINT_CURSOR)
+              const canvas = canvasRef.current
+              if (canvas) canvas.setPointerCapture(e.pointerId)
+              return
             }
-            selectionPreviewMapRef.current.clear()
-            setSelectionCursor(HANDLE_CURSORS[handle])
-            const canvas = canvasRef.current
-            if (canvas) canvas.setPointerCapture(e.pointerId)
-            return
+          }
+
+          // 1b. For normal shapes: check 8 resize handles
+          if (!lineLikeEl) {
+            const pad = SELECTION_PAD
+            const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
+            const handle = hitTestHandle(x, y, paddedBounds, handleHitSize)
+            if (handle) {
+              const origEls = selectedIds.map(id => elements.find(el => el.id === id)!).filter(Boolean)
+              selectionActionRef.current = {
+                type: 'resize', handle,
+                startWorld: [x, y],
+                originalElements: JSON.parse(JSON.stringify(origEls)),
+                originalBounds: unionBounds,
+                committed: false,
+              }
+              selectionPreviewMapRef.current.clear()
+              setSelectionCursor(HANDLE_CURSORS[handle])
+              const canvas = canvasRef.current
+              if (canvas) canvas.setPointerCapture(e.pointerId)
+              return
+            }
           }
 
           // 2. Click inside selection bounding box → start move for all selected
+          //    BUT: if a higher-z unselected element is under the cursor, fall through
+          //    to step 3 to allow selecting elements that overlap with the current selection.
+          const pad = SELECTION_PAD
+          const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
           if (pointInRect(x, y, paddedBounds)) {
-            const origEls = selectedIds.map(id => elements.find(el => el.id === id)!).filter(Boolean)
-            selectionActionRef.current = {
-              type: 'move',
-              startWorld: [x, y],
-              originalElements: JSON.parse(JSON.stringify(origEls)),
-              originalBounds: unionBounds,
-              committed: false,
+            // Check if there's a higher-z non-selected element directly under cursor
+            const topSelected = Math.max(...selectedIds.map(id => {
+              const idx = elements.findIndex(el => el.id === id)
+              return idx
+            }))
+            const higherHit = [...elements].slice(topSelected + 1).reverse().find(el =>
+              !selectedIds.includes(el.id) && hitTest(el, x, y, 10)
+            )
+
+            if (!higherHit) {
+              const origEls = selectedIds.map(id => elements.find(el => el.id === id)!).filter(Boolean)
+              selectionActionRef.current = {
+                type: 'move',
+                startWorld: [x, y],
+                originalElements: JSON.parse(JSON.stringify(origEls)),
+                originalBounds: unionBounds,
+                committed: false,
+              }
+              selectionPreviewMapRef.current.clear()
+              setSelectionCursor('grab')
+              const canvas = canvasRef.current
+              if (canvas) canvas.setPointerCapture(e.pointerId)
+              return
             }
-            selectionPreviewMapRef.current.clear()
-            setSelectionCursor('grab')
-            const canvas = canvasRef.current
-            if (canvas) canvas.setPointerCapture(e.pointerId)
-            return
+            // else: fall through to step 3 — select the higher element
           }
         }
       }
@@ -1177,6 +1406,26 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         } as LineElement
         break
 
+      case 'arrow':
+        drawingRef.current = {
+          id,
+          type: 'arrow',
+          zIndex: elements.length,
+          createdBy: userId,
+          data: { x1: x, y1: y, x2: x, y2: y, style },
+        } as ArrowElement
+        break
+
+      case 'triangle':
+        drawingRef.current = {
+          id,
+          type: 'triangle',
+          zIndex: elements.length,
+          createdBy: userId,
+          data: { x, y, width: 0, height: 0, style, fill: state.fillColor || undefined },
+        } as TriangleElement
+        break
+
       case 'eraser': {
         const hit = elements.filter(el => hitTest(el, x, y, 20))
         if (hit.length > 0) {
@@ -1204,7 +1453,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
               content,
               fontSize: state.fontSize,
               fontFamily: 'system-ui, sans-serif',
-              color: state.strokeColor,
+              color: state.toolColors['text'] ?? state.strokeColor,
               bold: false,
               italic: false,
             }
@@ -1274,20 +1523,29 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
           selectionPreviewMapRef.current.set(orig.id, moveElement(orig, dx, dy))
         }
         setSelectionCursor('grabbing')
+      } else if (action.type === 'endpoint' && action.handle) {
+        // Drag single endpoint of line/arrow
+        for (const orig of action.originalElements) {
+          selectionPreviewMapRef.current.set(orig.id, moveEndpoint(orig, action.handle as EndpointHandle, dx, dy))
+        }
       } else if (action.type === 'resize' && action.handle) {
-        const newBounds = computeResizedBounds(action.originalBounds, action.handle, dx, dy)
+        const newBounds = computeResizedBounds(action.originalBounds, action.handle as ResizeHandle, dx, dy)
         for (const orig of action.originalElements) {
           selectionPreviewMapRef.current.set(orig.id, resizeElement(orig, action.originalBounds, newBounds))
         }
       }
 
-      // Emit move/resize delta to other users on every frame (no throttle — ~100 bytes per msg)
+      // Emit move/resize/endpoint delta to other users on every frame
       if (action.type === 'move') {
         const ids = action.originalElements.map(e => e.id)
         callbacksRef.current.onMoveDelta?.(ids, dx, dy)
       } else if (action.type === 'resize' && action.handle) {
         const ids = action.originalElements.map(e => e.id)
-        callbacksRef.current.onResizeDelta?.(ids, action.handle, dx, dy, action.originalBounds)
+        callbacksRef.current.onResizeDelta?.(ids, action.handle as string, dx, dy, action.originalBounds)
+      } else if (action.type === 'endpoint' && action.handle) {
+        // Reuse resize delta channel with endpoint handle name
+        const ids = action.originalElements.map(e => e.id)
+        callbacksRef.current.onResizeDelta?.(ids, action.handle as string, dx, dy, action.originalBounds)
       }
 
       render()
@@ -1311,14 +1569,31 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         if (selectedIds.length > 0) {
           const unionBounds = getUnionBounds(elements, selectedIds)
           if (unionBounds) {
-            const pad = SELECTION_PAD
-            const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
             const handleHitSize = Math.max(12, 12 / viewport.scale)
-            const handle = hitTestHandle(x, y, paddedBounds, handleHitSize)
-            if (handle) {
-              cursor = HANDLE_CURSORS[handle]
-            } else if (pointInRect(x, y, paddedBounds)) {
-              cursor = 'grab'
+
+            // Check endpoint handles for single line/arrow
+            const lineLikeEl = isSingleLineLikeSelection(elements, selectedIds)
+            if (lineLikeEl) {
+              const endpoint = hitTestEndpoint(x, y, lineLikeEl, handleHitSize)
+              if (endpoint) {
+                cursor = ENDPOINT_CURSOR
+              } else {
+                const pad = SELECTION_PAD
+                const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
+                if (pointInRect(x, y, paddedBounds)) {
+                  cursor = 'grab'
+                }
+              }
+            } else {
+              // Regular shapes: check 8 resize handles
+              const pad = SELECTION_PAD
+              const paddedBounds = { x: unionBounds.x - pad, y: unionBounds.y - pad, w: unionBounds.w + pad * 2, h: unionBounds.h + pad * 2 }
+              const handle = hitTestHandle(x, y, paddedBounds, handleHitSize)
+              if (handle) {
+                cursor = HANDLE_CURSORS[handle]
+              } else if (pointInRect(x, y, paddedBounds)) {
+                cursor = 'grab'
+              }
             }
           }
         }
@@ -1376,6 +1651,20 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         break
       }
 
+      case 'arrow': {
+        const d = (el as ArrowElement).data
+        d.x2 = x
+        d.y2 = y
+        break
+      }
+
+      case 'triangle': {
+        const d = (el as TriangleElement).data
+        d.width = x - startPointRef.current[0]
+        d.height = y - startPointRef.current[1]
+        break
+      }
+
       default:
         break
     }
@@ -1406,7 +1695,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
       return
     }
 
-    // Commit selection action (move or resize) for all selected
+    // Commit selection action (move, resize, or endpoint) for all selected
     if (selectionActionRef.current) {
       const action = selectionActionRef.current
       selectionActionRef.current = null
@@ -1414,18 +1703,14 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
       if (action.committed && previewMap.size > 0) {
         // Emit one last delta to close the throttle gap (remote user snaps to exact final position)
+        const [x, y] = getCanvasPoint(e)
+        const finalDx = x - action.startWorld[0]
+        const finalDy = y - action.startWorld[1]
+        const ids = action.originalElements.map(el => el.id)
         if (action.type === 'move') {
-          const [x, y] = getCanvasPoint(e)
-          const finalDx = x - action.startWorld[0]
-          const finalDy = y - action.startWorld[1]
-          const ids = action.originalElements.map(el => el.id)
           callbacksRef.current.onMoveDelta?.(ids, finalDx, finalDy)
-        } else if (action.type === 'resize' && action.handle) {
-          const [x, y] = getCanvasPoint(e)
-          const finalDx = x - action.startWorld[0]
-          const finalDy = y - action.startWorld[1]
-          const ids = action.originalElements.map(el => el.id)
-          callbacksRef.current.onResizeDelta?.(ids, action.handle, finalDx, finalDy, action.originalBounds)
+        } else if ((action.type === 'resize' || action.type === 'endpoint') && action.handle) {
+          callbacksRef.current.onResizeDelta?.(ids, action.handle as string, finalDx, finalDy, action.originalBounds)
         }
 
         const updatedEls = Array.from(previewMap.values())
@@ -1488,6 +1773,13 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
       setRedoStack([])
       setElements(prev => [...prev, el])
       callbacksRef.current.onElementAdd?.(el)
+
+      // Auto-select shapes after creation (not pen/highlight)
+      const autoSelectTypes = ['rect', 'circle', 'triangle', 'line', 'arrow']
+      if (autoSelectTypes.includes(el.type)) {
+        setSelectedIds([el.id])
+        setState(prev => ({ ...prev, tool: 'select' }))
+      }
     }
 
     drawingRef.current = null
@@ -1496,7 +1788,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
   // ========== Clipboard paste (images + PDF) ==========
 
-  const addImageElement = useCallback((src: string, w: number, h: number) => {
+  const addImageElement = useCallback((src: string, w: number, h: number, preloadedImg?: HTMLImageElement) => {
     // Place in center of current viewport
     const canvas = canvasRef.current
     let cx = 400, cy = 300
@@ -1530,10 +1822,19 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
       },
     }
 
+    // Pre-populate image cache so first render draws immediately
+    if (preloadedImg && preloadedImg.complete) {
+      imageCacheRef.current.set(src, preloadedImg)
+    }
+
     setUndoStack(prev => [...prev, { type: 'add' as const, elements: [imgEl] }])
     setRedoStack([])
     setElements(prev => [...prev, imgEl])
     callbacksRef.current.onElementAdd?.(imgEl)
+
+    // Auto-select image after adding
+    setSelectedIds([imgEl.id])
+    setState(prev => ({ ...prev, tool: 'select' }))
   }, [elements, userId, viewport])
 
   const handlePaste = useCallback(async (e: ClipboardEvent) => {
@@ -1550,7 +1851,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
         reader.onload = () => {
           const src = reader.result as string
           const img = new Image()
-          img.onload = () => addImageElement(src, img.naturalWidth, img.naturalHeight)
+          img.onload = () => addImageElement(src, img.naturalWidth, img.naturalHeight, img)
           img.src = src
         }
         reader.readAsDataURL(blob)
@@ -1590,7 +1891,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
           reader.onload = () => {
             const src = reader.result as string
             const img = new Image()
-            img.onload = () => addImageElement(src, img.naturalWidth, img.naturalHeight)
+            img.onload = () => addImageElement(src, img.naturalWidth, img.naturalHeight, img)
             img.src = src
           }
           reader.readAsDataURL(file)
@@ -1649,7 +1950,10 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
       await page.render({ canvasContext: ctx, viewport: vp }).promise
       const dataUrl = offscreen.toDataURL('image/png')
-      addImageElement(dataUrl, vp.width / scale, vp.height / scale)
+      // Pre-load image so it renders immediately
+      const img = new Image()
+      img.src = dataUrl
+      img.onload = () => addImageElement(dataUrl, vp.width / scale, vp.height / scale, img)
     } catch (err) {
       console.error('Failed to render PDF:', err)
     }
@@ -1753,6 +2057,69 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     callbacksRef.current.onElementsRemove?.(ids)
   }, [elements, userId])
 
+  // Delete selected elements
+  const deleteSelected = useCallback(() => {
+    if (selectedIds.length === 0) return
+    selectionActionRef.current = null
+    selectionPreviewMapRef.current.clear()
+    const removedEls = elements.filter(el => selectedIds.includes(el.id))
+    if (removedEls.length === 0) return
+    setUndoStack(prev => [...prev, { type: 'remove' as const, elements: removedEls }])
+    setRedoStack([])
+    setElements(prev => prev.filter(el => !selectedIds.includes(el.id)))
+    callbacksRef.current.onElementsRemove?.(selectedIds)
+    setSelectedIds([])
+    setSelectionCursor('default')
+  }, [elements, selectedIds])
+
+  // Duplicate selected elements (offset by 20px)
+  const duplicateSelected = useCallback(() => {
+    if (selectedIds.length === 0) return
+    const offset = 20 / viewport.scale
+    const origEls = selectedIds.map(id => elements.find(el => el.id === id)).filter(Boolean) as BoardElement[]
+    if (origEls.length === 0) return
+    const newEls: BoardElement[] = origEls.map(el => {
+      const clone = JSON.parse(JSON.stringify(el)) as BoardElement
+      clone.id = nanoid()
+      clone.createdBy = userId
+      // Offset the clone
+      const d = clone.data as Record<string, unknown>
+      if ('points' in d && Array.isArray(d.points)) {
+        d.points = (d.points as number[][]).map((pt: number[]) => [(pt[0] ?? 0) + offset, (pt[1] ?? 0) + offset])
+      }
+      if ('x' in d && typeof d.x === 'number') d.x = (d.x as number) + offset
+      if ('y' in d && typeof d.y === 'number') d.y = (d.y as number) + offset
+      if ('cx' in d && typeof d.cx === 'number') d.cx = (d.cx as number) + offset
+      if ('cy' in d && typeof d.cy === 'number') d.cy = (d.cy as number) + offset
+      if ('x1' in d && typeof d.x1 === 'number') d.x1 = (d.x1 as number) + offset
+      if ('y1' in d && typeof d.y1 === 'number') d.y1 = (d.y1 as number) + offset
+      if ('x2' in d && typeof d.x2 === 'number') d.x2 = (d.x2 as number) + offset
+      if ('y2' in d && typeof d.y2 === 'number') d.y2 = (d.y2 as number) + offset
+      return clone
+    })
+    setUndoStack(prev => [...prev, { type: 'add' as const, elements: newEls }])
+    setRedoStack([])
+    setElements(prev => [...prev, ...newEls])
+    for (const el of newEls) {
+      callbacksRef.current.onElementAdd?.(el)
+    }
+    setSelectedIds(newEls.map(el => el.id))
+  }, [elements, selectedIds, userId, viewport.scale])
+
+  // Get selection bounds in screen coordinates (for context menu positioning)
+  const getSelectionScreenBounds = useCallback((): { x: number; y: number; w: number; h: number } | null => {
+    if (selectedIds.length === 0) return null
+    const bounds = getUnionBounds(elements, selectedIds)
+    if (!bounds) return null
+    const pad = SELECTION_PAD
+    return {
+      x: (bounds.x - pad) * viewport.scale + viewport.offsetX,
+      y: (bounds.y - pad) * viewport.scale + viewport.offsetY,
+      w: (bounds.w + pad * 2) * viewport.scale,
+      h: (bounds.h + pad * 2) * viewport.scale,
+    }
+  }, [elements, selectedIds, viewport])
+
   // ========== Keyboard shortcuts ==========
 
   useEffect(() => {
@@ -1768,6 +2135,13 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
         e.preventDefault()
         redo()
+        return
+      }
+
+      // Duplicate selected
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedIds.length > 0) {
+        e.preventDefault()
+        duplicateSelected()
         return
       }
 
@@ -1791,15 +2165,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
       // Delete selected elements
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
         e.preventDefault()
-        selectionActionRef.current = null
-        selectionPreviewMapRef.current.clear()
-        const removedEls = elements.filter(el => selectedIds.includes(el.id))
-        setUndoStack(prev => [...prev, { type: 'remove' as const, elements: removedEls }])
-        setRedoStack([])
-        setElements(prev => prev.filter(el => !selectedIds.includes(el.id)))
-        callbacksRef.current.onElementsRemove?.(selectedIds)
-        setSelectedIds([])
-        setSelectionCursor('default')
+        deleteSelected()
         return
       }
 
@@ -1832,7 +2198,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [undo, redo, zoomIn, zoomOut, zoomReset, selectedIds, elements])
+  }, [undo, redo, zoomIn, zoomOut, zoomReset, selectedIds, elements, deleteSelected, duplicateSelected])
 
   // ========== Remote element sync ==========
 
@@ -1953,11 +2319,21 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
   const remoteResizePreviewRef = useRef<Map<string, BoardElement>>(new Map())
 
   const setRemoteResizeDelta = useCallback((_userId: string, elementIds: string[], handle: string, dx: number, dy: number, originalBounds: { x: number; y: number; w: number; h: number }) => {
-    const newBounds = computeResizedBounds(originalBounds, handle as ResizeHandle, dx, dy)
-    for (const id of elementIds) {
-      const el = elementsRef.current.find(e => e.id === id)
-      if (el) {
-        remoteResizePreviewRef.current.set(id, resizeElement(el, originalBounds, newBounds))
+    // Handle endpoint drags for lines/arrows
+    if (handle === 'start' || handle === 'end') {
+      for (const id of elementIds) {
+        const el = elementsRef.current.find(e => e.id === id)
+        if (el) {
+          remoteResizePreviewRef.current.set(id, moveEndpoint(el, handle as EndpointHandle, dx, dy))
+        }
+      }
+    } else {
+      const newBounds = computeResizedBounds(originalBounds, handle as ResizeHandle, dx, dy)
+      for (const id of elementIds) {
+        const el = elementsRef.current.find(e => e.id === id)
+        if (el) {
+          remoteResizePreviewRef.current.set(id, resizeElement(el, originalBounds, newBounds))
+        }
       }
     }
     // Schedule render
@@ -2092,6 +2468,9 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     canRedo: redoStack.length > 0,
     selectedIds,
     selectionCursor,
+    deleteSelected,
+    duplicateSelected,
+    getSelectionScreenBounds,
     addRemoteElement,
     updateRemoteElement,
     removeRemoteElements,
