@@ -102,16 +102,8 @@ export function BoardsTab() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-900">Доски</h2>
-          <p className="text-sm text-zinc-500">
-            {isTeacher
-              ? 'Интерактивные доски для проведения уроков'
-              : 'Доски от ваших преподавателей'}
-          </p>
-        </div>
-        {isTeacher && (
+      {isTeacher && (
+        <div className="flex items-center justify-end">
           <Button
             onClick={() => createMutation.mutate()}
             disabled={createMutation.isPending}
@@ -121,8 +113,8 @@ export function BoardsTab() {
             <span className="hidden sm:inline">Создать доску</span>
             <span className="sm:hidden">Создать</span>
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Board list */}
       {boards.length === 0 ? (
