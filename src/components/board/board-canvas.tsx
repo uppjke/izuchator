@@ -1127,7 +1127,13 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     rafIdRef.current = requestAnimationFrame(renderNow)
   }, [renderNow])
 
-  // Alias for compat — synchronous render when absolutely needed (e.g. resize)
+  // Alias for compat — synchronous render when absolutely needed (e.g. resize, initial mount)
+  const renderSync = useCallback(() => {
+    cancelAnimationFrame(rafIdRef.current)
+    renderPendingRef.current = false
+    renderNow()
+  }, [renderNow])
+
   const render = scheduleRender
 
   // Clean up rAF on unmount
@@ -2702,6 +2708,7 @@ export function useCanvas({ initialElements = [], userId, onElementAdd, onElemen
     setRemoteSelection,
     clearRemoteDrawing,
     render,
+    renderSync,
     zoomIn,
     zoomOut,
     zoomReset,

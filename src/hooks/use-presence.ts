@@ -111,9 +111,8 @@ export function usePresence(): PresenceState {
 
     const userId = session.user.id
     
-    // Определяем тип устройства
+    // Определяем тип устройства (для metadata in join-presence)
     const deviceType = detectDeviceType()
-    const isMobile = deviceType !== 'desktop'
     
     let mounted = true
     let socket: TypedClientSocket | null = null
@@ -124,11 +123,11 @@ export function usePresence(): PresenceState {
 
     // Создаём socket с типизацией
     socket = io(presenceServerUrl, {
-      transports: isMobile ? ['polling', 'websocket'] : ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       timeout: 10000,
       forceNew: false,
       autoConnect: true,
-      upgrade: !isMobile,
+      upgrade: true,
       rememberUpgrade: false,
       reconnection: false, // Мы сами управляем reconnection с exponential backoff
       withCredentials: false
@@ -247,10 +246,22 @@ export function usePresence(): PresenceState {
 
     }, 100) // Delay to survive Strict Mode unmount
 
+    // Immediately disconnect on page unload (don't wait for ping timeout)
+    const handleBeforeUnload = () => {
+      if (socket?.connected) {
+        socket.emit('leave-presence')
+        socket.disconnect()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('pagehide', handleBeforeUnload)
+
     // Cleanup
     return () => {
       mounted = false
       clearTimeout(connectTimer)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('pagehide', handleBeforeUnload)
 
       if (heartbeatRef.current) {
         clearInterval(heartbeatRef.current)

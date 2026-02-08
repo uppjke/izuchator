@@ -59,6 +59,7 @@ export function useBoardSocket({
 
   // Cursor throttle ref
   const lastCursorEmitRef = useRef(0)
+  const connectErrorCountRef = useRef(0)
 
   // Store callbacks in refs to avoid re-triggering the effect
   const callbacksRef = useRef({ onRemoteElement, onRemoteDrawProgress, onRemoteMoveProgress, onRemoteResizeDelta, onRemoteErase, onRemoteSelect, onRemoteClear, onRemoteUndo, onStateRequest, onSyncState })
@@ -70,6 +71,13 @@ export function useBoardSocket({
 
     let mounted = true
     let socket: Socket<BoardServerToClientEvents, BoardClientToServerEvents> | null = null
+
+    // Small delay so React 19 Strict Mode cleanup can cancel before the
+    // WebSocket handshake starts (avoids "closed before established" error)
+    const connectTimer = setTimeout(() => {
+      if (!mounted) return
+      setup()
+    }, 0)
 
     // Connect immediately — no delay
     const setup = () => {
@@ -87,14 +95,15 @@ export function useBoardSocket({
       socket = io(
         `${serverUrl}/board`,
         {
-          transports: ['websocket', 'polling'],
+          // Polling first → fast reliable handshake, then upgrade to WS
+          transports: ['polling', 'websocket'],
           upgrade: true,
-          timeout: 10000,
+          timeout: 8000,
           reconnection: true,
           reconnectionAttempts: Infinity,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 10000,
-          forceNew: true,
+          forceNew: false,
         }
       )
 
@@ -106,6 +115,7 @@ export function useBoardSocket({
         if (!mounted) return
         setIsConnected(true)
         setConnectionError(null)
+        connectErrorCountRef.current = 0
         socket!.emit('board:join', {
           boardId,
           userId: currentUserId,
@@ -125,7 +135,11 @@ export function useBoardSocket({
       socket.on('connect_error', (err) => {
         if (!mounted) return
         setIsConnected(false)
-        console.warn('Board socket connect_error:', err.message)
+        connectErrorCountRef.current++
+        console.warn(`Board socket connect_error (#${connectErrorCountRef.current}):`, err.message)
+        // Don't show banner on first 2 errors — transient failures during
+        // transport negotiation (polling↔ws) are normal
+        if (connectErrorCountRef.current < 3) return
         // Detect TLS/cert issues
         if (err.message?.includes('xhr poll error') || err.message?.includes('websocket error')) {
           setConnectionError('cert')
@@ -255,10 +269,22 @@ export function useBoardSocket({
       })
     }
 
-    setup()
+    // Immediately disconnect on page unload (don't wait for ping timeout)
+    const handleBeforeUnload = () => {
+      if (socket?.connected) {
+        socket.emit('board:leave', { boardId })
+        socket.disconnect()
+      }
+    }
+    // Safari/iOS may not fire beforeunload — use pagehide as backup
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('pagehide', handleBeforeUnload)
 
     return () => {
       mounted = false
+      clearTimeout(connectTimer)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('pagehide', handleBeforeUnload)
       if (socket) {
         socket.emit('board:leave', { boardId })
         socket.disconnect()

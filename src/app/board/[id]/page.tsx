@@ -155,6 +155,7 @@ export default function BoardPage() {
     setRemoteSelection,
     clearRemoteDrawing: _clearRemoteDrawing,
     render,
+    renderSync,
     zoomIn,
     zoomOut,
     zoomReset,
@@ -275,13 +276,13 @@ export default function BoardPage() {
       const ctx = canvas.getContext('2d')
       if (ctx) ctx.scale(dpr, dpr)
 
-      render()
+      renderSync()
     }
 
     resizeCanvas()
     window.addEventListener('resize', resizeCanvas)
     return () => window.removeEventListener('resize', resizeCanvas)
-  }, [render, loading])
+  }, [renderSync, loading])
 
   // Center viewport on first open (no saved viewport)
   useEffect(() => {
@@ -306,14 +307,13 @@ export default function BoardPage() {
     const container = containerRef.current
     if (!container) return
 
-    // Check if the event actually targets the canvas/container (not UI overlays like toolbar)
+    // Only handle events that target the canvas element itself (not overlays like video panel, context menu, etc.)
     const isInCanvas = (e: PointerEvent): boolean => {
       const target = e.target as HTMLElement | null
-      // If the event target is not inside our container, it's a UI overlay (toolbar, header, etc.)
-      if (target && !container.contains(target)) return false
-      const rect = container.getBoundingClientRect()
-      return e.clientX >= rect.left && e.clientX <= rect.right &&
-             e.clientY >= rect.top && e.clientY <= rect.bottom
+      const canvas = canvasRef.current
+      // Only process events on the canvas element itself
+      if (!canvas || target !== canvas) return false
+      return true
     }
 
     const emitWorldCursor = (e: PointerEvent) => {
@@ -354,13 +354,17 @@ export default function BoardPage() {
     // Scribble intercepts Apple Pencil touch events at the OS level and
     // completely swallows them before they become pointer events.
     // preventDefault() on touchstart is the ONLY way to disable it.
-    const preventTouch = (e: TouchEvent) => { e.preventDefault() }
+    // Only block touches that start on the canvas itself (not overlays like video panel).
+    const preventTouch = (e: TouchEvent) => {
+      if (e.target === canvasRef.current) e.preventDefault()
+    }
     container.addEventListener('touchstart', preventTouch, { passive: false })
     container.addEventListener('touchmove', preventTouch, { passive: false })
     container.addEventListener('touchend', preventTouch, { passive: false })
     // Also on document capture phase for belt-and-suspenders
     document.addEventListener('touchstart', (e: TouchEvent) => {
-      if (isInCanvas(e.touches[0] as unknown as PointerEvent)) e.preventDefault()
+      const touch = e.touches[0]
+      if (touch && (touch.target as HTMLElement) === canvasRef.current) e.preventDefault()
     }, { passive: false, capture: true })
 
     return () => {
@@ -659,7 +663,7 @@ export default function BoardPage() {
                   <PopoverContent className="w-56 p-3" align="start">
                     <p className="text-xs font-medium text-zinc-500 mb-2">Пригласить ученика</p>
                     {students.length > 0 ? (
-                      <Select onValueChange={handleAssignStudent}>
+                      <Select defaultValue="" onValueChange={handleAssignStudent}>
                         <SelectTrigger className="h-8 text-sm">
                           <SelectValue placeholder="Выберите ученика" />
                         </SelectTrigger>

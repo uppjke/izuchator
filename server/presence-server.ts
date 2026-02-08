@@ -64,7 +64,7 @@ class PresenceServer {
       pingInterval: 25000,
       cleanupInterval: 30000,
       userTimeout: 90000, // 1.5 минуты
-      maxConnectionsPerIp: 10,
+      maxConnectionsPerIp: 20,
       ...config
     }
 
@@ -99,9 +99,9 @@ class PresenceServer {
         methods: ['GET', 'POST'],
         credentials: true,
       },
-      transports: ['websocket', 'polling'],
-      pingTimeout: this.config.pingTimeout,
-      pingInterval: this.config.pingInterval,
+      transports: ['polling', 'websocket'],
+      pingTimeout: 30000,
+      pingInterval: 15000,
       allowEIO3: true,
       connectionStateRecovery: {
         maxDisconnectionDuration: 2 * 60 * 1000, // 2 минуты
@@ -202,12 +202,13 @@ class PresenceServer {
   }
 
   private setupMiddleware() {
-    // Rate limiting middleware
-    this.io.use((socket, next) => {
+    // Rate limiting middleware — applies to default namespace
+    const rateLimitMiddleware = (socket: any, next: (err?: Error) => void) => {
       const ip = socket.handshake.address
       const count = this.connectionsByIp.get(ip) || 0
 
       if (count >= this.config.maxConnectionsPerIp) {
+        console.warn(`⚠️ Rate limit: ${ip} has ${count} connections (max ${this.config.maxConnectionsPerIp})`)
         return next(new Error('Too many connections from this IP'))
       }
 
@@ -223,7 +224,11 @@ class PresenceServer {
       })
 
       next()
-    })
+    }
+
+    // Apply to both default and /board namespace
+    this.io.use(rateLimitMiddleware)
+    this.io.of('/board').use(rateLimitMiddleware)
   }
 
   private setupEventHandlers() {
