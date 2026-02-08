@@ -19,6 +19,7 @@ interface VideoPanelProps {
   boardUsers: Array<{ userId: string; userName: string }>
   onToggleMute: () => void
   onToggleCamera: () => void
+  toolbarPosition?: 'top' | 'bottom'
 }
 
 const TILE_W = 160
@@ -188,21 +189,48 @@ export function VideoPanel({
   boardUsers,
   onToggleMute,
   onToggleCamera,
+  toolbarPosition = 'bottom',
 }: VideoPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   // Store right-edge offset instead of absolute x — so panel sticks to right on resize
   const [rightOffset, setRightOffset] = useState(16)
-  const [topOffset, setTopOffset] = useState(16)
+  // Offset from the anchored edge (top when toolbar=bottom, bottom when toolbar=top)
+  const [edgeOffset, setEdgeOffset] = useState(16)
   const initialized = useRef(false)
   const dragRef = useRef<{
     startX: number; startY: number
-    startRight: number; startTop: number
+    startRight: number; startEdge: number
     isDragging: boolean
   } | null>(null)
+
+  // Anchor video panel to opposite side of toolbar
+  const anchorBottom = toolbarPosition === 'top'
 
   // Show panel if local video is active OR there are remote streams
   const hasRemote = remoteStreams.size > 0
   const shouldShow = isActive || hasRemote
+
+  // Clamp position within viewport bounds
+  const clampPosition = useCallback((right: number, edge: number) => {
+    const el = panelRef.current
+    if (!el) return { right, edge }
+    const rect = el.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const margin = 4
+
+    // Clamp right: panel right edge can't go past left viewport, left edge can't exceed right viewport
+    let clampedRight = right
+    clampedRight = Math.max(margin, clampedRight) // don't go past right edge
+    clampedRight = Math.min(vw - rect.width - margin, clampedRight) // don't go past left edge
+
+    // Clamp edge offset (from top or bottom depending on anchor)
+    let clampedEdge = edge
+    clampedEdge = Math.max(margin, clampedEdge)
+    clampedEdge = Math.min(vh - rect.height - margin, clampedEdge)
+
+    return { right: clampedRight, edge: clampedEdge }
+  }, [])
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button')) return
@@ -210,11 +238,11 @@ export function VideoPanel({
       startX: e.clientX,
       startY: e.clientY,
       startRight: rightOffset,
-      startTop: topOffset,
+      startEdge: edgeOffset,
       isDragging: false,
     }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-  }, [rightOffset, topOffset])
+  }, [rightOffset, edgeOffset])
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragRef.current) return
@@ -228,22 +256,40 @@ export function VideoPanel({
     }
 
     // Moving right = decrease rightOffset, moving left = increase rightOffset
-    setRightOffset(dragRef.current.startRight - dx)
-    setTopOffset(dragRef.current.startTop + dy)
-  }, [])
+    const newRight = dragRef.current.startRight - dx
+    // For top-anchor: moving down = increase offset; for bottom-anchor: moving down = decrease offset
+    const newEdge = anchorBottom
+      ? dragRef.current.startEdge - dy
+      : dragRef.current.startEdge + dy
+
+    const clamped = clampPosition(newRight, newEdge)
+    setRightOffset(clamped.right)
+    setEdgeOffset(clamped.edge)
+  }, [anchorBottom, clampPosition])
 
   const handlePointerUp = useCallback(() => {
+    if (dragRef.current?.isDragging) {
+      // Final clamp
+      const clamped = clampPosition(rightOffset, edgeOffset)
+      setRightOffset(clamped.right)
+      setEdgeOffset(clamped.edge)
+    }
     dragRef.current = null
-  }, [])
+  }, [rightOffset, edgeOffset, clampPosition])
 
   // Reset when closed
   useEffect(() => {
     if (!shouldShow) {
       initialized.current = false
       setRightOffset(16)
-      setTopOffset(16)
+      setEdgeOffset(16)
     }
   }, [shouldShow])
+
+  // Reset edge offset when toolbar position changes
+  useEffect(() => {
+    setEdgeOffset(16)
+  }, [toolbarPosition])
 
   // Mark initialized on first show
   useEffect(() => {
@@ -253,14 +299,20 @@ export function VideoPanel({
 
   if (!shouldShow) return null
 
+  const positionStyle: React.CSSProperties = {
+    right: rightOffset,
+    touchAction: 'none',
+    ...(anchorBottom ? { bottom: edgeOffset } : { top: edgeOffset }),
+  }
+
   return (
     <motion.div
       ref={panelRef}
-      initial={{ opacity: 0, scale: 0.9, y: -8 }}
+      initial={{ opacity: 0, scale: 0.9, y: anchorBottom ? 8 : -8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: -8 }}
+      exit={{ opacity: 0, scale: 0.9, y: anchorBottom ? 8 : -8 }}
       className="absolute z-30 select-none"
-      style={{ right: rightOffset, top: topOffset, touchAction: 'none' }}
+      style={positionStyle}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

@@ -63,6 +63,9 @@ export default function BoardPage() {
   // Student invite popover
   const [showStudentPicker, setShowStudentPicker] = useState(false)
 
+  // Toolbar position — lifted so VideoPanel can anchor opposite
+  const [toolbarPosition, setToolbarPosition] = useState<'top' | 'bottom'>('bottom')
+
   const isTeacher = boardRole === 'teacher'
 
   // Fetch teacher's students for the student picker
@@ -786,6 +789,7 @@ export default function BoardPage() {
           boardUsers={boardUsers}
           onToggleMute={toggleMute}
           onToggleCamera={toggleCamera}
+          toolbarPosition={toolbarPosition}
         />
 
         {/* Selection context menu */}
@@ -879,6 +883,8 @@ export default function BoardPage() {
         onZoomIn={zoomIn}
         onZoomOut={zoomOut}
         onZoomReset={zoomReset}
+        toolbarPosition={toolbarPosition}
+        onPositionChange={setToolbarPosition}
       />
     </div>
   )

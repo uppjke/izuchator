@@ -100,6 +100,8 @@ interface FloatingToolbarProps {
   onZoomIn: () => void
   onZoomOut: () => void
   onZoomReset: () => void
+  toolbarPosition?: 'top' | 'bottom'
+  onPositionChange?: (position: 'top' | 'bottom') => void
 }
 
 type PanelType = 'colors' | 'more' | 'grid' | 'shapes' | 'shapeColors' | null
@@ -116,9 +118,12 @@ export function FloatingToolbar({
   onZoomIn,
   onZoomOut,
   onZoomReset,
+  toolbarPosition: controlledPosition,
+  onPositionChange,
 }: FloatingToolbarProps) {
   const [openPanel, setOpenPanel] = useState<PanelType>(null)
-  const [position, setPosition] = useState<'top' | 'bottom'>('bottom')
+  const [internalPosition, setInternalPosition] = useState<'top' | 'bottom'>('bottom')
+  const position = controlledPosition ?? internalPosition
   const isTop = position === 'top'
 
   // Track last-used shape for grouped shape button
@@ -354,7 +359,9 @@ export function FloatingToolbar({
       {/* Position toggle */}
       <button
         onClick={() => {
-          setPosition(prev => prev === 'bottom' ? 'top' : 'bottom')
+          const next = position === 'bottom' ? 'top' : 'bottom'
+          setInternalPosition(next)
+          onPositionChange?.(next)
           setOpenPanel(null)
         }}
         title={isTop ? 'Панель вниз' : 'Панель вверх'}
