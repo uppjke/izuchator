@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { io, Socket } from 'socket.io-client'
@@ -12,7 +12,7 @@ import {
   getTeacherStudents,
   getStudentTeachers,
 } from '@/lib/api'
-import type { ChatMessage, UnreadResponse } from '@/lib/api'
+import type { ChatMessage, UnreadResponse, LastMessagePreview } from '@/lib/api'
 
 interface ChatPartner {
   id: string
@@ -39,6 +39,8 @@ interface UseChatReturn {
   // Непрочитанные
   unreadCounts: Record<string, number>
   totalUnread: number
+  // Превью последних сообщений
+  lastMessages: Record<string, LastMessagePreview>
   // Typing
   typingUsers: Set<string>
   sendTyping: () => void
@@ -56,6 +58,8 @@ export function useChat(): UseChatReturn {
   const [isOpen, setIsOpen] = useState(false)
   const [activeRelationId, setActiveRelationId] = useState<string | null>(null)
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
+  // Локальные lastMessages из real-time обновлений (перекрывают API данные)
+  const [realtimeLastMessages, setRealtimeLastMessages] = useState<Record<string, LastMessagePreview>>({})
   const socketRef = useRef<Socket | null>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastTypingSentRef = useRef<number>(0)
@@ -91,7 +95,7 @@ export function useChat(): UseChatReturn {
     }
   })
 
-  // Непрочитанные
+  // Непрочитанные + последние сообщения (из API)
   const { data: unreadData } = useQuery<UnreadResponse>({
     queryKey: ['chat', 'unread'],
     queryFn: getUnreadCounts,
@@ -103,6 +107,12 @@ export function useChat(): UseChatReturn {
 
   const unreadCounts = unreadData?.unread || {}
   const totalUnread = unreadData?.total || 0
+
+  // Комбинируем API lastMessages + real-time обновления (real-time приоритетнее)
+  const lastMessages = useMemo(() => {
+    const apiMessages = unreadData?.lastMessages || {}
+    return { ...apiMessages, ...realtimeLastMessages }
+  }, [unreadData?.lastMessages, realtimeLastMessages])
 
   // Сообщения для активного чата (infinite query, cursor-based)
   const {
@@ -121,6 +131,46 @@ export function useChat(): UseChatReturn {
 
   // Собираем сообщения из всех страниц (reversed — чтобы старые вверху)
   const messages = (messagesData?.pages.flatMap((p) => p.messages) || []).reverse()
+
+  // Helper: обновить lastMessage для relation
+  const updateLastMessage = useCallback((relationId: string, message: ChatMessage | { text: string; senderId: string; createdAt: string; sender: { name: string | null } }) => {
+    setRealtimeLastMessages((prev) => ({
+      ...prev,
+      [relationId]: {
+        text: message.text,
+        senderId: message.senderId,
+        createdAt: message.createdAt,
+        senderName: message.sender.name,
+      },
+    }))
+  }, [])
+
+  // Helper: добавить сообщение в кэш (создаёт запись если кэш пуст)
+  const addMessageToCache = useCallback((relationId: string, message: ChatMessage) => {
+    queryClient.setQueryData(
+      ['chat', 'messages', relationId],
+      (old: any) => {
+        if (!old) {
+          // Кэш пуст — создаём начальную запись
+          return {
+            pages: [{ messages: [message], nextCursor: null }],
+            pageParams: [undefined],
+          }
+        }
+        // Проверяем дубликат
+        const allMsgs = old.pages.flatMap((p: any) => p.messages)
+        if (allMsgs.some((m: any) => m.id === message.id)) return old
+        const firstPage = old.pages[0]
+        return {
+          ...old,
+          pages: [
+            { ...firstPage, messages: [message, ...firstPage.messages] },
+            ...old.pages.slice(1),
+          ],
+        }
+      },
+    )
+  }, [queryClient])
 
   // Socket.io для real-time
   // Lazy connection: only when user is authenticated AND has chat partners
@@ -162,25 +212,14 @@ export function useChat(): UseChatReturn {
         })
       })
 
-      // Новое сообщение
+      // Новое сообщение от собеседника
       socket.on('chat:message' as any, (message: ChatMessage) => {
-        queryClient.setQueryData(
-          ['chat', 'messages', message.relationId],
-          (old: any) => {
-            if (!old) return old
-            const firstPage = old.pages[0]
-            return {
-              ...old,
-              pages: [
-                { ...firstPage, messages: [message, ...firstPage.messages] },
-                ...old.pages.slice(1),
-              ],
-            }
-          },
-        )
-        if (message.relationId !== activeRelationId || !isOpen) {
-          queryClient.invalidateQueries({ queryKey: ['chat', 'unread'] })
-        }
+        // Мгновенно обновляем кэш сообщений (создаём запись если чат ещё не открывался)
+        addMessageToCache(message.relationId, message)
+        // Обновляем превью последнего сообщения
+        updateLastMessage(message.relationId, message)
+        // Обновляем непрочитанные
+        queryClient.invalidateQueries({ queryKey: ['chat', 'unread'] })
       })
 
       // Typing
@@ -207,7 +246,6 @@ export function useChat(): UseChatReturn {
       mounted = false
       clearTimeout(connectTimer)
       if (socket) {
-        // Only attempt graceful leave if actually connected
         if (socket.connected) {
           partners.forEach((p) => {
             socket!.emit('chat:leave', { relationId: p.relationId })
@@ -255,23 +293,13 @@ export function useChat(): UseChatReturn {
 
       const message = await sendChatMessage(activeRelationId, text)
 
-      // Optimistic: добавляем в кэш
-      queryClient.setQueryData(
-        ['chat', 'messages', activeRelationId],
-        (old: any) => {
-          if (!old) return old
-          const firstPage = old.pages[0]
-          return {
-            ...old,
-            pages: [
-              { ...firstPage, messages: [message, ...firstPage.messages] },
-              ...old.pages.slice(1),
-            ],
-          }
-        },
-      )
+      // Добавляем в кэш (с дедупликацией)
+      addMessageToCache(activeRelationId, message)
 
-      // Рассылаем через socket
+      // Обновляем превью последнего сообщения
+      updateLastMessage(activeRelationId, message)
+
+      // Рассылаем через socket собеседнику
       socketRef.current?.emit('chat:message' as any, {
         relationId: activeRelationId,
         message,
@@ -283,7 +311,7 @@ export function useChat(): UseChatReturn {
         userId,
       })
     },
-    [activeRelationId, userId, queryClient],
+    [activeRelationId, userId, addMessageToCache, updateLastMessage],
   )
 
   const sendTyping = useCallback(() => {
@@ -319,6 +347,7 @@ export function useChat(): UseChatReturn {
     sendMessage,
     unreadCounts,
     totalUnread,
+    lastMessages,
     typingUsers,
     sendTyping,
     isOpen,

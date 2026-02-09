@@ -83,7 +83,19 @@ export function ChatSheet() {
 // ============================================================================
 
 function ChatList() {
-  const { partners, setIsOpen, setActiveRelationId, unreadCounts } = useChatContext()
+  const { partners, setIsOpen, setActiveRelationId, unreadCounts, lastMessages } = useChatContext()
+  const { data: session } = useSession()
+  const userId = session?.user?.id
+
+  // Сортируем: чаты с последним сообщением — по дате (новые сверху), остальные — в конце
+  const sortedPartners = [...partners].sort((a, b) => {
+    const lastA = lastMessages[a.relationId]
+    const lastB = lastMessages[b.relationId]
+    if (lastA && lastB) return new Date(lastB.createdAt).getTime() - new Date(lastA.createdAt).getTime()
+    if (lastA) return -1
+    if (lastB) return 1
+    return 0
+  })
 
   return (
     <motion.div
@@ -114,9 +126,23 @@ function ChatList() {
             <p className="text-zinc-400 text-xs mt-1">Добавьте ученика или учителя, чтобы начать общение</p>
           </div>
         ) : (
-          partners.map((partner) => {
+          sortedPartners.map((partner) => {
             const unread = unreadCounts[partner.relationId] || 0
             const displayName = partner.customName || partner.name || partner.email
+            const lastMsg = lastMessages[partner.relationId]
+
+            // Формируем превью: "Вы: текст" или просто "текст"
+            let previewText = partner.email
+            if (lastMsg) {
+              const isMine = lastMsg.senderId === userId
+              const truncated = lastMsg.text.length > 40
+                ? lastMsg.text.slice(0, 40) + '…'
+                : lastMsg.text
+              previewText = isMine ? `Вы: ${truncated}` : truncated
+            }
+
+            // Время последнего сообщения
+            const lastTime = lastMsg ? formatPreviewTime(lastMsg.createdAt) : null
 
             return (
               <button
@@ -129,18 +155,36 @@ function ChatList() {
                   size="md"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-zinc-900 truncate">
-                    {displayName}
-                  </p>
-                  <p className="text-xs text-zinc-500 truncate">
-                    {partner.email}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className={cn(
+                      "text-sm truncate",
+                      unread > 0 ? "font-semibold text-zinc-900" : "font-medium text-zinc-900"
+                    )}>
+                      {displayName}
+                    </p>
+                    {lastTime && (
+                      <span className={cn(
+                        "text-[11px] flex-shrink-0",
+                        unread > 0 ? "text-blue-500 font-medium" : "text-zinc-400"
+                      )}>
+                        {lastTime}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                    <p className={cn(
+                      "text-xs truncate",
+                      unread > 0 ? "text-zinc-700 font-medium" : "text-zinc-500"
+                    )}>
+                      {previewText}
+                    </p>
+                    {unread > 0 && (
+                      <span className="flex-shrink-0 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-blue-500 text-white text-xs font-medium">
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {unread > 0 && (
-                  <span className="flex-shrink-0 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-blue-500 text-white text-xs font-medium">
-                    {unread > 99 ? '99+' : unread}
-                  </span>
-                )}
               </button>
             )
           })
@@ -459,4 +503,14 @@ function formatDateLabel(dateStr: string): string {
   if (isToday(date)) return 'Сегодня'
   if (isYesterday(date)) return 'Вчера'
   return format(date, 'd MMMM yyyy', { locale: ru })
+}
+
+function formatPreviewTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  if (isToday(date)) return format(date, 'HH:mm')
+  if (isYesterday(date)) return 'Вчера'
+  const now = new Date()
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000)
+  if (diffDays < 7) return format(date, 'EEEEEE', { locale: ru }) // Пн, Вт...
+  return format(date, 'dd.MM', { locale: ru })
 }

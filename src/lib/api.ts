@@ -528,9 +528,17 @@ export interface ChatMessagesResponse {
   nextCursor: string | null
 }
 
+export interface LastMessagePreview {
+  text: string
+  senderId: string
+  createdAt: string
+  senderName: string | null
+}
+
 export interface UnreadResponse {
   unread: Record<string, number>
   total: number
+  lastMessages: Record<string, LastMessagePreview>
 }
 
 export async function getChatMessages(
