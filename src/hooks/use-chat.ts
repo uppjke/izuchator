@@ -49,15 +49,34 @@ interface UseChatReturn {
   setIsOpen: (open: boolean) => void
 }
 
+// ============================================================================
+// Resolve presence server URL (shared helper)
+// ============================================================================
+function getPresenceUrl(): string | null {
+  const envUrl = process.env.NEXT_PUBLIC_PRESENCE_SERVER
+  if (!envUrl) return null
+  try {
+    const url = new URL(envUrl)
+    url.hostname = window.location.hostname
+    return url.origin
+  } catch {
+    return envUrl
+  }
+}
+
 export function useChat(): UseChatReturn {
   const { data: session } = useSession()
   const userId = session?.user?.id
+  const userName = session?.user?.name ?? null
+  const userEmail = session?.user?.email ?? ''
+  const userImage = (session?.user as any)?.image ?? null
   const userRole = (session?.user as { role?: string })?.role?.toLowerCase()
   const queryClient = useQueryClient()
 
   const [isOpen, setIsOpen] = useState(false)
   const [activeRelationId, setActiveRelationId] = useState<string | null>(null)
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
+  const [socketConnected, setSocketConnected] = useState(false)
   // Локальные lastMessages из real-time обновлений (перекрывают API данные)
   const [realtimeLastMessages, setRealtimeLastMessages] = useState<Record<string, LastMessagePreview>>({})
   const socketRef = useRef<Socket | null>(null)
@@ -96,10 +115,12 @@ export function useChat(): UseChatReturn {
   })
 
   // Непрочитанные + последние сообщения (из API)
+  // Aggressive polling (5s) as reliable fallback;
+  // socket provides instant delivery when connected
   const { data: unreadData } = useQuery<UnreadResponse>({
     queryKey: ['chat', 'unread'],
     queryFn: getUnreadCounts,
-    refetchInterval: 30000,
+    refetchInterval: socketConnected ? 30000 : 5000,
     enabled: !!userId && partners.length > 0,
     retry: 2,
     retryDelay: 5000,
@@ -133,7 +154,7 @@ export function useChat(): UseChatReturn {
   const messages = (messagesData?.pages.flatMap((p) => p.messages) || []).reverse()
 
   // Helper: обновить lastMessage для relation
-  const updateLastMessage = useCallback((relationId: string, message: ChatMessage | { text: string; senderId: string; createdAt: string; sender: { name: string | null } }) => {
+  const updateLastMessage = useCallback((relationId: string, message: { text: string; senderId: string; createdAt: string; sender: { name: string | null } }) => {
     setRealtimeLastMessages((prev) => ({
       ...prev,
       [relationId]: {
@@ -151,13 +172,12 @@ export function useChat(): UseChatReturn {
       ['chat', 'messages', relationId],
       (old: any) => {
         if (!old) {
-          // Кэш пуст — создаём начальную запись
           return {
             pages: [{ messages: [message], nextCursor: null }],
             pageParams: [undefined],
           }
         }
-        // Проверяем дубликат
+        // Дедупликация: по id или по tempId
         const allMsgs = old.pages.flatMap((p: any) => p.messages)
         if (allMsgs.some((m: any) => m.id === message.id)) return old
         const firstPage = old.pages[0]
@@ -172,95 +192,142 @@ export function useChat(): UseChatReturn {
     )
   }, [queryClient])
 
-  // Socket.io для real-time — dedicated chat connection (forceNew: true)
-  // Separate from presence hook to avoid shared-socket lifecycle issues
+  // Helper: заменить temp сообщение на сохранённое
+  const replaceTempMessage = useCallback((relationId: string, tempId: string, saved: ChatMessage) => {
+    queryClient.setQueryData(
+      ['chat', 'messages', relationId],
+      (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            messages: page.messages.map((m: any) =>
+              m.id === tempId ? saved : m,
+            ),
+          })),
+        }
+      },
+    )
+  }, [queryClient])
+
+  // ========================================================================
+  // Socket.io — shared connection with presence (forceNew: false)
+  // Presence hook connects first; we reuse the same socket.
+  // ========================================================================
   useEffect(() => {
     if (!userId || partners.length === 0) return
 
-    const envUrl = process.env.NEXT_PUBLIC_PRESENCE_SERVER
-    let presenceUrl: string
-    if (envUrl) {
-      try {
-        const url = new URL(envUrl)
-        url.hostname = window.location.hostname
-        presenceUrl = url.origin
-      } catch {
-        presenceUrl = envUrl
-      }
-    } else {
-      presenceUrl = `${window.location.protocol}//${window.location.hostname}:3002`
-    }
+    const presenceUrl = getPresenceUrl()
+    if (!presenceUrl) return
 
     let mounted = true
     let socket: Socket | null = null
 
-    // Delay to survive React 19 StrictMode unmount-remount cycle
+    const joinAllRooms = () => {
+      if (!socket) return
+      partners.forEach((p) => {
+        socket!.emit('chat:join', { relationId: p.relationId })
+      })
+      console.log(`💬 Chat: joined ${partners.length} room(s)`)
+    }
+
+    const onConnect = () => {
+      if (!mounted) return
+      console.log('💬 Chat socket connected:', socket?.id)
+      setSocketConnected(true)
+      joinAllRooms()
+    }
+
+    const onDisconnect = () => {
+      if (!mounted) return
+      console.log('💬 Chat socket disconnected')
+      setSocketConnected(false)
+    }
+
+    const onMessage = (message: ChatMessage) => {
+      if (!mounted) return
+      addMessageToCache(message.relationId, message)
+      updateLastMessage(message.relationId, message)
+      // Optimistic badge increment
+      queryClient.setQueryData<UnreadResponse>(['chat', 'unread'], (old) => {
+        if (!old) return old
+        const newUnread = { ...old.unread }
+        newUnread[message.relationId] = (newUnread[message.relationId] || 0) + 1
+        return { ...old, unread: newUnread, total: old.total + 1 }
+      })
+    }
+
+    const onTyping = ({ userId: typerId }: { userId: string }) => {
+      if (!mounted) return
+      setTypingUsers((prev) => new Set(prev).add(typerId))
+    }
+
+    const onStopTyping = ({ userId: typerId }: { userId: string }) => {
+      if (!mounted) return
+      setTypingUsers((prev) => {
+        const next = new Set(prev)
+        next.delete(typerId)
+        return next
+      })
+    }
+
+    const onRead = (_data: { userId: string; messageIds: string[] }) => {
+      if (!mounted) return
+      if (activeRelationId) {
+        queryClient.invalidateQueries({ queryKey: ['chat', 'messages', activeRelationId] })
+      }
+    }
+
+    // Delay for React 19 StrictMode
     const connectTimer = setTimeout(() => {
       if (!mounted) return
 
-      // Dedicated chat socket — independent from presence
+      // Reuse the same socket as presence hook (forceNew: false)
+      // This returns the ALREADY CONNECTED socket from presence
       socket = io(presenceUrl, {
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 10000,
-        forceNew: true,
+        transports: ['polling', 'websocket'],
+        forceNew: false,
+        withCredentials: false,
       })
 
       socketRef.current = socket
 
-      socket.on('connect', () => {
-        // Join all chat rooms on (re)connect
-        partners.forEach((p) => {
-          socket!.emit('chat:join', { relationId: p.relationId })
-        })
-      })
+      // Attach handlers
+      socket.on('connect', onConnect)
+      socket.on('disconnect', onDisconnect)
+      socket.on('chat:message' as any, onMessage)
+      socket.on('chat:typing' as any, onTyping)
+      socket.on('chat:stop-typing' as any, onStopTyping)
+      socket.on('chat:read' as any, onRead)
 
-      // Incoming message from partner
-      socket.on('chat:message' as any, (message: ChatMessage) => {
-        addMessageToCache(message.relationId, message)
-        updateLastMessage(message.relationId, message)
-        // Optimistic badge increment
-        queryClient.setQueryData<UnreadResponse>(['chat', 'unread'], (old) => {
-          if (!old) return old
-          const newUnread = { ...old.unread }
-          newUnread[message.relationId] = (newUnread[message.relationId] || 0) + 1
-          return { ...old, unread: newUnread, total: old.total + 1 }
-        })
-      })
-
-      // Typing indicators
-      socket.on('chat:typing' as any, ({ userId: typerId }: { userId: string }) => {
-        setTypingUsers((prev) => new Set(prev).add(typerId))
-      })
-      socket.on('chat:stop-typing' as any, ({ userId: typerId }: { userId: string }) => {
-        setTypingUsers((prev) => {
-          const next = new Set(prev)
-          next.delete(typerId)
-          return next
-        })
-      })
-
-      // Read receipts
-      socket.on('chat:read' as any, (_data: { userId: string; messageIds: string[] }) => {
-        if (activeRelationId) {
-          queryClient.invalidateQueries({ queryKey: ['chat', 'messages', activeRelationId] })
-        }
-      })
-    }, 200)
+      // If socket is already connected (presence connected first), join rooms NOW
+      if (socket.connected) {
+        setSocketConnected(true)
+        joinAllRooms()
+      }
+    }, 250) // slightly after presence's 100ms
 
     return () => {
       mounted = false
       clearTimeout(connectTimer)
       if (socket) {
+        // Leave rooms + remove ONLY our handlers (shared socket!)
         if (socket.connected) {
           partners.forEach((p) => {
             socket!.emit('chat:leave', { relationId: p.relationId })
           })
         }
-        socket.disconnect() // Safe — dedicated chat socket
+        socket.off('connect', onConnect)
+        socket.off('disconnect', onDisconnect)
+        socket.off('chat:message' as any, onMessage)
+        socket.off('chat:typing' as any, onTyping)
+        socket.off('chat:stop-typing' as any, onStopTyping)
+        socket.off('chat:read' as any, onRead)
+        // Do NOT disconnect — shared with presence
       }
       socketRef.current = null
+      setSocketConnected(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, partners.length])
@@ -268,8 +335,7 @@ export function useChat(): UseChatReturn {
   // Перезаходим в комнату при смене активного чата
   useEffect(() => {
     const socket = socketRef.current
-    if (!socket || !activeRelationId) return
-
+    if (!socket?.connected || !activeRelationId) return
     socket.emit('chat:join', { relationId: activeRelationId })
   }, [activeRelationId])
 
@@ -294,7 +360,6 @@ export function useChat(): UseChatReturn {
     })
 
     markMessagesRead(activeRelationId, ids).then(() => {
-      // Уведомляем собеседника
       socketRef.current?.emit('chat:read' as any, {
         relationId: activeRelationId,
         userId,
@@ -303,37 +368,59 @@ export function useChat(): UseChatReturn {
     })
   }, [activeRelationId, isOpen, messages, userId, queryClient])
 
+  // ========================================================================
+  // Optimistic send — instant for sender, socket relay to partner,
+  // HTTP save in background
+  // ========================================================================
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!activeRelationId || !text.trim()) return
+      if (!activeRelationId || !text.trim() || !userId) return
+      const trimmed = text.trim()
 
-      const message = await sendChatMessage(activeRelationId, text)
+      // 1. Create optimistic message for instant display
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const now = new Date().toISOString()
+      const optimistic: ChatMessage = {
+        id: tempId,
+        relationId: activeRelationId,
+        senderId: userId,
+        text: trimmed,
+        createdAt: now,
+        editedAt: null,
+        sender: { id: userId, name: userName, email: userEmail, image: userImage },
+        reads: [],
+      }
 
-      // Добавляем в кэш (с дедупликацией)
-      addMessageToCache(activeRelationId, message)
+      // 2. Show in own chat immediately
+      addMessageToCache(activeRelationId, optimistic)
+      updateLastMessage(activeRelationId, optimistic)
 
-      // Обновляем превью последнего сообщения
-      updateLastMessage(activeRelationId, message)
-
-      // Рассылаем через socket собеседнику
+      // 3. Relay to partner via socket IMMEDIATELY (before HTTP save)
       socketRef.current?.emit('chat:message' as any, {
         relationId: activeRelationId,
-        message,
+        message: optimistic,
       })
-
-      // Stop typing
       socketRef.current?.emit('chat:stop-typing' as any, {
         relationId: activeRelationId,
         userId,
       })
+
+      // 4. Save to DB in background, replace temp message with real one
+      try {
+        const saved = await sendChatMessage(activeRelationId, trimmed)
+        replaceTempMessage(activeRelationId, tempId, saved)
+      } catch (error) {
+        console.error('Failed to save chat message:', error)
+        // Message stays visible with temp ID — will sync on next fetch
+      }
     },
-    [activeRelationId, userId, addMessageToCache, updateLastMessage],
+    [activeRelationId, userId, userName, userEmail, userImage, addMessageToCache, updateLastMessage, replaceTempMessage],
   )
 
   const sendTyping = useCallback(() => {
     if (!activeRelationId || !userId) return
     const now = Date.now()
-    if (now - lastTypingSentRef.current < 2000) return // throttle 2s
+    if (now - lastTypingSentRef.current < 2000) return
     lastTypingSentRef.current = now
 
     socketRef.current?.emit('chat:typing' as any, {
@@ -341,7 +428,6 @@ export function useChat(): UseChatReturn {
       userId,
     })
 
-    // Автоматически stop-typing через 3s
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     typingTimeoutRef.current = setTimeout(() => {
       socketRef.current?.emit('chat:stop-typing' as any, {
