@@ -157,16 +157,18 @@ export function Planner({
   return (
     <div className="h-full flex flex-col">
       {/* Панель управления */}
-      <PlannerHeader
-        currentDate={currentDate}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
-        onPreviousDate={handlePreviousDate}
-        onNextDate={handleNextDate}
-        onToday={handleToday}
-        onCreateLesson={() => handleCreateLesson(new Date())}
-        isWideScreen={isWideScreen}
-      />
+      {!isSearching && (
+        <PlannerHeader
+          currentDate={currentDate}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
+          onPreviousDate={handlePreviousDate}
+          onNextDate={handleNextDate}
+          onToday={handleToday}
+          onCreateLesson={() => handleCreateLesson(new Date())}
+          isWideScreen={isWideScreen}
+        />
+      )}
       <LessonDialog 
         open={isLessonDialogOpen} 
         onOpenChange={setIsLessonDialogOpen} 
