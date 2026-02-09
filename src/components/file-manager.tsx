@@ -83,9 +83,10 @@ interface FileManagerProps {
   relationId?: string
   className?: string
   isTeacher?: boolean
+  searchQuery?: string
 }
 
-export function FileManager({ relationId, className, isTeacher = false }: FileManagerProps) {
+export function FileManager({ relationId, className, isTeacher = false, searchQuery = '' }: FileManagerProps) {
   const [fileToDelete, setFileToDelete] = useState<FileData | null>(null)
   const [fileToShare, setFileToShare] = useState<FileData | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -95,6 +96,13 @@ export function FileManager({ relationId, className, isTeacher = false }: FileMa
   const { data: files = [], isLoading } = useQuery({
     queryKey: ['files', relationId],
     queryFn: () => getFiles({ relationId }),
+  })
+
+  // Client-side search filter
+  const filteredFiles = files.filter((file: FileData) => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return file.originalName.toLowerCase().includes(q)
   })
 
   const uploadMutation = useMutation({
@@ -255,6 +263,10 @@ export function FileManager({ relationId, className, isTeacher = false }: FileMa
                 Загрузите первый файл, чтобы начать работу с материалами
               </p>
             </motion.div>
+          ) : filteredFiles.length === 0 ? (
+            <div key="no-results" className="flex items-center justify-center py-16">
+              <p className="text-sm text-zinc-500">Ничего не найдено</p>
+            </div>
           ) : (
             <motion.div 
               key="grid"
@@ -263,7 +275,7 @@ export function FileManager({ relationId, className, isTeacher = false }: FileMa
               initial="hidden"
               animate="visible"
             >
-            {files.map((file) => {
+            {filteredFiles.map((file) => {
               const FileIcon = getFileIcon(file.fileType, file.mimeType)
               
               return (

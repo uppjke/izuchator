@@ -70,9 +70,10 @@ const getFileExtension = (filename: string): string => {
 
 interface SharedFilesViewProps {
   className?: string
+  searchQuery?: string
 }
 
-export function SharedFilesView({ className }: SharedFilesViewProps) {
+export function SharedFilesView({ className, searchQuery = '' }: SharedFilesViewProps) {
   const { data: files = [], isLoading } = useQuery({
     queryKey: ['shared-files'],
     queryFn: getSharedFiles,
@@ -88,8 +89,18 @@ export function SharedFilesView({ className }: SharedFilesViewProps) {
     document.body.removeChild(link)
   }
 
-  // Group files by teacher
-  const filesByTeacher = files.reduce((acc, file) => {
+  // Group files by teacher (with search filter applied)
+  const filteredFiles = files.filter((file) => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      file.originalName.toLowerCase().includes(q) ||
+      file.sharedBy?.name?.toLowerCase().includes(q) ||
+      file.sharedBy?.email?.toLowerCase().includes(q)
+    )
+  })
+
+  const filesByTeacher = filteredFiles.reduce((acc, file) => {
     const teacherName = file.sharedBy?.name || file.sharedBy?.email || 'Неизвестный учитель'
     if (!acc[teacherName]) {
       acc[teacherName] = []
@@ -139,6 +150,10 @@ export function SharedFilesView({ className }: SharedFilesViewProps) {
                 Учителя могут делиться с вами учебными материалами
               </p>
             </motion.div>
+          ) : filteredFiles.length === 0 ? (
+            <div key="no-results" className="flex items-center justify-center py-16">
+              <p className="text-sm text-zinc-500">Ничего не найдено</p>
+            </div>
           ) : (
             <div className="space-y-8">
               {teacherNames.map((teacherName) => {

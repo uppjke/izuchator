@@ -19,19 +19,28 @@ interface MobileHeaderProps {
   } | null
   userRole?: 'student' | 'teacher'
   onLogout?: () => void
+  searchQuery?: string
+  onSearchChange?: (query: string) => void
+  showSearch?: boolean
 }
 
 export function MobileHeader({ 
   title, 
   user,
   userRole = 'student',
-  onLogout
+  onLogout,
+  searchQuery = '',
+  onSearchChange,
+  showSearch = true,
 }: MobileHeaderProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   const toggleSearch = useCallback(() => setIsSearchOpen(prev => !prev), [])
-  const closeSearch = useCallback(() => setIsSearchOpen(false), [])
+  const closeSearch = useCallback(() => {
+    setIsSearchOpen(false)
+    onSearchChange?.('')
+  }, [onSearchChange])
 
   return (
     <header 
@@ -76,7 +85,8 @@ export function MobileHeader({
                 placeholder="Поиск..."
                 className="pl-10 h-10 bg-zinc-100 border-0 rounded-xl"
                 autoFocus
-                onBlur={closeSearch}
+                value={searchQuery}
+                onChange={(e) => onSearchChange?.(e.target.value)}
               />
             </motion.div>
           )}
@@ -85,7 +95,7 @@ export function MobileHeader({
 
       {/* Right actions */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        {!isSearchOpen && (
+        {!isSearchOpen && showSearch && (
           <Button
             variant="ghost"
             size="icon"

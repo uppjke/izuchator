@@ -53,6 +53,10 @@ export default function DashboardLayout() {
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
 
+  // Search state — managed here so headers and tab content share the same query
+  const [searchQuery, setSearchQuery] = useState('');
+  const showSearch = activeTab !== 'dashboard';
+
   // Восстановление активного таба из localStorage
   useEffect(() => {
     const savedTab = localStorage.getItem("dashboardActiveTab") as TabId;
@@ -79,6 +83,7 @@ export default function DashboardLayout() {
       }
 
       setActiveTab(newTab);
+      setSearchQuery(''); // Clear search when switching tabs
       localStorage.setItem("dashboardActiveTab", newTab);
     },
     [userRole]
@@ -164,11 +169,19 @@ export default function DashboardLayout() {
               user={user}
               userRole={userRole}
               onLogout={handleLogout}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              showSearch={showSearch}
             />
           </div>
 
           {/* Desktop Header - только на lg+ */}
-          <DesktopHeader title={currentPageTitle} />
+          <DesktopHeader
+            title={currentPageTitle}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            showSearch={showSearch}
+          />
 
           {/* Page content */}
           <main className="flex-1 overflow-auto p-4 lg:p-6 pb-20 lg:pb-4">
@@ -177,7 +190,7 @@ export default function DashboardLayout() {
                 {activeTab === 'dashboard' ? (
                   <DashboardTab onNavigate={changeTab} />
                 ) : (
-                  <ActiveTabComponent />
+                  <ActiveTabComponent searchQuery={searchQuery} />
                 )}
               </div>
             </div>

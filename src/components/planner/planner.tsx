@@ -16,8 +16,9 @@ import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYea
 import { useQueryClient } from '@tanstack/react-query'
 
 export function Planner({ 
-  onCreateLesson
-}: Pick<PlannerProps, 'onCreateLesson'>) {
+  onCreateLesson,
+  searchQuery = '',
+}: Pick<PlannerProps, 'onCreateLesson'> & { searchQuery?: string }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<'week' | 'month' | 'year'>('week')
   const [isWideScreen, setIsWideScreen] = useState(true)
@@ -53,6 +54,20 @@ export function Planner({
     queryKey: ['lessons', viewMode, periodStart.toISOString()],
     queryFn: () => getLessonsForPeriod(periodStart, new Date(periodEnd.getTime() + 1000)),
   })
+
+  // Client-side search filter
+  const filteredLessons = useMemo(() => {
+    if (!searchQuery.trim()) return lessons
+    const q = searchQuery.toLowerCase()
+    return lessons.filter((lesson) =>
+      lesson.title.toLowerCase().includes(q) ||
+      lesson.description?.toLowerCase().includes(q) ||
+      lesson.relation?.teacher?.name?.toLowerCase().includes(q) ||
+      lesson.relation?.student?.name?.toLowerCase().includes(q) ||
+      lesson.relation?.teacherName?.toLowerCase().includes(q) ||
+      lesson.relation?.studentName?.toLowerCase().includes(q)
+    )
+  }, [lessons, searchQuery])
   
   // Проверка ширины экрана
   useEffect(() => {
@@ -163,7 +178,7 @@ export function Planner({
         {viewMode === 'week' && isWideScreen && (
           <WeekGrid
             week={getWeekData(currentDate)}
-            lessons={lessons}
+            lessons={filteredLessons}
             onEditLesson={handleShowLessonDetails}
           />
         )}
@@ -171,7 +186,7 @@ export function Planner({
         {viewMode === 'week' && !isWideScreen && (
           <AgendaView
             week={getWeekData(currentDate)}
-            lessons={lessons}
+            lessons={filteredLessons}
             onCreateLesson={(date) => handleCreateLesson(date)}
             onEditLesson={handleShowLessonDetails}
             forceToday={forceTodayInAgenda}
@@ -181,7 +196,7 @@ export function Planner({
         {viewMode === 'month' && (
           <MonthView
             currentDate={currentDate}
-            lessons={lessons}
+            lessons={filteredLessons}
             onDayClick={(date) => {
               setCurrentDate(date)
               setViewMode('week')
@@ -193,7 +208,7 @@ export function Planner({
         {viewMode === 'year' && (
           <YearView
             currentDate={currentDate}
-            lessons={lessons}
+            lessons={filteredLessons}
             onMonthClick={(date) => {
               setCurrentDate(date)
               setViewMode('month')

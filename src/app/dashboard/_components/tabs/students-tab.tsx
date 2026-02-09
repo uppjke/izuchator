@@ -53,7 +53,7 @@ const emptyStateVariants = {
   }
 }
 
-export function StudentsTab() {
+export function StudentsTab({ searchQuery = '' }: { searchQuery?: string }) {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
@@ -73,6 +73,17 @@ export function StudentsTab() {
   
   // Используем присутствие для отслеживания онлайн статуса
   const { isUserOnline, formatLastSeen } = usePresenceContext()
+
+  // Client-side search filter
+  const filteredStudents = students.filter((relation: StudentRelation) => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      relation.student?.name?.toLowerCase().includes(q) ||
+      relation.student?.email?.toLowerCase().includes(q) ||
+      relation.teacherName?.toLowerCase().includes(q)
+    )
+  })
 
   const handleInvite = () => {
     setInviteDialogOpen(true)
@@ -262,6 +273,10 @@ export function StudentsTab() {
               <p className="text-sm mt-1">Пригласите ученика или дождитесь приглашения</p>
             </div>
           </motion.div>
+        ) : filteredStudents.length === 0 ? (
+          <div key="no-results" className="flex items-center justify-center h-64">
+            <p className="text-sm text-zinc-500">Ничего не найдено</p>
+          </div>
         ) : (
           /* Список учеников */
           <motion.div 
@@ -271,7 +286,7 @@ export function StudentsTab() {
             initial="hidden"
             animate="visible"
           >
-            {students.map((relation: StudentRelation) => (
+            {filteredStudents.map((relation: StudentRelation) => (
               <motion.div 
                 key={relation.id}
                 variants={listItemVariants}

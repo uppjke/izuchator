@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Icon } from '@/components/ui/icon'
@@ -8,11 +7,12 @@ import { cn } from '@/lib/utils'
 
 interface DesktopHeaderProps {
   title: string
+  searchQuery?: string
+  onSearchChange?: (query: string) => void
+  showSearch?: boolean
 }
 
-export function DesktopHeader({ title }: DesktopHeaderProps) {
-  const [searchValue, setSearchValue] = useState('')
-
+export function DesktopHeader({ title, searchQuery = '', onSearchChange, showSearch = true }: DesktopHeaderProps) {
   return (
     <header 
       className={cn(
@@ -30,23 +30,24 @@ export function DesktopHeader({ title }: DesktopHeaderProps) {
       </h1>
 
       {/* Right side - Search */}
-      <div className="flex items-center gap-4">
-        {/* Search */}
-        <div className="relative w-80">
-          <Icon 
-            icon={Search} 
-            size="sm" 
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" 
-          />
-          <Input
-            type="search"
-            placeholder="Поиск..."
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            className="pl-10 h-10 bg-zinc-50 border-zinc-200 rounded-xl focus:bg-white"
-          />
+      {showSearch && (
+        <div className="flex items-center gap-4">
+          <div className="relative w-80">
+            <Icon 
+              icon={Search} 
+              size="sm" 
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" 
+            />
+            <Input
+              type="search"
+              placeholder="Поиск..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              className="pl-10 h-10 bg-zinc-50 border-zinc-200 rounded-xl focus:bg-white"
+            />
+          </div>
         </div>
-      </div>
+      )}
     </header>
   )
 }

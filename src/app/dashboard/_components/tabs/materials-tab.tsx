@@ -8,7 +8,7 @@ import { getTeacherStudents } from '@/lib/api'
 
 type ViewMode = 'my-files' | 'shared-with-me'
 
-export function MaterialsTab() {
+export function MaterialsTab({ searchQuery = '' }: { searchQuery?: string }) {
   const [viewMode, setViewMode] = useState<ViewMode>('my-files')
   
   // Determine if user is a teacher (has students)
@@ -48,9 +48,9 @@ export function MaterialsTab() {
 
       {/* Контент */}
       {viewMode === 'my-files' ? (
-        <FileManager isTeacher={isTeacher} />
+        <FileManager isTeacher={isTeacher} searchQuery={searchQuery} />
       ) : (
-        <SharedFilesView />
+        <SharedFilesView searchQuery={searchQuery} />
       )}
     </div>
   )

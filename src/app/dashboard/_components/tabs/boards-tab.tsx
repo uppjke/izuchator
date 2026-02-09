@@ -60,7 +60,7 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
-export function BoardsTab() {
+export function BoardsTab({ searchQuery = '' }: { searchQuery?: string }) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { user } = useAuth()
@@ -72,6 +72,19 @@ export function BoardsTab() {
     queryKey: ['boards'],
     queryFn: getBoards,
     staleTime: 30_000,
+  })
+
+  // Client-side search filter
+  const filteredBoards = boards.filter((board) => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      board.title.toLowerCase().includes(q) ||
+      board.relation?.student?.name?.toLowerCase().includes(q) ||
+      board.relation?.student?.email?.toLowerCase().includes(q) ||
+      board.relation?.teacher?.name?.toLowerCase().includes(q) ||
+      board.relation?.teacher?.email?.toLowerCase().includes(q)
+    )
   })
 
   const createMutation = useMutation({
@@ -147,6 +160,10 @@ export function BoardsTab() {
             </Button>
           )}
         </motion.div>
+      ) : filteredBoards.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16">
+          <p className="text-sm text-zinc-500">Ничего не найдено</p>
+        </div>
       ) : (
         <motion.div
           variants={listContainerVariants}
@@ -155,7 +172,7 @@ export function BoardsTab() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
         >
           <AnimatePresence mode="popLayout">
-            {boards.map((board) => (
+            {filteredBoards.map((board) => (
               <motion.div
                 key={board.id}
                 variants={listItemVariants}

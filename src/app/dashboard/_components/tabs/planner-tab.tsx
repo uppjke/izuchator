@@ -1,6 +1,10 @@
 import { Planner } from '@/components/planner'
 
-export function PlannerTab() {
+interface PlannerTabProps {
+  searchQuery?: string
+}
+
+export function PlannerTab({ searchQuery = '' }: PlannerTabProps) {
   const handleCreateLesson = (date: Date) => {
     console.log('Создать урок:', date)
     // TODO: Открыть диалог создания урока
@@ -10,6 +14,7 @@ export function PlannerTab() {
     <div className="h-full">
       <Planner
         onCreateLesson={handleCreateLesson}
+        searchQuery={searchQuery}
       />
     </div>
   )
