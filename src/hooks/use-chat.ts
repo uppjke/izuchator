@@ -96,7 +96,9 @@ export function useChat(): UseChatReturn {
     queryKey: ['chat', 'unread'],
     queryFn: getUnreadCounts,
     refetchInterval: 30000,
-    enabled: !!userId,
+    enabled: !!userId && partners.length > 0,
+    retry: 2,
+    retryDelay: 5000,
   })
 
   const unreadCounts = unreadData?.unread || {}
@@ -121,77 +123,95 @@ export function useChat(): UseChatReturn {
   const messages = (messagesData?.pages.flatMap((p) => p.messages) || []).reverse()
 
   // Socket.io для real-time
+  // Delayed connection to survive React 19 Strict Mode double-invoke
   useEffect(() => {
     if (!userId) return
 
-    const presenceUrl = process.env.NEXT_PUBLIC_PRESENCE_URL || 
-      (typeof window !== 'undefined'
-        ? `${window.location.protocol}//${window.location.hostname}:3002`
-        : 'http://localhost:3002')
-
-    // Используем уже подключённый presence socket
-    const socket = io(presenceUrl, {
-      transports: ['websocket'],
-      reconnection: true,
-      forceNew: false, // переиспользуем соединение если можно
-    })
-
-    socketRef.current = socket
-
-    socket.on('connect', () => {
-      // Присоединяемся ко всем чат-комнатам
-      partners.forEach((p) => {
-        socket.emit('chat:join', { relationId: p.relationId })
-      })
-    })
-
-    // Новое сообщение
-    socket.on('chat:message' as any, (message: ChatMessage) => {
-      queryClient.setQueryData(
-        ['chat', 'messages', message.relationId],
-        (old: any) => {
-          if (!old) return old
-          const firstPage = old.pages[0]
-          return {
-            ...old,
-            pages: [
-              { ...firstPage, messages: [message, ...firstPage.messages] },
-              ...old.pages.slice(1),
-            ],
-          }
-        },
-      )
-      // Обновляем непрочитанные если чат не активен
-      if (message.relationId !== activeRelationId || !isOpen) {
-        queryClient.invalidateQueries({ queryKey: ['chat', 'unread'] })
+    const envUrl = process.env.NEXT_PUBLIC_PRESENCE_SERVER
+    let presenceUrl: string
+    if (envUrl) {
+      try {
+        const url = new URL(envUrl)
+        url.hostname = window.location.hostname
+        presenceUrl = url.origin
+      } catch {
+        presenceUrl = envUrl
       }
-    })
+    } else {
+      presenceUrl = `${window.location.protocol}//${window.location.hostname}:3002`
+    }
 
-    // Typing
-    socket.on('chat:typing' as any, ({ userId: typerId }: { userId: string }) => {
-      setTypingUsers((prev) => new Set(prev).add(typerId))
-    })
-    socket.on('chat:stop-typing' as any, ({ userId: typerId }: { userId: string }) => {
-      setTypingUsers((prev) => {
-        const next = new Set(prev)
-        next.delete(typerId)
-        return next
+    let mounted = true
+    let socket: Socket | null = null
+
+    // Delay to survive React 19 StrictMode unmount-remount cycle
+    const connectTimer = setTimeout(() => {
+      if (!mounted) return
+
+      socket = io(presenceUrl, {
+        transports: ['websocket'],
+        reconnection: true,
+        forceNew: false,
       })
-    })
 
-    // Read receipt
-    socket.on('chat:read' as any, (_data: { userId: string; messageIds: string[] }) => {
-      // Рефетчим для обновления статуса прочтения
-      if (activeRelationId) {
-        queryClient.invalidateQueries({ queryKey: ['chat', 'messages', activeRelationId] })
-      }
-    })
+      socketRef.current = socket
+
+      socket.on('connect', () => {
+        partners.forEach((p) => {
+          socket!.emit('chat:join', { relationId: p.relationId })
+        })
+      })
+
+      // Новое сообщение
+      socket.on('chat:message' as any, (message: ChatMessage) => {
+        queryClient.setQueryData(
+          ['chat', 'messages', message.relationId],
+          (old: any) => {
+            if (!old) return old
+            const firstPage = old.pages[0]
+            return {
+              ...old,
+              pages: [
+                { ...firstPage, messages: [message, ...firstPage.messages] },
+                ...old.pages.slice(1),
+              ],
+            }
+          },
+        )
+        if (message.relationId !== activeRelationId || !isOpen) {
+          queryClient.invalidateQueries({ queryKey: ['chat', 'unread'] })
+        }
+      })
+
+      // Typing
+      socket.on('chat:typing' as any, ({ userId: typerId }: { userId: string }) => {
+        setTypingUsers((prev) => new Set(prev).add(typerId))
+      })
+      socket.on('chat:stop-typing' as any, ({ userId: typerId }: { userId: string }) => {
+        setTypingUsers((prev) => {
+          const next = new Set(prev)
+          next.delete(typerId)
+          return next
+        })
+      })
+
+      // Read receipt
+      socket.on('chat:read' as any, (_data: { userId: string; messageIds: string[] }) => {
+        if (activeRelationId) {
+          queryClient.invalidateQueries({ queryKey: ['chat', 'messages', activeRelationId] })
+        }
+      })
+    }, 100) // 100ms delay — StrictMode cleanup fires before this
 
     return () => {
-      partners.forEach((p) => {
-        socket.emit('chat:leave', { relationId: p.relationId })
-      })
-      socket.disconnect()
+      mounted = false
+      clearTimeout(connectTimer)
+      if (socket) {
+        partners.forEach((p) => {
+          socket!.emit('chat:leave', { relationId: p.relationId })
+        })
+        socket.disconnect()
+      }
       socketRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
