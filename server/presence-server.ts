@@ -479,46 +479,55 @@ class PresenceServer {
   // Chat — relay сообщений между пользователями через default namespace
   // ========================================================================
 
-  // userId -> Set<socketId> (уже отслеживается в userSockets)
+  // Chat — dedicated /chat namespace (isolated from presence on default namespace)
   private setupChatHandlers() {
-    // Chat events добавляются в default namespace через setupEventHandlers
-    // Здесь мы патчим connection handler после основного setup
-    this.io.on('connection', (socket: TypedSocket) => {
+    const chatNsp = this.io.of('/chat')
+
+    chatNsp.on('connection', (socket) => {
+      console.log(`💬 Chat socket connected: ${socket.id}`)
+
       // Присоединиться к комнате чата (relation room)
-      socket.on('chat:join' as any, ({ relationId }: { relationId: string }) => {
+      socket.on('chat:join', ({ relationId }: { relationId: string }) => {
         socket.join(`chat:${relationId}`)
+        console.log(`💬 Socket ${socket.id} joined room chat:${relationId}`)
       })
 
       // Покинуть комнату чата
-      socket.on('chat:leave' as any, ({ relationId }: { relationId: string }) => {
+      socket.on('chat:leave', ({ relationId }: { relationId: string }) => {
         socket.leave(`chat:${relationId}`)
       })
 
       // Новое сообщение — relay всем в комнате кроме отправителя
-      socket.on('chat:message' as any, (data: { relationId: string; message: unknown }) => {
-        socket.to(`chat:${data.relationId}`).emit('chat:message' as any, data.message)
+      socket.on('chat:message', (data: { relationId: string; message: unknown }) => {
+        socket.to(`chat:${data.relationId}`).emit('chat:message', data.message)
         this.messageCount++
+        console.log(`💬 Message relayed to room chat:${data.relationId}`)
       })
 
       // Typing индикатор
-      socket.on('chat:typing' as any, (data: { relationId: string; userId: string }) => {
-        socket.to(`chat:${data.relationId}`).emit('chat:typing' as any, { userId: data.userId })
+      socket.on('chat:typing', (data: { relationId: string; userId: string }) => {
+        socket.to(`chat:${data.relationId}`).emit('chat:typing', { userId: data.userId })
       })
 
       // Stop typing
-      socket.on('chat:stop-typing' as any, (data: { relationId: string; userId: string }) => {
-        socket.to(`chat:${data.relationId}`).emit('chat:stop-typing' as any, { userId: data.userId })
+      socket.on('chat:stop-typing', (data: { relationId: string; userId: string }) => {
+        socket.to(`chat:${data.relationId}`).emit('chat:stop-typing', { userId: data.userId })
       })
 
       // Отметка о прочтении — relay
-      socket.on('chat:read' as any, (data: { relationId: string; userId: string; messageIds: string[] }) => {
-        socket.to(`chat:${data.relationId}`).emit('chat:read' as any, {
+      socket.on('chat:read', (data: { relationId: string; userId: string; messageIds: string[] }) => {
+        socket.to(`chat:${data.relationId}`).emit('chat:read', {
           userId: data.userId,
           messageIds: data.messageIds,
         })
       })
+
+      socket.on('disconnect', (reason) => {
+        console.log(`💬 Chat socket disconnected: ${socket.id} (${reason})`)
+      })
     })
-    console.log('💬 Chat handlers registered on default namespace')
+
+    console.log('💬 Chat handlers registered on /chat namespace')
   }
 
   private async handleJoin(socket: TypedSocket, data: JoinPresencePayload) {

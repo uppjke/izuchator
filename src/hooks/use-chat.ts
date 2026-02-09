@@ -283,11 +283,12 @@ export function useChat(): UseChatReturn {
     const connectTimer = setTimeout(() => {
       if (!mounted) return
 
-      // Reuse the same socket as presence hook (forceNew: false)
-      // This returns the ALREADY CONNECTED socket from presence
-      socket = io(presenceUrl, {
+      // Connect to dedicated /chat namespace — fully independent from presence
+      socket = io(presenceUrl + '/chat', {
         transports: ['polling', 'websocket'],
-        forceNew: false,
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
         withCredentials: false,
       })
 
@@ -296,35 +297,22 @@ export function useChat(): UseChatReturn {
       // Attach handlers
       socket.on('connect', onConnect)
       socket.on('disconnect', onDisconnect)
-      socket.on('chat:message' as any, onMessage)
-      socket.on('chat:typing' as any, onTyping)
-      socket.on('chat:stop-typing' as any, onStopTyping)
-      socket.on('chat:read' as any, onRead)
-
-      // If socket is already connected (presence connected first), join rooms NOW
-      if (socket.connected) {
-        setSocketConnected(true)
-        joinAllRooms()
-      }
-    }, 250) // slightly after presence's 100ms
+      socket.on('chat:message', onMessage)
+      socket.on('chat:typing', onTyping)
+      socket.on('chat:stop-typing', onStopTyping)
+      socket.on('chat:read', onRead)
+    }, 150)
 
     return () => {
       mounted = false
       clearTimeout(connectTimer)
       if (socket) {
-        // Leave rooms + remove ONLY our handlers (shared socket!)
         if (socket.connected) {
           partners.forEach((p) => {
             socket!.emit('chat:leave', { relationId: p.relationId })
           })
         }
-        socket.off('connect', onConnect)
-        socket.off('disconnect', onDisconnect)
-        socket.off('chat:message' as any, onMessage)
-        socket.off('chat:typing' as any, onTyping)
-        socket.off('chat:stop-typing' as any, onStopTyping)
-        socket.off('chat:read' as any, onRead)
-        // Do NOT disconnect — shared with presence
+        socket.disconnect() // Safe — dedicated /chat namespace socket
       }
       socketRef.current = null
       setSocketConnected(false)
