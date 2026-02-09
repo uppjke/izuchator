@@ -123,9 +123,9 @@ export function useChat(): UseChatReturn {
   const messages = (messagesData?.pages.flatMap((p) => p.messages) || []).reverse()
 
   // Socket.io для real-time
-  // Delayed connection to survive React 19 Strict Mode double-invoke
+  // Lazy connection: only when user is authenticated AND has chat partners
   useEffect(() => {
-    if (!userId) return
+    if (!userId || partners.length === 0) return
 
     const envUrl = process.env.NEXT_PUBLIC_PRESENCE_SERVER
     let presenceUrl: string
@@ -201,15 +201,18 @@ export function useChat(): UseChatReturn {
           queryClient.invalidateQueries({ queryKey: ['chat', 'messages', activeRelationId] })
         }
       })
-    }, 100) // 100ms delay — StrictMode cleanup fires before this
+    }, 150) // 150ms delay — StrictMode/HMR cleanup fires before this
 
     return () => {
       mounted = false
       clearTimeout(connectTimer)
       if (socket) {
-        partners.forEach((p) => {
-          socket!.emit('chat:leave', { relationId: p.relationId })
-        })
+        // Only attempt graceful leave if actually connected
+        if (socket.connected) {
+          partners.forEach((p) => {
+            socket!.emit('chat:leave', { relationId: p.relationId })
+          })
+        }
         socket.disconnect()
       }
       socketRef.current = null
