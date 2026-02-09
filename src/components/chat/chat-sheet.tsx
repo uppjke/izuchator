@@ -114,9 +114,8 @@ export function ChatSheet() {
         className={cn(
           // Мобильный: на весь экран
           "fixed inset-0 z-50",
-          // Планшет (sm→lg): popup над нижней панелью навигации
-          "sm:inset-auto sm:right-4",
-          "sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]",
+          // Планшет/десктоп: popup в правом нижнем углу
+          "sm:inset-auto sm:right-4 sm:bottom-20",
           "sm:w-[380px] sm:h-[min(560px,calc(100dvh-7rem))]",
           // Десктоп (lg+): нет нижней панели, popup ближе к краю
           "lg:bottom-4",
