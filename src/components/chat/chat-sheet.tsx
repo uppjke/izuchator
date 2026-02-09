@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/lib/api'
 
 // ============================================================================
-// Chat Sheet — slide-out панель чата
+// Chat Popup — плавающее окно чата
 // ============================================================================
 
 export function ChatSheet() {
@@ -30,12 +30,12 @@ export function ChatSheet() {
 
   return (
     <>
-      {/* Backdrop — только на мобильных */}
+      {/* Backdrop — только на мобильных (full-screen режим) */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-50 lg:hidden"
+        className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-50 sm:hidden"
         onClick={() => {
           if (activeRelationId) {
             setActiveRelationId(null)
@@ -45,19 +45,23 @@ export function ChatSheet() {
         }}
       />
 
-      {/* Panel */}
+      {/* Popup */}
       <motion.div
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
         className={cn(
-          "fixed right-0 top-0 bottom-0 z-50",
-          "w-full sm:w-96 lg:w-[380px]",
+          // Мобильный: на весь экран
+          "fixed inset-0 z-50",
+          // Планшет+: popup в правом нижнем углу
+          "sm:inset-auto sm:bottom-4 sm:right-4",
+          "sm:w-[380px] sm:h-[min(580px,calc(100dvh-100px))]",
+          "sm:rounded-2xl",
           "bg-white",
-          "shadow-2xl lg:shadow-[-4px_0_24px_-4px_rgba(0,0,0,0.12)]",
-          "lg:border-l lg:border-zinc-200/50",
-          "flex flex-col",
+          "shadow-2xl",
+          "sm:border sm:border-zinc-200/60",
+          "flex flex-col overflow-hidden",
           "safe-area-top safe-area-bottom"
         )}
         style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
