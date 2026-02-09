@@ -14,6 +14,58 @@ import { cn } from '@/lib/utils'
 
 import type { ChatMessage } from '@/lib/api'
 
+// Hook: adjust mobile fullscreen chat to visualViewport (virtual keyboard)
+function useVisualViewport(isOpen: boolean, ref: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    if (!isOpen) return
+
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const update = () => {
+      const el = ref.current
+      if (!el) return
+      // Only adjust on mobile (fullscreen mode)
+      if (window.innerWidth >= 640) {
+        el.style.height = ''
+        el.style.top = ''
+        return
+      }
+      // Shrink container to visual viewport (excludes keyboard)
+      el.style.height = `${viewport.height}px`
+      el.style.top = `${viewport.offsetTop}px`
+    }
+
+    viewport.addEventListener('resize', update)
+    viewport.addEventListener('scroll', update)
+
+    return () => {
+      viewport.removeEventListener('resize', update)
+      viewport.removeEventListener('scroll', update)
+      // Reset
+      const el = ref.current
+      if (el) {
+        el.style.height = ''
+        el.style.top = ''
+      }
+    }
+  }, [isOpen, ref])
+}
+
+// Hook: lock body scroll on mobile when chat is open
+function useLockBodyScroll(isOpen: boolean) {
+  useEffect(() => {
+    if (!isOpen) return
+    // Only lock on mobile
+    if (window.innerWidth >= 640) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [isOpen])
+}
+
 // ============================================================================
 // Chat Popup — плавающее окно чата
 // ============================================================================
@@ -25,6 +77,13 @@ export function ChatSheet() {
     activeRelationId,
     setActiveRelationId,
   } = useChatContext()
+
+  const popupRef = useRef<HTMLDivElement>(null)
+
+  // Fix mobile virtual keyboard pushing header off-screen
+  useVisualViewport(isOpen, popupRef)
+  // Lock body scroll on mobile when chat is open
+  useLockBodyScroll(isOpen)
 
   if (!isOpen) return null
 
@@ -47,6 +106,7 @@ export function ChatSheet() {
 
       {/* Popup */}
       <motion.div
+        ref={popupRef}
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -54,9 +114,13 @@ export function ChatSheet() {
         className={cn(
           // Мобильный: на весь экран
           "fixed inset-0 z-50",
-          // Планшет+: popup в правом нижнем углу
-          "sm:inset-auto sm:bottom-4 sm:right-4",
-          "sm:w-[380px] sm:h-[min(580px,calc(100dvh-100px))]",
+          // Планшет (sm→lg): popup над нижней панелью навигации
+          "sm:inset-auto sm:right-4",
+          "sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]",
+          "sm:w-[380px] sm:h-[min(560px,calc(100dvh-7rem))]",
+          // Десктоп (lg+): нет нижней панели, popup ближе к краю
+          "lg:bottom-4",
+          "lg:h-[min(580px,calc(100dvh-100px))]",
           "sm:rounded-2xl",
           "bg-white",
           "shadow-2xl",

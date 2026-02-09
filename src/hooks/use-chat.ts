@@ -172,8 +172,8 @@ export function useChat(): UseChatReturn {
     )
   }, [queryClient])
 
-  // Socket.io для real-time
-  // Lazy connection: only when user is authenticated AND has chat partners
+  // Socket.io для real-time — dedicated chat connection (forceNew: true)
+  // Separate from presence hook to avoid shared-socket lifecycle issues
   useEffect(() => {
     if (!userId || partners.length === 0) return
 
@@ -198,40 +198,38 @@ export function useChat(): UseChatReturn {
     const connectTimer = setTimeout(() => {
       if (!mounted) return
 
+      // Dedicated chat socket — independent from presence
       socket = io(presenceUrl, {
-        transports: ['websocket'],
+        transports: ['websocket', 'polling'],
         reconnection: true,
-        forceNew: false,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
+        forceNew: true,
       })
 
       socketRef.current = socket
 
       socket.on('connect', () => {
+        // Join all chat rooms on (re)connect
         partners.forEach((p) => {
           socket!.emit('chat:join', { relationId: p.relationId })
         })
       })
 
-      // Новое сообщение от собеседника
+      // Incoming message from partner
       socket.on('chat:message' as any, (message: ChatMessage) => {
-        // Мгновенно обновляем кэш сообщений (создаём запись если чат ещё не открывался)
         addMessageToCache(message.relationId, message)
-        // Обновляем превью последнего сообщения
         updateLastMessage(message.relationId, message)
-        // Мгновенно увеличиваем бейдж непрочитанных (оптимистично)
+        // Optimistic badge increment
         queryClient.setQueryData<UnreadResponse>(['chat', 'unread'], (old) => {
           if (!old) return old
           const newUnread = { ...old.unread }
           newUnread[message.relationId] = (newUnread[message.relationId] || 0) + 1
-          return {
-            ...old,
-            unread: newUnread,
-            total: old.total + 1,
-          }
+          return { ...old, unread: newUnread, total: old.total + 1 }
         })
       })
 
-      // Typing
+      // Typing indicators
       socket.on('chat:typing' as any, ({ userId: typerId }: { userId: string }) => {
         setTypingUsers((prev) => new Set(prev).add(typerId))
       })
@@ -243,13 +241,13 @@ export function useChat(): UseChatReturn {
         })
       })
 
-      // Read receipt
+      // Read receipts
       socket.on('chat:read' as any, (_data: { userId: string; messageIds: string[] }) => {
         if (activeRelationId) {
           queryClient.invalidateQueries({ queryKey: ['chat', 'messages', activeRelationId] })
         }
       })
-    }, 150) // 150ms delay — StrictMode/HMR cleanup fires before this
+    }, 200)
 
     return () => {
       mounted = false
@@ -260,7 +258,7 @@ export function useChat(): UseChatReturn {
             socket!.emit('chat:leave', { relationId: p.relationId })
           })
         }
-        socket.disconnect()
+        socket.disconnect() // Safe — dedicated chat socket
       }
       socketRef.current = null
     }
