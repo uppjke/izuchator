@@ -30,12 +30,12 @@ export function ChatSheet() {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — только на мобильных */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-50"
+        className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-50 lg:hidden"
         onClick={() => {
           if (activeRelationId) {
             setActiveRelationId(null)
@@ -53,8 +53,10 @@ export function ChatSheet() {
         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
         className={cn(
           "fixed right-0 top-0 bottom-0 z-50",
-          "w-full sm:w-96 lg:w-[420px]",
-          "bg-white shadow-2xl",
+          "w-full sm:w-96 lg:w-[380px]",
+          "bg-white",
+          "shadow-2xl lg:shadow-[-4px_0_24px_-4px_rgba(0,0,0,0.12)]",
+          "lg:border-l lg:border-zinc-200/50",
           "flex flex-col",
           "safe-area-top safe-area-bottom"
         )}
