@@ -165,3 +165,27 @@ export type UpdateLessonInput = z.infer<typeof updateLessonSchema>
 export type CreateInviteInput = z.infer<typeof createInviteSchema>
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>
 export type UpdateRelationInput = z.infer<typeof updateRelationSchema>
+
+// ============================================================================
+// Chat
+// ============================================================================
+
+export const sendMessageSchema = z.object({
+  relationId: z.string().min(1, 'relationId обязателен'),
+  text: z.string().min(1, 'Сообщение не может быть пустым').max(5000, 'Слишком длинное сообщение'),
+})
+
+export const getMessagesQuerySchema = z.object({
+  relationId: z.string().min(1),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+})
+
+export const markReadSchema = z.object({
+  relationId: z.string().min(1),
+  messageIds: z.array(z.string()).min(1),
+})
+
+export type SendMessageInput = z.infer<typeof sendMessageSchema>
+export type GetMessagesQuery = z.infer<typeof getMessagesQuerySchema>
+export type MarkReadInput = z.infer<typeof markReadSchema>

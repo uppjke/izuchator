@@ -37,6 +37,9 @@ import { useVideoCall } from '@/components/board/use-video-call'
 import { VideoPanel } from '@/components/board/video-panel'
 import { useTeacherStudents } from '@/hooks/use-relations'
 import { updateBoard } from '@/lib/api'
+import { ChatProvider } from '@/lib/chat-context'
+import { ChatButton } from '@/components/chat/chat-button'
+import { ChatSheet } from '@/components/chat/chat-sheet'
 import type { BoardData, CanvasState } from '@/components/board/types'
 
 export default function BoardPage() {
@@ -584,6 +587,7 @@ export default function BoardPage() {
   }
 
   return (
+    <ChatProvider>
     <div className="flex flex-col h-dvh bg-white overflow-hidden select-none" style={{ WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
       {/* Compact header */}
       <header className="flex items-center justify-between px-3 py-2 md:px-5 md:py-3 border-b border-zinc-200/50 bg-white/95 backdrop-blur-sm z-30 shrink-0">
@@ -723,6 +727,9 @@ export default function BoardPage() {
               <Icon icon={isVideoActive ? Video : VideoOff} size="xs" className="md:!h-4 md:!w-4" />
             </Button>
           )}
+
+          {/* Chat */}
+          <ChatButton size="sm" />
 
           {/* Autosave indicator */}
           <div className="flex items-center gap-1 text-xs text-zinc-400">
@@ -886,6 +893,8 @@ export default function BoardPage() {
         toolbarPosition={toolbarPosition}
         onPositionChange={setToolbarPosition}
       />
+      <ChatSheet />
     </div>
+    </ChatProvider>
   )
 }

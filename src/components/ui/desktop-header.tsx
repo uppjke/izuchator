@@ -3,6 +3,7 @@
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Icon } from '@/components/ui/icon'
+import { ChatButton } from '@/components/chat/chat-button'
 import { cn } from '@/lib/utils'
 
 interface DesktopHeaderProps {
@@ -29,9 +30,9 @@ export function DesktopHeader({ title, searchQuery = '', onSearchChange, showSea
         {title}
       </h1>
 
-      {/* Right side - Search */}
-      {showSearch && (
-        <div className="flex items-center gap-4">
+      {/* Right side - Search + Chat */}
+      <div className="flex items-center gap-3">
+        {showSearch && (
           <div className="relative w-80">
             <Icon 
               icon={Search} 
@@ -46,8 +47,9 @@ export function DesktopHeader({ title, searchQuery = '', onSearchChange, showSea
               className="pl-10 h-10 bg-zinc-50 border-zinc-200 rounded-xl focus:bg-white"
             />
           </div>
-        </div>
-      )}
+        )}
+        <ChatButton />
+      </div>
     </header>
   )
 }

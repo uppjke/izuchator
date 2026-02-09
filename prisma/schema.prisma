@@ -29,6 +29,8 @@ model User {
   files             File[]
   boards            Board[]        @relation("BoardCreator")
   boardElements     BoardElement[] @relation("ElementCreator")
+  sentMessages      ChatMessage[]  @relation("MessageSender")
+  messageReads      ChatMessageRead[] @relation("MessageReader")
 
   @@map("users")
 }
@@ -98,6 +100,7 @@ model TeacherStudentRelation {
   files      File[]
   fileShares FileShare[]
   boards     Board[]     @relation("BoardRelation")
+  messages   ChatMessage[]
 
   @@unique([teacherId, studentId])
   @@map("teacher_student_relations")
@@ -251,4 +254,39 @@ model BoardElement {
 
   @@index([boardId])
   @@map("board_elements")
+}
+
+// ============================================================================
+// Чат между учителем и учеником
+// ============================================================================
+
+model ChatMessage {
+  id         String      @id @default(cuid())
+  relationId String      @map("relation_id")
+  senderId   String      @map("sender_id")
+  text       String      @db.Text
+  createdAt  DateTime    @default(now()) @map("created_at")
+  editedAt   DateTime?   @map("edited_at")
+
+  relation TeacherStudentRelation @relation(fields: [relationId], references: [id], onDelete: Cascade)
+  sender   User                   @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  reads    ChatMessageRead[]
+
+  @@index([relationId, createdAt])
+  @@index([senderId])
+  @@map("chat_messages")
+}
+
+model ChatMessageRead {
+  id        String   @id @default(cuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  readAt    DateTime @default(now()) @map("read_at")
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation("MessageReader", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId, readAt])
+  @@map("chat_message_reads")
 }

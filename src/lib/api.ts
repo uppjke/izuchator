@@ -502,3 +502,75 @@ export async function deleteBoard(id: string): Promise<void> {
     throw new Error('Failed to delete board')
   }
 }
+
+// ============================================================================
+// Chat
+// ============================================================================
+
+export interface ChatMessage {
+  id: string
+  relationId: string
+  senderId: string
+  text: string
+  createdAt: string
+  editedAt: string | null
+  sender: {
+    id: string
+    name: string | null
+    email: string
+    image: string | null
+  }
+  reads: Array<{ userId: string; readAt: string }>
+}
+
+export interface ChatMessagesResponse {
+  messages: ChatMessage[]
+  nextCursor: string | null
+}
+
+export interface UnreadResponse {
+  unread: Record<string, number>
+  total: number
+}
+
+export async function getChatMessages(
+  relationId: string,
+  cursor?: string,
+  limit: number = 50,
+): Promise<ChatMessagesResponse> {
+  const params = new URLSearchParams({ relationId, limit: String(limit) })
+  if (cursor) params.set('cursor', cursor)
+  const response = await fetch(`/api/chat?${params}`)
+  if (!response.ok) throw new Error('Failed to fetch messages')
+  return response.json()
+}
+
+export async function sendChatMessage(
+  relationId: string,
+  text: string,
+): Promise<ChatMessage> {
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ relationId, text }),
+  })
+  if (!response.ok) throw new Error('Failed to send message')
+  return response.json()
+}
+
+export async function markMessagesRead(
+  relationId: string,
+  messageIds: string[],
+): Promise<void> {
+  await fetch('/api/chat/read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ relationId, messageIds }),
+  })
+}
+
+export async function getUnreadCounts(): Promise<UnreadResponse> {
+  const response = await fetch('/api/chat/unread')
+  if (!response.ok) throw new Error('Failed to fetch unread counts')
+  return response.json()
+}

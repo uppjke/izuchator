@@ -6,6 +6,8 @@ import { signOut } from "next-auth/react";
 import { useAuth } from "@/lib/auth-context";
 import { usePresence } from "@/hooks/use-presence";
 import { PresenceProvider } from "@/lib/presence-context";
+import { ChatProvider } from "@/lib/chat-context";
+import { ChatSheet } from "@/components/chat/chat-sheet";
 
 // Компоненты навигации
 import { BottomTabBar, type TabId } from "@/components/ui/bottom-tab-bar";
@@ -150,7 +152,8 @@ export default function DashboardLayout() {
 
   return (
     <PresenceProvider value={presenceData}>
-      <div className="flex h-dvh bg-zinc-50 overflow-hidden">
+      <ChatProvider>
+        <div className="flex h-dvh bg-zinc-50 overflow-hidden">
         {/* Desktop Sidebar - только на lg+ */}
         <DesktopSidebar
           userRole={userRole}
@@ -203,7 +206,11 @@ export default function DashboardLayout() {
           onTabChange={changeTab}
           userRole={userRole}
         />
+
+        {/* Chat Sheet */}
+        <ChatSheet />
       </div>
+      </ChatProvider>
     </PresenceProvider>
   );
 }

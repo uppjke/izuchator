@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Icon } from '@/components/ui/icon'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { ProfileSheet } from '@/components/ui/profile-sheet'
+import { ChatButton } from '@/components/chat/chat-button'
 import { cn } from '@/lib/utils'
 
 interface MobileHeaderProps {
@@ -117,6 +118,11 @@ export function MobileHeader({
           >
             <Icon icon={X} size="md" className="text-zinc-600" />
           </Button>
+        )}
+
+        {/* Chat button */}
+        {!isSearchOpen && (
+          <ChatButton size="sm" />
         )}
 
         {/* Profile avatar */}
