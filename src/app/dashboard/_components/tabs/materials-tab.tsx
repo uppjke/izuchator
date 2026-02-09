@@ -5,11 +5,14 @@ import { FileManager } from '@/components/file-manager'
 import { SharedFilesView } from '@/components/shared-files-view'
 import { useQuery } from '@tanstack/react-query'
 import { getTeacherStudents } from '@/lib/api'
+import { useAuth } from '@/lib/auth-context'
 
 type ViewMode = 'my-files' | 'shared-with-me'
 
 export function MaterialsTab({ searchQuery = '' }: { searchQuery?: string }) {
   const [viewMode, setViewMode] = useState<ViewMode>('my-files')
+  const { user } = useAuth()
+  const isStudent = user?.role === 'student'
   
   // Determine if user is a teacher (has students)
   const { data: relations = [] } = useQuery({
@@ -22,32 +25,34 @@ export function MaterialsTab({ searchQuery = '' }: { searchQuery?: string }) {
 
   return (
     <div className="w-full max-w-full overflow-x-auto">
-      {/* Переключатель режимов */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setViewMode('my-files')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            viewMode === 'my-files'
-              ? 'bg-foreground text-background'
-              : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-          }`}
-        >
-          Мои файлы
-        </button>
-        <button
-          onClick={() => setViewMode('shared-with-me')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            viewMode === 'shared-with-me'
-              ? 'bg-foreground text-background'
-              : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-          }`}
-        >
-          Файлы от учителей
-        </button>
-      </div>
+      {/* Переключатель режимов — только для учеников */}
+      {isStudent && (
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setViewMode('my-files')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              viewMode === 'my-files'
+                ? 'bg-foreground text-background'
+                : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            Мои файлы
+          </button>
+          <button
+            onClick={() => setViewMode('shared-with-me')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              viewMode === 'shared-with-me'
+                ? 'bg-foreground text-background'
+                : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            Файлы от учителей
+          </button>
+        </div>
+      )}
 
       {/* Контент */}
-      {viewMode === 'my-files' ? (
+      {viewMode === 'my-files' || !isStudent ? (
         <FileManager isTeacher={isTeacher} searchQuery={searchQuery} />
       ) : (
         <SharedFilesView searchQuery={searchQuery} />
