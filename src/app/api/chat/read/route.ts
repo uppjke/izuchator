@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     await db.chatMessageRead.createMany({
       data: messageIds.map((messageId) => ({
         messageId,
-        userId: session.user!.id,
+        userId: session.user!.id!,
       })),
       skipDuplicates: true,
     })
