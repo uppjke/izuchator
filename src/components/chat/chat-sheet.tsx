@@ -79,6 +79,22 @@ export function ChatSheet() {
   } = useChatContext()
 
   const popupRef = useRef<HTMLDivElement>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  const [isTablet, setIsTablet] = useState(false)
+  useEffect(() => {
+    const check = () => setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // Fix mobile virtual keyboard pushing header off-screen
   useVisualViewport(isOpen, popupRef)
@@ -87,22 +103,46 @@ export function ChatSheet() {
 
   if (!isOpen) return null
 
+  // Inline styles for reliable positioning across Tailwind 4
+  const popupStyle: React.CSSProperties = isMobile
+    ? {
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }
+    : {
+        top: 'auto',
+        left: 'auto',
+        right: 16,
+        bottom: isTablet ? 88 : 16, // 88px = tab bar (64) + gap (24) | 16px on desktop
+        width: 380,
+        height: 'min(560px, calc(100dvh - 120px))',
+        borderRadius: 16,
+        paddingTop: 0,
+        paddingBottom: 0,
+      }
+
   return (
     <>
       {/* Backdrop — только на мобильных (full-screen режим) */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-50 sm:hidden"
-        onClick={() => {
-          if (activeRelationId) {
-            setActiveRelationId(null)
-          } else {
-            setIsOpen(false)
-          }
-        }}
-      />
+      {isMobile && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-50"
+          onClick={() => {
+            if (activeRelationId) {
+              setActiveRelationId(null)
+            } else {
+              setIsOpen(false)
+            }
+          }}
+        />
+      )}
 
       {/* Popup */}
       <motion.div
@@ -112,22 +152,13 @@ export function ChatSheet() {
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         transition={{ type: 'spring', damping: 25, stiffness: 350 }}
         className={cn(
-          // Мобильный: на весь экран
-          "fixed inset-0 z-50",
-          // Планшет/десктоп: popup в правом нижнем углу
-          "sm:inset-auto sm:right-4 sm:bottom-20",
-          "sm:w-[380px] sm:h-[min(560px,calc(100dvh-7rem))]",
-          // Десктоп (lg+): нет нижней панели, popup ближе к краю
-          "lg:bottom-4",
-          "lg:h-[min(580px,calc(100dvh-100px))]",
-          "sm:rounded-2xl",
+          "fixed z-50",
           "bg-white",
           "shadow-2xl",
-          "sm:border sm:border-zinc-200/60",
+          !isMobile && "border border-zinc-200/60",
           "flex flex-col overflow-hidden",
-          "safe-area-top safe-area-bottom"
         )}
-        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        style={popupStyle}
       >
         <AnimatePresence mode="wait">
           {activeRelationId ? (
