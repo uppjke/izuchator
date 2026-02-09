@@ -218,8 +218,17 @@ export function useChat(): UseChatReturn {
         addMessageToCache(message.relationId, message)
         // Обновляем превью последнего сообщения
         updateLastMessage(message.relationId, message)
-        // Обновляем непрочитанные
-        queryClient.invalidateQueries({ queryKey: ['chat', 'unread'] })
+        // Мгновенно увеличиваем бейдж непрочитанных (оптимистично)
+        queryClient.setQueryData<UnreadResponse>(['chat', 'unread'], (old) => {
+          if (!old) return old
+          const newUnread = { ...old.unread }
+          newUnread[message.relationId] = (newUnread[message.relationId] || 0) + 1
+          return {
+            ...old,
+            unread: newUnread,
+            total: old.total + 1,
+          }
+        })
       })
 
       // Typing
@@ -276,8 +285,17 @@ export function useChat(): UseChatReturn {
     if (unreadMsgs.length === 0) return
 
     const ids = unreadMsgs.map((m) => m.id)
+
+    // Мгновенно обнуляем бейдж для этого чата (оптимистично)
+    queryClient.setQueryData<UnreadResponse>(['chat', 'unread'], (old) => {
+      if (!old) return old
+      const count = old.unread[activeRelationId] || 0
+      const newUnread = { ...old.unread }
+      delete newUnread[activeRelationId]
+      return { ...old, unread: newUnread, total: Math.max(0, old.total - count) }
+    })
+
     markMessagesRead(activeRelationId, ids).then(() => {
-      queryClient.invalidateQueries({ queryKey: ['chat', 'unread'] })
       // Уведомляем собеседника
       socketRef.current?.emit('chat:read' as any, {
         relationId: activeRelationId,
