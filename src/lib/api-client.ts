@@ -168,6 +168,17 @@ export async function getLessonById(lessonId: string) {
   return await response.json()
 }
 
+export async function generateBoardForLesson(lessonId: string) {
+  const response = await fetch(`/api/lessons/${lessonId}/generate-board`, {
+    method: 'POST',
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.error || 'Failed to generate board')
+  }
+  return await response.json()
+}
+
 // Совместимость со старым API
 
 export async function removeTeacherStudentRelation(relationId: string) {

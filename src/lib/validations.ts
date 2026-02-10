@@ -61,6 +61,7 @@ export const createLessonSchema = z.object({
     .datetime('Некорректный формат даты окончания')
     .or(z.date()),
   relationId: idSchema.optional().nullable(),
+  boardId: idSchema.optional().nullable(),
   isRecurring: z.boolean().default(false),
   recurrence: z.record(z.string(), z.unknown()).optional().nullable(),
   labelColor: z

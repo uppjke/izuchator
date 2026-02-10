@@ -10,6 +10,7 @@ export interface CreateLessonData {
   startTime: Date
   endTime: Date
   relationId?: string
+  boardId?: string | null
   isRecurring?: boolean
   recurrence?: Record<string, unknown>
   labelColor?: string
@@ -199,6 +200,17 @@ export async function getLessonById(lessonId: string) {
   const response = await fetch(`/api/lessons/${lessonId}`)
   if (!response.ok) {
     throw new Error('Failed to fetch lesson')
+  }
+  return await response.json()
+}
+
+export async function generateBoardForLesson(lessonId: string) {
+  const response = await fetch(`/api/lessons/${lessonId}/generate-board`, {
+    method: 'POST',
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.error || 'Failed to generate board')
   }
   return await response.json()
 }
@@ -570,11 +582,12 @@ export async function markMessagesRead(
   relationId: string,
   messageIds: string[],
 ): Promise<void> {
-  await fetch('/api/chat/read', {
+  const response = await fetch('/api/chat/read', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ relationId, messageIds }),
   })
+  if (!response.ok) throw new Error('Failed to mark messages read')
 }
 
 export async function getUnreadCounts(): Promise<UnreadResponse> {

@@ -14,7 +14,7 @@ import { Icon } from '@/components/ui/icon'
 import { Check } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createLesson, getTeacherStudents } from '@/lib/api'
+import { createLesson, getTeacherStudents, getBoards, type BoardListItem } from '@/lib/api'
 import { toast } from 'sonner'
 import { format, addDays, addWeeks, addMonths } from 'date-fns'
 
@@ -24,6 +24,7 @@ const schema = z.object({
   title: z.string().min(2, 'Минимум 2 символа'),
   description: z.string().max(300, 'Макс 300 символов').optional().or(z.literal('')),
   relationId: z.string().min(1, 'Выберите ученика'),
+  boardId: z.string().optional().or(z.literal('')),
   date: z.string(),
   time: z.string(),
   durationMinutes: z.coerce.number().int().positive('> 0').max(12 * 60, 'Максимум 12 часов'),
@@ -163,6 +164,12 @@ export function LessonDialog({ open, onOpenChange, selectedDate }: LessonDialogP
     staleTime: 1000 * 60 * 5,
   })
 
+  const { data: boards = [] } = useQuery({
+    queryKey: ['boards'],
+    queryFn: getBoards,
+    staleTime: 1000 * 60 * 5,
+  })
+
   const date = selectedDate
   const defaultDate = date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
   const defaultTime = date ? format(date, 'HH:mm') : '09:00'
@@ -173,6 +180,7 @@ export function LessonDialog({ open, onOpenChange, selectedDate }: LessonDialogP
       title: '',
       description: '',
       relationId: '',
+      boardId: '',
       date: defaultDate,
       time: defaultTime,
       durationMinutes: 60,
@@ -193,6 +201,7 @@ export function LessonDialog({ open, onOpenChange, selectedDate }: LessonDialogP
         title: '',
         description: '',
         relationId: '',
+        boardId: '',
         date: defaultDate,
         time: defaultTime,
         durationMinutes: 60,
@@ -254,6 +263,7 @@ export function LessonDialog({ open, onOpenChange, selectedDate }: LessonDialogP
           startTime,
           endTime,
           relationId,
+          boardId: values.boardId || undefined,
           labelColor: values.labelColor,
           isRecurring: values.repeatEnabled && dates.length > 1,
           recurrence: recurrenceRule ? JSON.parse(recurrenceRule) : undefined,
@@ -322,6 +332,13 @@ export function LessonDialog({ open, onOpenChange, selectedDate }: LessonDialogP
             </Select>
             {errors.relationId && <p className="text-xs text-red-600">{errors.relationId.message}</p>}
           </div>
+          <BoardPicker
+            boards={boards}
+            relationId={watch('relationId')}
+            value={watch('boardId') || ''}
+            onChange={(v) => setValue('boardId', v, { shouldDirty: true })}
+            disabled={isSubmitting}
+          />
           <div className="grid gap-4 sm:grid-cols-2 grid-cols-1">
             <div className="space-y-2">
               <Label>Дата *</Label>
@@ -379,6 +396,59 @@ export function LessonDialog({ open, onOpenChange, selectedDate }: LessonDialogP
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// Board picker — выбор доски для привязки к уроку
+interface BoardPickerProps {
+  boards: BoardListItem[]
+  relationId: string
+  value: string
+  onChange: (boardId: string) => void
+  disabled?: boolean
+}
+
+function BoardPicker({ boards, relationId, value, onChange, disabled }: BoardPickerProps) {
+  // Фильтруем: доски без relationId (общие) + доски с тем же relationId
+  const availableBoards = boards.filter(b => !b.relationId || b.relationId === relationId)
+  const selectedBoard = boards.find(b => b.id === value)
+
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-2 text-sm">
+        Доска
+        <span className="text-xs text-muted-foreground font-normal">(необязательно)</span>
+      </Label>
+      <Select value={value || '__none__'} onValueChange={(v) => onChange(v === '__none__' ? '' : v)} disabled={disabled}>
+        <SelectTrigger className="h-9 rounded-full">
+          <SelectValue placeholder="Автоматически">
+            {selectedBoard ? selectedBoard.title : value ? '—' : 'Автоматически'}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="auto">
+            <span className="flex items-center gap-2 text-sm">
+              🪄 Создать автоматически
+            </span>
+          </SelectItem>
+          <SelectItem value="__none__">
+            <span className="flex items-center gap-2 text-sm text-muted-foreground">
+              Без доски
+            </span>
+          </SelectItem>
+          {availableBoards.map(b => (
+            <SelectItem key={b.id} value={b.id}>
+              <span className="flex items-center gap-2 text-sm">
+                {b.title}
+                {b._count.elements > 0 && (
+                  <span className="text-xs text-muted-foreground">({b._count.elements} эл.)</span>
+                )}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   )
 }
 

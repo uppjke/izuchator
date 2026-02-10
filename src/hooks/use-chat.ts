@@ -47,6 +47,10 @@ interface UseChatReturn {
   // Открытие/закрытие
   isOpen: boolean
   setIsOpen: (open: boolean) => void
+  // Ошибки отправки
+  failedMessageIds: Set<string>
+  retryMessage: (tempId: string) => void
+  dismissFailedMessage: (tempId: string) => void
 }
 
 // ============================================================================
@@ -77,11 +81,16 @@ export function useChat(): UseChatReturn {
   const [activeRelationId, setActiveRelationId] = useState<string | null>(null)
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
   const [socketConnected, setSocketConnected] = useState(false)
+  const [failedMessageIds, setFailedMessageIds] = useState<Set<string>>(new Set())
   // Локальные lastMessages из real-time обновлений (перекрывают API данные)
   const [realtimeLastMessages, setRealtimeLastMessages] = useState<Record<string, LastMessagePreview>>({})
   const socketRef = useRef<Socket | null>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastTypingSentRef = useRef<number>(0)
+  // Track last read-marked message set to avoid spamming
+  const lastReadMarkedRef = useRef<string>('')
+  // Store temp message text for retry
+  const failedMessageTextsRef = useRef<Map<string, { text: string; relationId: string }>>(new Map())
 
   // Получаем партнёров — через существующие relations
   const isTeacher = userRole === 'teacher'
@@ -177,9 +186,17 @@ export function useChat(): UseChatReturn {
             pageParams: [undefined],
           }
         }
-        // Дедупликация: по id или по tempId
+        // Дедупликация: по id, а также проверяем temp-* сообщения от того же отправителя
+        // с тем же текстом (для предотвращения дублей при socket relay)
         const allMsgs = old.pages.flatMap((p: any) => p.messages)
         if (allMsgs.some((m: any) => m.id === message.id)) return old
+        // Если входящее сообщение не temp, проверяем нет ли temp-версии от того же sender
+        if (!message.id.startsWith('temp-')) {
+          const hasTempDupe = allMsgs.some(
+            (m: any) => m.id.startsWith('temp-') && m.senderId === message.senderId && m.text === message.text
+          )
+          if (hasTempDupe) return old // temp version already shown, replaceTempMessage will handle it
+        }
         const firstPage = old.pages[0]
         return {
           ...old,
@@ -249,6 +266,10 @@ export function useChat(): UseChatReturn {
       if (!mounted) return
       addMessageToCache(message.relationId, message)
       updateLastMessage(message.relationId, message)
+      // Не инкрементируем unread для своих сообщений (socket relay echo)
+      if (message.senderId === userId) return
+      // Не инкрементируем, если этот чат сейчас открыт (сообщения сразу прочитаны)
+      if (activeRelationId === message.relationId && isOpen) return
       // Optimistic badge increment
       queryClient.setQueryData<UnreadResponse>(['chat', 'unread'], (old) => {
         if (!old) return old
@@ -328,6 +349,7 @@ export function useChat(): UseChatReturn {
   }, [activeRelationId])
 
   // Автоматически отмечаем прочитанными при открытии чата
+  // Stabilized: only fire when the set of unread IDs actually changes
   useEffect(() => {
     if (!activeRelationId || !isOpen || !userId) return
 
@@ -336,7 +358,13 @@ export function useChat(): UseChatReturn {
     )
     if (unreadMsgs.length === 0) return
 
-    const ids = unreadMsgs.map((m) => m.id)
+    const ids = unreadMsgs.map((m) => m.id).filter((id) => !id.startsWith('temp-'))
+    if (ids.length === 0) return
+
+    // Fingerprint to avoid re-firing for same set of unread messages
+    const fingerprint = ids.join(',')
+    if (fingerprint === lastReadMarkedRef.current) return
+    lastReadMarkedRef.current = fingerprint
 
     // Мгновенно обнуляем бейдж для этого чата (оптимистично)
     queryClient.setQueryData<UnreadResponse>(['chat', 'unread'], (old) => {
@@ -353,6 +381,10 @@ export function useChat(): UseChatReturn {
         userId,
         messageIds: ids,
       })
+      // invalidate unread counts after marking as read
+      queryClient.invalidateQueries({ queryKey: ['chat', 'unread'] })
+    }).catch((err) => {
+      console.error('Failed to mark messages read:', err)
     })
   }, [activeRelationId, isOpen, messages, userId, queryClient])
 
@@ -379,6 +411,9 @@ export function useChat(): UseChatReturn {
         reads: [],
       }
 
+      // Store text for retry
+      failedMessageTextsRef.current.set(tempId, { text: trimmed, relationId: activeRelationId })
+
       // 2. Show in own chat immediately
       addMessageToCache(activeRelationId, optimistic)
       updateLastMessage(activeRelationId, optimistic)
@@ -397,13 +432,74 @@ export function useChat(): UseChatReturn {
       try {
         const saved = await sendChatMessage(activeRelationId, trimmed)
         replaceTempMessage(activeRelationId, tempId, saved)
+        failedMessageTextsRef.current.delete(tempId)
+        // Note: do NOT re-relay saved message via socket.
+        // Partner already received the temp message in step 3.
+        // Re-relaying causes onMessage to fire twice → double unread increment.
       } catch (error) {
         console.error('Failed to save chat message:', error)
-        // Message stays visible with temp ID — will sync on next fetch
+        // Mark as failed — UI will show error indicator
+        setFailedMessageIds((prev) => new Set(prev).add(tempId))
       }
     },
     [activeRelationId, userId, userName, userEmail, userImage, addMessageToCache, updateLastMessage, replaceTempMessage],
   )
+
+  // Retry a failed message
+  const retryMessage = useCallback(async (tempId: string) => {
+    const stored = failedMessageTextsRef.current.get(tempId)
+    if (!stored) return
+
+    // Clear failure flag
+    setFailedMessageIds((prev) => {
+      const next = new Set(prev)
+      next.delete(tempId)
+      return next
+    })
+
+    try {
+      const saved = await sendChatMessage(stored.relationId, stored.text)
+      replaceTempMessage(stored.relationId, tempId, saved)
+      failedMessageTextsRef.current.delete(tempId)
+      // Note: do NOT relay via socket — the original temp message
+      // was never relayed (message failed), so we relay the saved one now.
+      socketRef.current?.emit('chat:message' as any, {
+        relationId: stored.relationId,
+        message: saved,
+      })
+    } catch (error) {
+      console.error('Retry failed:', error)
+      setFailedMessageIds((prev) => new Set(prev).add(tempId))
+    }
+  }, [replaceTempMessage])
+
+  // Dismiss (remove) a failed message
+  const dismissFailedMessage = useCallback((tempId: string) => {
+    setFailedMessageIds((prev) => {
+      const next = new Set(prev)
+      next.delete(tempId)
+      return next
+    })
+    failedMessageTextsRef.current.delete(tempId)
+    // Remove from cache
+    const stored = failedMessageTextsRef.current.get(tempId)
+    const relId = stored?.relationId || activeRelationId
+    if (relId) {
+      queryClient.setQueryData(
+        ['chat', 'messages', relId],
+        (old: any) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((page: any) => ({
+              ...page,
+              messages: page.messages.filter((m: any) => m.id !== tempId),
+            })),
+          }
+        },
+      )
+    }
+  }, [activeRelationId, queryClient])
 
   const sendTyping = useCallback(() => {
     if (!activeRelationId || !userId) return
@@ -442,5 +538,8 @@ export function useChat(): UseChatReturn {
     sendTyping,
     isOpen,
     setIsOpen,
+    failedMessageIds,
+    retryMessage,
+    dismissFailedMessage,
   }
 }

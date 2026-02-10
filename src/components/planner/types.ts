@@ -12,6 +12,7 @@ export interface Lesson {
   endTime: string // ISO
   userId: string
   relationId?: string | null
+  boardId?: string | null
   isRecurring: boolean
   recurrence: Record<string, unknown> | null
   labelColor: string | null
@@ -29,6 +30,12 @@ export interface Lesson {
     studentName?: string | null
     teacher?: { id: string; name?: string | null; email?: string | null }
     student?: { id: string; name?: string | null; email?: string | null }
+  } | null
+  // Привязанная доска
+  board?: {
+    id: string
+    title: string
+    thumbnail?: string | null
   } | null
 }
 

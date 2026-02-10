@@ -75,6 +75,9 @@ export async function GET(request: NextRequest) {
             student: true,
           },
         },
+        board: {
+          select: { id: true, title: true, thumbnail: true },
+        },
       },
       orderBy: {
         startTime: 'asc',
@@ -128,6 +131,7 @@ export async function POST(request: NextRequest) {
         startTime: new Date(data.startTime),
         endTime: new Date(data.endTime),
         relationId: data.relationId,
+        boardId: data.boardId || undefined,
         isRecurring: data.isRecurring ?? false,
         recurrence: data.recurrence as Prisma.InputJsonValue ?? Prisma.JsonNull,
         labelColor: data.labelColor,

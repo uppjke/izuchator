@@ -121,6 +121,7 @@ model Lesson {
   endTime     DateTime    @map("end_time")
   userId      String      @map("user_id")
   relationId  String?     @map("relation_id")
+  boardId     String?     @map("board_id")
   isRecurring Boolean     @default(false) @map("is_recurring")
   recurrence  Json?       @map("recurrence_pattern")
   labelColor  String?     @map("label_color")
@@ -132,7 +133,9 @@ model Lesson {
 
   user User @relation(fields: [userId], references: [id])
   relation TeacherStudentRelation? @relation("LessonRelation", fields: [relationId], references: [id])
+  board Board? @relation("LessonBoard", fields: [boardId], references: [id], onDelete: SetNull)
 
+  @@index([boardId])
   @@map("lessons")
 }
 
@@ -233,6 +236,7 @@ model Board {
   teacher  User                    @relation("BoardCreator", fields: [teacherId], references: [id], onDelete: Cascade)
   relation TeacherStudentRelation? @relation("BoardRelation", fields: [relationId], references: [id], onDelete: SetNull)
   elements BoardElement[]
+  lessons  Lesson[]                @relation("LessonBoard")
 
   @@index([teacherId])
   @@index([relationId])

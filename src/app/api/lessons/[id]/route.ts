@@ -40,6 +40,9 @@ export async function GET(
               student: true,
             },
           },
+          board: {
+            select: { id: true, title: true, thumbnail: true },
+          },
         },
       })
     } else {
@@ -59,6 +62,9 @@ export async function GET(
               teacher: true,
               student: true,
             },
+          },
+          board: {
+            select: { id: true, title: true, thumbnail: true },
           },
         },
       })
@@ -123,6 +129,11 @@ export async function PATCH(
     }
     if (updateData.endTime) {
       updateData.endTime = new Date(updateData.endTime)
+    }
+
+    // boardId: null — отвязать доску, string — привязать
+    if ('boardId' in updateData) {
+      updateData.boardId = updateData.boardId || null
     }
 
     // Если переносим время (start/end изменены) — фиксируем предыдущие значения и статус

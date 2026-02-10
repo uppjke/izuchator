@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Send, X } from 'lucide-react'
+import { ArrowLeft, Send, X, ChevronDown as ChevronDownIcon, RotateCw } from 'lucide-react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
@@ -14,54 +14,18 @@ import { cn } from '@/lib/utils'
 
 import type { ChatMessage } from '@/lib/api'
 
-// Hook: adjust mobile fullscreen chat to visualViewport (virtual keyboard)
-function useVisualViewport(isOpen: boolean, ref: React.RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
-    if (!isOpen) return
-
-    const viewport = window.visualViewport
-    if (!viewport) return
-
-    const update = () => {
-      const el = ref.current
-      if (!el) return
-      // Only adjust on mobile (fullscreen mode)
-      if (window.innerWidth >= 640) {
-        el.style.height = ''
-        el.style.top = ''
-        return
-      }
-      // Shrink container to visual viewport (excludes keyboard)
-      el.style.height = `${viewport.height}px`
-      el.style.top = `${viewport.offsetTop}px`
-    }
-
-    viewport.addEventListener('resize', update)
-    viewport.addEventListener('scroll', update)
-
-    return () => {
-      viewport.removeEventListener('resize', update)
-      viewport.removeEventListener('scroll', update)
-      // Reset
-      const el = ref.current
-      if (el) {
-        el.style.height = ''
-        el.style.top = ''
-      }
-    }
-  }, [isOpen, ref])
-}
-
 // Hook: lock body scroll on mobile when chat is open
 function useLockBodyScroll(isOpen: boolean) {
   useEffect(() => {
     if (!isOpen) return
-    // Only lock on mobile
     if (window.innerWidth >= 640) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+
+    const body = document.body
+    const prev = body.style.overflow
+    body.style.overflow = 'hidden'
+
     return () => {
-      document.body.style.overflow = prev
+      body.style.overflow = prev
     }
   }, [isOpen])
 }
@@ -96,9 +60,7 @@ export function ChatSheet() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // Fix mobile virtual keyboard pushing header off-screen
-  useVisualViewport(isOpen, popupRef)
-  // Lock body scroll on mobile when chat is open
+  // Fix mobile virtual keyboard
   useLockBodyScroll(isOpen)
 
   if (!isOpen) return null
@@ -111,7 +73,6 @@ export function ChatSheet() {
         right: 0,
         bottom: 0,
         paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
       }
     : {
         top: 'auto',
@@ -305,23 +266,73 @@ function ChatThread() {
     sendMessage,
     typingUsers,
     sendTyping,
+    failedMessageIds,
+    retryMessage,
+    dismissFailedMessage,
   } = useChatContext()
 
   const { data: session } = useSession()
   const userId = session?.user?.id
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
+  const [showScrollFab, setShowScrollFab] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const prevMessageCountRef = useRef(0)
+  const isLoadingOlderRef = useRef(false)
 
   const partner = partners.find((p) => p.relationId === activeRelationId)
   const displayName = partner?.customName || partner?.name || partner?.email || 'Собеседник'
 
-  // Скролл вниз при новых сообщениях
+  // Scroll to bottom only for NEW messages (not load-older or viewport resize)
+  const viewportResizingRef = useRef(false)
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const viewport = window.visualViewport
+    if (!viewport) return
+    let timer: NodeJS.Timeout
+    const onResize = () => {
+      viewportResizingRef.current = true
+      clearTimeout(timer)
+      timer = setTimeout(() => { viewportResizingRef.current = false }, 300)
+    }
+    viewport.addEventListener('resize', onResize)
+    return () => {
+      viewport.removeEventListener('resize', onResize)
+      clearTimeout(timer)
+    }
+  }, [])
+
+  useEffect(() => {
+    const currentCount = messages.length
+    const prevCount = prevMessageCountRef.current
+
+    if (currentCount > prevCount && !isLoadingOlderRef.current && !viewportResizingRef.current) {
+      // New messages arrived — scroll to bottom
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+    // Reset load-older flag after render
+    isLoadingOlderRef.current = false
+    prevMessageCountRef.current = currentCount
   }, [messages.length])
+
+  // Track scroll position for FAB
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    setShowScrollFab(distanceFromBottom > 150)
+  }, [])
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [])
+
+  const handleLoadOlder = useCallback(() => {
+    isLoadingOlderRef.current = true
+    loadMoreMessages()
+  }, [loadMoreMessages])
 
   // Фокус на input при открытии
   useEffect(() => {
@@ -334,6 +345,11 @@ function ChatThread() {
     try {
       await sendMessage(text.trim())
       setText('')
+      // Reset textarea height
+      if (inputRef.current) {
+        inputRef.current.style.height = 'auto'
+        inputRef.current.style.overflow = 'hidden'
+      }
       inputRef.current?.focus()
     } finally {
       setSending(false)
@@ -399,11 +415,12 @@ function ChatThread() {
       {/* Messages */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-4 py-3 space-y-1"
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-4 py-3 space-y-1 relative"
       >
         {hasMoreMessages && (
           <button
-            onClick={loadMoreMessages}
+            onClick={handleLoadOlder}
             className="w-full text-center text-xs text-blue-500 hover:text-blue-700 py-2"
           >
             Загрузить ранние сообщения
@@ -433,21 +450,50 @@ function ChatThread() {
               const isMine = msg.senderId === userId
               const showAvatar = !isMine && (idx === 0 || dayMessages[idx - 1]?.senderId !== msg.senderId)
               const isLast = idx === dayMessages.length - 1 || dayMessages[idx + 1]?.senderId !== msg.senderId
+              const isFailed = failedMessageIds.has(msg.id)
 
               return (
-                <MessageBubble
-                  key={msg.id}
-                  message={msg}
-                  isMine={isMine}
-                  showAvatar={showAvatar}
-                  isLast={isLast}
-                />
+                <div key={msg.id}>
+                  <MessageBubble
+                    message={msg}
+                    isMine={isMine}
+                    showAvatar={showAvatar}
+                    isLast={isLast && !isFailed}
+                  />
+                  {isFailed && (
+                    <div className={cn('flex gap-1.5 mb-2', isMine ? 'justify-end' : 'justify-start')}>
+                      <button
+                        onClick={() => retryMessage(msg.id)}
+                        className="flex items-center gap-1 text-[11px] text-red-500 hover:text-red-600 transition-colors"
+                      >
+                        <Icon icon={RotateCw} size="xs" />
+                        Повторить
+                      </button>
+                      <button
+                        onClick={() => dismissFailedMessage(msg.id)}
+                        className="text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  )}
+                </div>
               )
             })}
           </div>
         ))}
 
         <div ref={messagesEndRef} />
+
+        {/* Scroll to bottom FAB */}
+        {showScrollFab && (
+          <button
+            onClick={scrollToBottom}
+            className="sticky bottom-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white shadow-lg border border-zinc-200 flex items-center justify-center hover:bg-zinc-50 transition-colors z-10"
+          >
+            <Icon icon={ChevronDownIcon} size="sm" className="text-zinc-600" />
+          </button>
+        )}
       </div>
 
       {/* Input */}
@@ -514,6 +560,7 @@ interface MessageBubbleProps {
 function MessageBubble({ message, isMine, showAvatar, isLast }: MessageBubbleProps) {
   const time = format(new Date(message.createdAt), 'HH:mm')
   const isRead = message.reads.length > 0
+  const isTemp = message.id.startsWith('temp-')
 
   return (
     <div
@@ -543,6 +590,7 @@ function MessageBubble({ message, isMine, showAvatar, isLast }: MessageBubblePro
           isMine
             ? 'bg-blue-500 text-white rounded-2xl rounded-br-md'
             : 'bg-zinc-100 text-zinc-900 rounded-2xl rounded-bl-md',
+          isTemp && 'opacity-70',
         )}
       >
         <p className="whitespace-pre-wrap break-words">{message.text}</p>
@@ -562,7 +610,7 @@ function MessageBubble({ message, isMine, showAvatar, isLast }: MessageBubblePro
           </span>
           {isMine && (
             <span className={cn('text-[10px]', isRead ? 'text-blue-200' : 'text-blue-300/60')}>
-              {isRead ? '✓✓' : '✓'}
+              {isTemp ? '○' : isRead ? '✓✓' : '✓'}
             </span>
           )}
         </div>

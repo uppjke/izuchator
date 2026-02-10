@@ -18,6 +18,7 @@ export const viewport: Viewport = {
   maximumScale: 1, // Предотвращает zoom при фокусе на input на iOS
   userScalable: false,
   viewportFit: 'cover',
+  interactiveWidget: 'resizes-content', // Клавиатура ресайзит layout viewport — fixed-элементы автоматически подстраиваются
 }
 
 export const metadata: Metadata = {
@@ -66,6 +67,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" className="light">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          // Suppress benign ResizeObserver loop error (Radix UI / browser quirk)
+          const _e = window.onerror;
+          window.onerror = function(m){if(typeof m==='string'&&m.includes('ResizeObserver'))return true;return _e?_e.apply(this,arguments):false};
+        `}} />
+      </head>
       <body className="antialiased bg-white">
         <QueryProvider>
           <SessionProvider>
